@@ -26,11 +26,11 @@
 - [x] Max iterations enforcement, error handling
 ## [x] CORE-005 — Implement native.py: NativeH3Harness — 2026-07-14 (foreman-direct, 50 lines)
 - [x] Adapter: Hermes native loop as H3 harness interface
-## [ ] CORE-006 — Implement test_battery.py: H3TestBattery
-- [ ] 43 compliance tests across 6 categories (per S05)
-- [ ] Health & Protocol (7), Process-Basic (8), Decision Types (6), Result Handling (7), Error/Edge (10), Stress (5)
-- [ ] TestResult + TestReport dataclasses
-- [ ] Terminal + JSON output, CLI entry point (h3-test)
+## [x] CORE-006 — Implement test_battery.py: H3TestBattery — 2026-07-14 0b02c55
+- [x] 43 compliance tests across 6 categories (per S05)
+- [x] Health & Protocol (7), Process-Basic (8), Decision Types (6), Result Handling (7), Error/Edge (10), Stress (5)
+- [x] TestResult + TestReport dataclasses
+- [x] Terminal + JSON output, CLI entry point (h3-test)
 ## [ ] CORE-007 — Implement cli.py: hermes h3 subcommands
 - [ ] h3 install, h3 uninstall, h3 verify, h3 list
 - [ ] h3 test --endpoint URL, h3 scaffold NAME --lang, h3 route, h3 use
