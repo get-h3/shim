@@ -24,8 +24,8 @@
 - [x] _execute(decision) → ExecutionResult
 - [x] Decision executors: _execute_tool, _execute_llm, _execute_text, _execute_wait, _execute_delegate
 - [x] Max iterations enforcement, error handling
-## [ ] CORE-005 — Implement native.py: NativeH3Harness
-- [ ] Adapter: Hermes native loop as H3 harness interface
+## [x] CORE-005 — Implement native.py: NativeH3Harness — 2026-07-14 (foreman-direct, 50 lines)
+- [x] Adapter: Hermes native loop as H3 harness interface
 ## [ ] CORE-006 — Implement test_battery.py: H3TestBattery
 - [ ] 43 compliance tests across 6 categories (per S05)
 - [ ] Health & Protocol (7), Process-Basic (8), Decision Types (6), Result Handling (7), Error/Edge (10), Stress (5)
