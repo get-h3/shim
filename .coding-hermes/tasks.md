@@ -13,11 +13,11 @@
 - [x] async cancel(session_id, reason) → CancelResponse
 - [x] async close()
 - [x] httpx.AsyncClient with configurable timeout
-## [ ] CORE-003 — Implement loader.py: H3Loader
-- [ ] _load(config) — parse harness configs
-- [ ] resolve(platform, chat_id, thread_id) → harness_name
-- [ ] health_check_loop() — background 30s health checks
-- [ ] Route sessions to native on harness failure
+## [x] CORE-003 — Implement loader.py: H3Loader — 2026-07-14 8685996
+- [x] _load(config) — parse harness configs
+- [x] resolve(platform, chat_id, thread_id) → harness_name
+- [x] health_check_loop() — background 30s health checks
+- [x] Route sessions to native on harness failure
 ## [ ] CORE-004 — Implement shim_loop.py: H3ShimLoop
 - [ ] run(message) → end_reason
 - [ ] _build_context() → Context
