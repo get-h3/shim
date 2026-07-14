@@ -37,7 +37,7 @@ dev = [
 ]
 
 [project.scripts]
-h3-test = "h3_shim.test_battery:main"
+h3-test = "h3_shim.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/h3_shim"]
