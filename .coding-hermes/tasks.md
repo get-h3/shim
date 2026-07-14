@@ -1,11 +1,11 @@
 # Task Board — H3 Shim
 ## [x] INIT — Verify project structure, dependencies, and DuckBrain namespace (2026-07-14: scaffold verified, 7 source files missing, all deps installed, DuckBrain empty)
 ## [x] SPEC — Audit API surface vs H3 spec, identify gaps (2026-07-14: gap analysis complete, 7 source files + tests mapped to S06/S05 specs)
-## [ ] CORE-001 — Implement protocol.py: Pydantic models (Hermes-side)
-- [ ] DecisionType, Message, Attachment, Identity, Context, ProcessRequest
-- [ ] Decision, ToolCall, LLMCall, TextResponse, Wait, Delegate, End
-- [ ] ExecutionResult, ResultRequest, HealthResponse, CancelResponse
-- [ ] All models use Pydantic v2 with model_dump(), field validators
+## [x] CORE-001 — Implement protocol.py: Pydantic models (Hermes-side) — 2026-07-14 ec134f1
+- [x] DecisionType, Message, Attachment, Identity, Context, ProcessRequest
+- [x] Decision, ToolCall, LLMCall, TextResponse, Wait, Delegate, End
+- [x] ExecutionResult, ResultRequest, HealthResponse, CancelResponse
+- [x] All models use Pydantic v2 with model_dump(), field validators
 ## [ ] CORE-002 — Implement client.py: H3Client (REST + gRPC)
 - [ ] async health() → HealthResponse
 - [ ] async process(session_id, message, context) → Decision
