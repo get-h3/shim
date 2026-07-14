@@ -18,12 +18,12 @@
 - [x] resolve(platform, chat_id, thread_id) → harness_name
 - [x] health_check_loop() — background 30s health checks
 - [x] Route sessions to native on harness failure
-## [ ] CORE-004 — Implement shim_loop.py: H3ShimLoop
-- [ ] run(message) → end_reason
-- [ ] _build_context() → Context
-- [ ] _execute(decision) → ExecutionResult
-- [ ] Decision executors: _execute_tool, _execute_llm, _execute_text, _execute_wait, _execute_delegate
-- [ ] Max iterations enforcement, error handling
+## [x] CORE-004 — Implement shim_loop.py: H3ShimLoop — 2026-07-14 ab8b574
+- [x] run(message) → end_reason
+- [x] _build_context() → Context (context passed via __init__, no _build_context needed in shim)
+- [x] _execute(decision) → ExecutionResult
+- [x] Decision executors: _execute_tool, _execute_llm, _execute_text, _execute_wait, _execute_delegate
+- [x] Max iterations enforcement, error handling
 ## [ ] CORE-005 — Implement native.py: NativeH3Harness
 - [ ] Adapter: Hermes native loop as H3 harness interface
 ## [ ] CORE-006 — Implement test_battery.py: H3TestBattery
