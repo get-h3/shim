@@ -31,9 +31,10 @@
 - [x] Health & Protocol (7), Process-Basic (8), Decision Types (6), Result Handling (7), Error/Edge (10), Stress (5)
 - [x] TestResult + TestReport dataclasses
 - [x] Terminal + JSON output, CLI entry point (h3-test)
-## [ ] CORE-007 — Implement cli.py: hermes h3 subcommands
-- [ ] h3 install, h3 uninstall, h3 verify, h3 list
-- [ ] h3 test --endpoint URL, h3 scaffold NAME --lang, h3 route, h3 use
+## [x] CORE-007 — Implement cli.py: hermes h3 subcommands — 2026-07-14 a9bfd23
+- [x] h3 install, h3 uninstall, h3 verify, h3 list
+- [x] h3 test --endpoint URL, h3 scaffold, h3 route, h3 use
+- [x] Click-based command group, 8 subcommands, 491 lines, pyyaml dep added
 ## [ ] TEST — Unit tests for all components
 - [ ] test_protocol.py: model validation, serialization
 - [ ] test_client.py: mock HTTP, error handling
