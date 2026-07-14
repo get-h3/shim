@@ -6,13 +6,13 @@
 - [x] Decision, ToolCall, LLMCall, TextResponse, Wait, Delegate, End
 - [x] ExecutionResult, ResultRequest, HealthResponse, CancelResponse
 - [x] All models use Pydantic v2 with model_dump(), field validators
-## [ ] CORE-002 — Implement client.py: H3Client (REST + gRPC)
-- [ ] async health() → HealthResponse
-- [ ] async process(session_id, message, context) → Decision
-- [ ] async result(session_id, decision_id, result) → Decision
-- [ ] async cancel(session_id, reason) → CancelResponse
-- [ ] async close()
-- [ ] httpx.AsyncClient with configurable timeout
+## [x] CORE-002 — Implement client.py: H3Client (REST + gRPC) — 2026-07-14 a32ae58
+- [x] async health() → HealthResponse
+- [x] async process(session_id, message, identity, context) → Decision
+- [x] async result(session_id, decision_id, result) → Decision
+- [x] async cancel(session_id, reason) → CancelResponse
+- [x] async close()
+- [x] httpx.AsyncClient with configurable timeout
 ## [ ] CORE-003 — Implement loader.py: H3Loader
 - [ ] _load(config) — parse harness configs
 - [ ] resolve(platform, chat_id, thread_id) → harness_name
