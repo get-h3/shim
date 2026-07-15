@@ -6,16 +6,44 @@ guards:
     enabled: true
     severity: block
   build:
-    enabled: false
+    enabled: true
+    build_command: ".venv/bin/python -c 'import h3_shim; print(\"build: OK\")'"
   lint:
-    enabled: false
+    enabled: true
+    lint_command: ".venv/bin/python -m ruff check src/ tests/"
   tests:
-    enabled: false
+    enabled: true
+    test_command: ".venv/bin/python -m pytest -x --tb=short -q"
+    mode: full
   dead_code:
     enabled: false
 
-test:
-  mode: full
+pipeline:
+  stages:
+    - id: tier1
+      parallel: true
+      on: [pre-commit, pre-eval]
+      steps:
+        - id: guard
+          type: script
+          run: "gitreins guard"
+          on_fail: block
+
+evaluator:
+  max_iterations: 50
+  max_time: "5m"
+  max_input_tokens: "0.2M"
+  max_output_tokens: "0.05M"
+  tool_call_weight: 0.1
+
+defaults:
+  model: deepseek-v4-flash
+  max_iterations: 100
+
+history:
+  enabled: true
+  storage: git
+  max_verdicts: 1000
 
 commit:
   require_guard_pass: true

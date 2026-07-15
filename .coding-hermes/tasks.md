@@ -35,13 +35,13 @@
 - [x] h3 install, h3 uninstall, h3 verify, h3 list
 - [x] h3 test --endpoint URL, h3 scaffold, h3 route, h3 use
 - [x] Click-based command group, 8 subcommands, 491 lines, pyyaml dep added
-## [x] TEST — Unit tests for all components (commit: pending)
-- [x] test_protocol.py: model validation, serialization (13 tests, all pass, commit b2a0029)
-- [x] test_client.py: mock HTTP, error handling (22 tests, commit pending)
-- [x] test_loader.py: config parsing, routing (26 tests, commit pending)
-- [x] test_shim_loop.py: decision execution, iteration limits (34 tests, commit pending)
-- [x] test_cli.py: command parsing (37 tests, commit pending)
-## [ ] CI — Enable GitReins guards + CI pipeline
-- [ ] Enable lint, build, tests in .gitreins/config.yaml
-- [ ] .github/workflows/test.yml for CI
-- [ ] make all target: install lint build test
+## [x] TEST — Unit tests for all components (commit: b25582e)
+- [x] test_protocol.py: model validation, serialization (13 tests, all pass)
+- [x] test_client.py: mock HTTP, error handling (22 tests)
+- [x] test_loader.py: config parsing, routing (26 tests)
+- [x] test_shim_loop.py: decision execution, iteration limits (34 tests)
+- [x] test_cli.py: command parsing (37 tests)
+## [x] CI — Enable GitReins guards + CI pipeline (commit: pending)
+- [x] Enable lint, build, tests in .gitreins/config.yaml
+- [x] .github/workflows/test.yml for CI (lint + build + test)
+- [x] make all target: install lint build test (pre-existing)
