@@ -41,7 +41,7 @@
 - [x] test_loader.py: config parsing, routing (26 tests)
 - [x] test_shim_loop.py: decision execution, iteration limits (34 tests)
 - [x] test_cli.py: command parsing (37 tests)
-## [x] CI — Enable GitReins guards + CI pipeline (commit: pending)
+## [x] CI — Enable GitReins guards + CI pipeline (commit: 0d9cfd6)
 - [x] Enable lint, build, tests in .gitreins/config.yaml
 - [x] .github/workflows/test.yml for CI (lint + build + test)
 - [x] make all target: install lint build test (pre-existing)
