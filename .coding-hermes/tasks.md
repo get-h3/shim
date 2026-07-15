@@ -45,6 +45,9 @@
 - [x] Enable lint, build, tests in .gitreins/config.yaml
 - [x] .github/workflows/test.yml for CI (lint + build + test)
 - [x] make all target: install lint build test (pre-existing)
+## [x] CONFIG — Fix dead_code guard format in .gitreins/config.yaml (2026-07-15: nested → flat, guard now PASS)
+- [x] Flatten dead_code: {enabled: false} → dead_code: false (nested format silently truthy per gitreins pitfall)
+- [x] gitreins guard: PASS (secrets, lint, tests) — dead_code no longer runs
 ## [x] POLISH — Fix 13 remaining ruff lint issues in test files (2026-07-15 178014e)
 - [x] E501 line too long: test_client.py:33,150; test_loader.py:60; test_shim_loop.py:223,316,361
 - [x] E741 ambiguous variable: test_cli.py:167 (rename `l` to `line`)

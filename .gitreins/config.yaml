@@ -15,8 +15,7 @@ guards:
     enabled: true
     test_command: ".venv/bin/python -m pytest -x --tb=short -q"
     mode: full
-  dead_code:
-    enabled: false
+  dead_code: false
 
 pipeline:
   stages:
