@@ -18,7 +18,6 @@ from h3_shim.protocol import (
     Context,
     Decision,
     DecisionType,
-    End,
     EndReason,
     ExecutionResult,
     HealthResponse,
@@ -26,15 +25,14 @@ from h3_shim.protocol import (
     Identity,
     Message,
     ProcessRequest,
-    ResultRequest,
-    ToolCall,
 )
-
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 
-def _fake_response(status_code: int = 200, json_payload: dict | None = None) -> MagicMock:
+def _fake_response(
+    status_code: int = 200, json_payload: dict | None = None
+) -> MagicMock:
     """Return a MagicMock that quacks like an ``httpx.Response``."""
     resp = MagicMock(spec=httpx.Response)
     resp.status_code = status_code
@@ -151,7 +149,11 @@ class TestProcess:
         c._rest.post.return_value = _fake_response(200, {
             "decision": "tool_call",
             "decision_id": "d_proc_1",
-            "tool_call": {"name": "terminal", "params": {"command": "ls"}, "reasoning": "list"},
+            "tool_call": {
+                "name": "terminal",
+                "params": {"command": "ls"},
+                "reasoning": "list",
+            },
         })
         decision = await c.process(
             session_id="s_001",

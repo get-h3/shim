@@ -9,14 +9,13 @@ shortened sleep so cancellation behavior can be verified.
 """
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from h3_shim.client import H3Client
 from h3_shim.loader import H3Loader
 from h3_shim.protocol import HealthResponse, HealthStatus
-
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,7 +33,7 @@ def _patch_h3_client_factory(monkeypatch, **attrs):
 
     Returns the fake class so individual tests can further customise it.
     """
-    Fake = MagicMock(wraps=H3Client)
+    fake = MagicMock(wraps=H3Client)
 
     def _factory(endpoint, transport="rest", timeout_ms=30_000):
         c = _fake_client(endpoint=endpoint, transport=transport, timeout_ms=timeout_ms)
@@ -45,9 +44,9 @@ def _patch_h3_client_factory(monkeypatch, **attrs):
             c.health = AsyncMock(side_effect=Exception("health not stubbed"))
         return c
 
-    Fake.side_effect = _factory
-    monkeypatch.setattr("h3_shim.loader.H3Client", Fake)
-    return Fake
+    fake.side_effect = _factory
+    monkeypatch.setattr("h3_shim.loader.H3Client", fake)
+    return fake
 
 
 # ── _load ───────────────────────────────────────────────────────────────────
@@ -58,7 +57,11 @@ class TestLoad:
         _patch_h3_client_factory(monkeypatch)
         cfg = {
             "harnesses": {
-                "alpha": {"endpoint": "http://a:1", "transport": "rest", "timeout_ms": 5000},
+                "alpha": {
+                    "endpoint": "http://a:1",
+                    "transport": "rest",
+                    "timeout_ms": 5000,
+                },
                 "beta": {"endpoint": "http://b:1"},
             }
         }
@@ -68,14 +71,14 @@ class TestLoad:
         assert all(isinstance(c, H3Client) for c in loader.harnesses.values())
 
     def test_skips_native_entry(self, monkeypatch):
-        Fake = _patch_h3_client_factory(monkeypatch)
+        fake = _patch_h3_client_factory(monkeypatch)
         cfg = {"harnesses": {"native": {"endpoint": "ignored"}, "alpha": {"endpoint": "http://a:1"}}}
         loader = H3Loader(cfg)
         # ``native`` must not produce an H3Client instance.
         assert "native" not in loader.harnesses
         assert "alpha" in loader.harnesses
         # And H3Client should not have been instantiated for ``native``.
-        names = [c.kwargs["endpoint"] for c in Fake.call_args_list]
+        names = [c.kwargs["endpoint"] for c in fake.call_args_list]
         assert all(e != "ignored" for e in names)
 
     def test_skips_endpoint_none(self, monkeypatch):
@@ -98,17 +101,17 @@ class TestLoad:
         assert "alpha" in loader.harnesses
 
     def test_default_timeout_applied(self, monkeypatch):
-        Fake = _patch_h3_client_factory(monkeypatch)
+        fake = _patch_h3_client_factory(monkeypatch)
         cfg = {"harnesses": {"alpha": {"endpoint": "http://a:1"}}}
         H3Loader(cfg)
-        kwargs = Fake.call_args.kwargs
+        kwargs = fake.call_args.kwargs
         assert kwargs["timeout_ms"] == 30_000
 
     def test_custom_timeout_passed_through(self, monkeypatch):
-        Fake = _patch_h3_client_factory(monkeypatch)
+        fake = _patch_h3_client_factory(monkeypatch)
         cfg = {"harnesses": {"alpha": {"endpoint": "http://a:1", "timeout_ms": 9999}}}
         H3Loader(cfg)
-        assert Fake.call_args.kwargs["timeout_ms"] == 9999
+        assert fake.call_args.kwargs["timeout_ms"] == 9999
 
     def test_initial_health_is_false(self, monkeypatch):
         _patch_h3_client_factory(monkeypatch)

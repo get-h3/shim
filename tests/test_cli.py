@@ -11,11 +11,9 @@ real user configs are never touched, and stubs out ``asyncio.run`` /
 
 from __future__ import annotations
 
-import asyncio
-import textwrap
 from dataclasses import dataclass, field
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import click
 import pytest
@@ -23,7 +21,6 @@ import yaml
 from click.testing import CliRunner
 
 from h3_shim.cli import (
-    CONFIG_PATH,
     _empty_config,
     _format_human,
     hermes_h3,
@@ -32,7 +29,6 @@ from h3_shim.cli import (
     resolve_harness,
     save_config,
 )
-
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -168,7 +164,7 @@ class TestList:
         assert result.exit_code == 0
         # Default harness is preceded by "*" marker.
         lines = result.output.splitlines()
-        assert any(l.startswith("*") and "alpha" in l for l in lines)
+        assert any(line.startswith("*") and "alpha" in line for line in lines)
 
 
 # ── scaffold ────────────────────────────────────────────────────────────────
@@ -486,7 +482,6 @@ class TestFormatHuman:
 class TestTestCommand:
     def test_test_with_endpoint_runs_battery(self, runner, monkeypatch):
         # Stub asyncio.run so we never hit the network.
-        report = _passing_report()
 
         async def fake_run_battery(endpoint, categories, as_json):
             return 0
@@ -508,7 +503,7 @@ class TestVerifyCommand:
         # ``from h3_shim.client import H3Client`` so we intercept there.
         from h3_shim.protocol import HealthResponse, HealthStatus
 
-        FakeClient = MagicMock()
+        fake_client = MagicMock()
         instance = MagicMock()
         instance.health = AsyncMock(
             return_value=HealthResponse(
@@ -516,8 +511,8 @@ class TestVerifyCommand:
             ),
         )
         instance.close = AsyncMock()
-        FakeClient.return_value = instance
-        monkeypatch.setattr("h3_shim.client.H3Client", FakeClient)
+        fake_client.return_value = instance
+        monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
 
         result = runner.invoke(
             hermes_h3,
