@@ -45,3 +45,8 @@
 - [x] Enable lint, build, tests in .gitreins/config.yaml
 - [x] .github/workflows/test.yml for CI (lint + build + test)
 - [x] make all target: install lint build test (pre-existing)
+## [ ] POLISH — Fix 13 remaining ruff lint issues in test files
+- [ ] E501 line too long: test_client.py:33,150; test_loader.py:60; test_shim_loop.py:223,316,361
+- [ ] E741 ambiguous variable: test_cli.py:167 (rename `l` to `line`)
+- [ ] F841 unused variable `report`: test_cli.py:485
+- [ ] N806 variable naming: test_cli.py:507 (FakeClient→fake_client), test_loader.py:36,70,100,107 (Fake→fake)
