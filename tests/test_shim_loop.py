@@ -31,7 +31,6 @@ from h3_shim.protocol import (
 )
 from h3_shim.shim_loop import H3ShimLoop
 
-
 # ── helpers ─────────────────────────────────────────────────────────────────
 
 
@@ -221,7 +220,9 @@ class TestRun:
         client = _mock_client()
         # Always return TOOL_CALL → loop spins until max_iterations.
         client.process.return_value = _decision(DecisionType.TOOL_CALL)
-        client.result.return_value = _decision(DecisionType.TOOL_CALL, decision_id="d_loop")
+        client.result.return_value = _decision(
+            DecisionType.TOOL_CALL, decision_id="d_loop"
+        )
         loop = _make_loop(client=client, max_iterations=3)
         loop.register_tool("test_tool", lambda **kw: "ok")
         reason = await loop.run(_msg())
@@ -314,7 +315,9 @@ class TestExecuteTool:
             return f"hello {name}"
 
         loop.register_tool("greet", my_tool)
-        result = await loop._execute_tool(ToolCall(name="greet", params={"name": "alice"}))
+        result = await loop._execute_tool(
+            ToolCall(name="greet", params={"name": "alice"})
+        )
         assert called == {"name": "alice"}
         assert result.type == "tool_result"
         assert result.success is True
@@ -359,7 +362,10 @@ class TestExecuteLLM:
     @pytest.mark.asyncio
     async def test_returns_placeholder_response(self):
         loop = _make_loop()
-        llm = LLMCall(model="claude-opus-4", messages=[Message(role="user", content="hi")])
+        llm = LLMCall(
+            model="claude-opus-4",
+            messages=[Message(role="user", content="hi")],
+        )
         result = await loop._execute_llm(llm)
         assert result.type == "llm_response"
         assert result.success is True
