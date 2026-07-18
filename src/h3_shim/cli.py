@@ -467,6 +467,53 @@ def route(ctx: click.Context) -> None:
         click.echo(f"{sid:40s} {target}")
 
 
+@hermes_h3.command(
+    name="pre-update-check",
+    help="Run pre-flight compatibility checks before hermes update.",
+)
+@click.argument("target_version")
+@click.option(
+    "--versions-yaml",
+    "versions_yaml_path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to versions.yaml (default: auto-detect in protocol repo).",
+)
+@click.pass_context
+def pre_update_check_cmd(
+    ctx: click.Context,
+    target_version: str,
+    versions_yaml_path: Path | None,
+) -> None:
+    """Check H3 compatibility before upgrading Hermes.
+
+    TARGET_VERSION is the Hermes version you plan to upgrade to
+    (e.g. 0.19.0).
+    """
+    from h3_shim.upgrade_check import pre_update_check
+
+    result = pre_update_check(
+        target_version,
+        versions_yaml_path=versions_yaml_path,
+        config_path=_config_path(ctx),
+    )
+
+    click.echo(result.message)
+
+    if result.severity == "BLOCK":
+        click.echo(
+            "\nUpdate blocked. Resolve the issues above before upgrading.",
+            err=True,
+        )
+        sys.exit(1)
+    elif result.severity == "WARN":
+        click.echo(
+            "\nWarnings found. Review before proceeding.", err=True
+        )
+    else:
+        click.echo("\nAll checks passed. Safe to update.")
+
+
 @hermes_h3.command(help="Set the default harness.")
 @click.argument("name")
 @click.pass_context
