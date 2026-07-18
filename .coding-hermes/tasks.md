@@ -53,3 +53,11 @@
 - [x] E741 ambiguous variable: test_cli.py:167 (rename `l` to `line`)
 - [x] F841 unused variable `report`: test_cli.py:485
 - [x] N806 variable naming: test_cli.py:507 (FakeClient→fake_client), test_loader.py:36,70,100,107 (Fake→fake)
+
+## [ ] P5-05 — Sync-protocol workflow + PyPI publish
+- [ ] Create `.github/workflows/sync-protocol.yml` — triggered by repository_dispatch from protocol repo
+- [ ] Steps: checkout → regenerate Pydantic models from latest protocol JSON Schema → `make test` → tag and release → publish to PyPI
+- [ ] Ensure version bump follows protocol version
+- [ ] Test: protocol dispatches → shim regenerates, tests pass, PyPI publishes automatically
+
+**Spec ref:** S08 (Cross-Repo Release Pipeline)
