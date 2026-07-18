@@ -35,6 +35,8 @@ dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
     "ruff>=0.1",
+    "datamodel-code-generator>=0.25",
+    "build>=1.0",
 ]
 
 [project.scripts]
@@ -56,6 +58,7 @@ testpaths = ["tests"]
 
 [dependency-groups]
 dev = [
+    "datamodel-code-generator>=0.68.1",
     "httpx2>=2.7.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
