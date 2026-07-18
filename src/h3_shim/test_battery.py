@@ -643,7 +643,7 @@ class H3TestBattery:
             if resp.status_code != 200:
                 return done(False, f"Status {resp.status_code}")
             data = resp.json()
-            echoed = (data.get("context") or {}).get("history") or []
+            echoed = data.get("history") or []
             if not isinstance(echoed, list):
                 return done(False, "history not echoed as list")
             # We accept any growth or equal size — we just need history present.
