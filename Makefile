@@ -30,4 +30,14 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 
+sync-protocol:
+	$(PYTHON) scripts/sync_protocol.py --schema-dir ../protocol/schemas/v1
+
+sync-protocol-diff:
+	$(PYTHON) scripts/sync_protocol.py --schema-dir ../protocol/schemas/v1 --diff
+
+build-dist:
+	$(PYTHON) -m pip install build
+	$(PYTHON) -m build
+
 all: install lint build test
