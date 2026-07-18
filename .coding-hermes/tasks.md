@@ -62,12 +62,19 @@
 
 **Spec ref:** S08 (Cross-Repo Release Pipeline)
 
-## [ ] CI — Compliance job fails 40/43 against sdk-go echo harness (2026-07-18)
-- [ ] Health & Protocol: 6/7 FAILED (1 test failing)
-- [ ] Process Basic Flows: 6/8 FAILED (2 tests failing)
-- [ ] All 5 recent CI runs on main show same 40/43 pattern — consistent, not a regression
-- [ ] Shim's own tests pass (151/151), lint clean, build green — issue is harness-side
-- [ ] Cross-repo: sdk-go echo harness needs investigation for 3 missing protocol features
-- [ ] Verify which 3 specific tests fail, coordinate with sdk-go-foreman for fix
+## [ ] CI — Compliance job fails 40/43 against sdk-go echo harness (BLOCKED on sdk-go) (2026-07-18 22:18 tick)
+- [x] Health & Protocol: 6/7 FAILED (1 test failing) — identified: test_1_4_health_capabilities
+- [x] Process Basic Flows: 6/8 FAILED (2 tests failing) — identified: test_2_4 + test_2_8
+- [x] All 5 recent CI runs on main show same 40/43 pattern — consistent, not a regression
+- [x] Shim's own tests pass (151/151), lint clean, build green — issue is harness-side
+- [x] Specific failing tests identified (2026-07-18 tick):
+  - test_1_4_health_capabilities: echo harness Health() doesn't set `Capabilities` field (sdk-go types.go L259 has it, not populated)
+  - test_2_4_process_text_finished_false: echo harness always returns `Finished: true`; test expects `finished=false` for "do not finish" prompt
+  - test_2_8_process_preserves_history: echo harness doesn't include `History` from Context in Decision response (sdk-go types.go L24 has field)
+- [ ] CROSS-REPO ACTION: sdk-go/foreman must fix echo harness (3 changes to examples/echo/main.go):
+  - Health(): add `Capabilities: []protocol.DecisionType{protocol.DecisionText}`
+  - OnProcess(): check for "do not finish" keyword → `Finished: false`, or return non-text decision
+  - OnProcess(): add `History: req.Context.History` to returned Decision
+- [ ] Coordinate with sdk-go-foreman for fix; shim compliance gate unblocks after echo harness update
 
 **Spec ref:** S05 (Test Battery)
