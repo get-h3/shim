@@ -101,3 +101,48 @@
 - [x] 6 new tests: go/py/ts generation, invalid lang, overwrite, force
 - [x] pyproject.toml updated for wheel template inclusion
 - [x] Full flow: scaffold → build → run → test in under 1 min
+
+## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-19 tick — findings below)
+
+**Audit findings:**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | Specs in `get-h3/h3/specs/` (12 files). Shim protocol.py matches h3-protocol.yaml via sync_protocol.py. WAIT polling is a known gap (see Check 5). |
+| 2. Doc coverage | MINOR | README.md + AGENTS.md exist. Missing CONTRIBUTING.md. |
+| 3. Test gaps | FINDING | 157 tests, all PASS. native.py: 0% cov (7 stmts — stub by design). cli.py: 85%. upgrade_check.py: 90%. |
+| 4. Package upgrades | FINDING | 4 outdated: fastapi 0.139.0→0.139.2, filelock 3.30.2→3.31.0, importlib-metadata 8.9→9.0 (major), pydantic-core 2.46.4→2.47.0 |
+| 5. Pitfall hunt | FINDING | WAIT polling endpoint not implemented (shim_loop.py:289 — logged but not acted on). No bare excepts, no TODO/FIXME, no .gitleaks.toml (no false-negative allowlists). |
+| 6. Performance | N/A | CLI tool, no benchmarks applicable. |
+| 7. Endpoint verification | PASS | 9 CLI subcommands all wired and operational. |
+| 8. CI/CD | PASS | Latest CI green (f6736ec). 1 historical failure (E501 — fixed d29e70e). |
+| 9. DuckBrain sync | FINDING | h3 namespace: 0 memories. Embedding model not configured. |
+| 10. Code quality | PASS | No TODO/FIXME/HACK. test_battery.py 1669 lines (expected). cli.py 728 lines (25 handlers — borderline). |
+| 11. Middle-out wiring | PASS | All 9 CLI subcommands wired. native.py is a documented stub. |
+
+**New tasks created from findings (4):**
+
+## [ ] DEPS-001 — Upgrade 4 outdated Python packages
+- [ ] fastapi: 0.139.0 → 0.139.2 (patch — bugfixes)
+- [ ] filelock: 3.30.2 → 3.31.0 (minor)
+- [ ] importlib-metadata: 8.9.0 → 9.0.0 (major — check breaking changes)
+- [ ] pydantic-core: 2.46.4 → 2.47.0 (patch)
+- [ ] Run `uv pip install --upgrade <pkgs>`, verify `make test` still 157/157
+
+## [ ] PROTO-001 — Implement WAIT polling endpoint in shim_loop.py
+- [ ] Currently: `_execute_wait()` logs "polling endpoint not implemented" and returns success immediately
+- [ ] Spec S06 §Decision Types: WAIT with poll_endpoint should call the harness periodically until finished
+- [ ] Needs: harness-side webhook or polling loop against the harness endpoint
+- [ ] Add test: `test_wait_polling_endpoint()` in test_shim_loop.py
+
+## [ ] DUCKBRAIN-001 — Populate h3 namespace with project knowledge
+- [ ] Current: 0 memories, embedding model not configured
+- [ ] Write: architecture decisions, protocol patterns, pitfall WAIT polling gap, cross-repo sync flow (sync_protocol.yml)
+- [ ] Write: scaffold template patterns (go/py/ts), test battery structure
+- [ ] Target: 8-12 memory entries
+
+## [ ] DOC-001 — Add CONTRIBUTING.md
+- [ ] Dev setup: venv, make install, make test
+- [ ] Code style: ruff format + ruff check
+- [ ] Test requirements: 157 must pass before PR
+- [ ] Cross-repo: how to sync protocol models via sync_protocol.py
