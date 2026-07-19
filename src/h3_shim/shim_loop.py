@@ -20,6 +20,8 @@ import logging
 import time
 from collections.abc import Callable
 
+import httpx
+
 from h3_shim.client import H3Client
 from h3_shim.protocol import (
     Context,
@@ -77,6 +79,13 @@ class H3ShimLoop:
         )
         self.iteration = 0
         self._available_tools: dict[str, Callable[..., object]] = {}
+
+        # Polling configuration for WAIT decisions that carry a
+        # ``poll_endpoint``.  Class-level so tests/subclasses can tune
+        # without touching ``__init__``.
+        self.max_polls: int = 30
+        self.poll_interval: float = 1.0
+        self.poll_timeout: float = 5.0
 
     # ── tool registry ────────────────────────────────────────────────
 
@@ -278,23 +287,103 @@ class H3ShimLoop:
         """Handle a ``WAIT`` decision.
 
         If the harness supplied a ``duration_seconds`` we sleep that
-        long; an explicit ``poll_endpoint`` is logged but not yet
-        implemented (it would require per-harness webhook support).
+        long first.  When a ``poll_endpoint`` is present we then poll it
+        with GET requests until the remote side reports completion —
+        a 2xx response whose JSON body contains ``{"status": "complete"}``
+        or ``{"finished": true}`` — or until ``max_polls`` attempts are
+        exhausted.  Non-2xx responses are treated as transient and
+        retried after ``poll_interval`` seconds.
         """
         start = time.monotonic()
         if wait.duration_seconds:
             await asyncio.sleep(wait.duration_seconds)
+
+        polls = 0
+        success = True
+        error: str | None = None
+
         if wait.poll_endpoint:
-            logger.info(
-                "WAIT: polling endpoint %s not implemented in shim",
-                wait.poll_endpoint,
-            )
+            try:
+                async with httpx.AsyncClient(timeout=self.poll_timeout) as http:
+                    while polls < self.max_polls:
+                        polls += 1
+                        try:
+                            resp = await http.get(wait.poll_endpoint)
+                        except httpx.RequestError as e:
+                            logger.warning(
+                                "WAIT: poll %d to %s failed: %s",
+                                polls,
+                                wait.poll_endpoint,
+                                e,
+                            )
+                            error = f"poll request failed: {e}"
+                            success = False
+                            break
+
+                        if 200 <= resp.status_code < 300:
+                            try:
+                                body = resp.json()
+                            except ValueError:
+                                body = {}
+                            if (
+                                isinstance(body, dict)
+                                and (
+                                    body.get("status") == "complete"
+                                    or body.get("finished") is True
+                                )
+                            ):
+                                logger.info(
+                                    "WAIT: poll endpoint %s reported complete "
+                                    "after %d poll(s)",
+                                    wait.poll_endpoint,
+                                    polls,
+                                )
+                                break
+                        else:
+                            logger.debug(
+                                "WAIT: poll %d to %s returned HTTP %d; retrying",
+                                polls,
+                                wait.poll_endpoint,
+                                resp.status_code,
+                            )
+
+                        if polls < self.max_polls:
+                            await asyncio.sleep(self.poll_interval)
+                    else:
+                        # Loop exhausted without break — timed out.
+                        success = False
+                        error = (
+                            f"poll endpoint did not complete within "
+                            f"{self.max_polls} polls"
+                        )
+                        logger.warning(
+                            "WAIT: %s (%s)", error, wait.poll_endpoint
+                        )
+            except httpx.RequestError as e:
+                logger.error(
+                    "WAIT: polling %s failed: %s", wait.poll_endpoint, e,
+                    exc_info=True,
+                )
+                success = False
+                error = f"poll request failed: {e}"
+
+        total_seconds = time.monotonic() - start
+        data: dict[str, object] = {
+            "reason": wait.reason,
+            "duration": total_seconds,
+            "polls": polls,
+        }
+        if wait.poll_endpoint:
+            data["poll_endpoint"] = wait.poll_endpoint
+        if error is not None:
+            data["error"] = error
+
         result = ExecutionResult(
             type="wait_complete",
-            data={"reason": wait.reason, "duration": wait.duration_seconds or 0},
-            success=True,
+            data=data,
+            success=success,
         )
-        result.duration_ms = (time.monotonic() - start) * 1000
+        result.duration_ms = total_seconds * 1000
         return result
 
     async def _execute_delegate(self, delegate: Delegate) -> ExecutionResult:

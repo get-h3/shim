@@ -11,6 +11,11 @@ guards:
   lint:
     enabled: true
     lint_command: ".venv/bin/python -m ruff check src/ tests/"
+  # Flat keys — gitreins GuardManager reads guards.test_command /
+  # guards.lint_command / guards.test_mode at this level.  The nested
+  # `tests:` block below is kept for forward-compat with newer gitreins.
+  test_command: ".venv/bin/python -m pytest -x --tb=short -q"
+  test_mode: full
   tests:
     enabled: true
     test_command: ".venv/bin/python -m pytest -x --tb=short -q"

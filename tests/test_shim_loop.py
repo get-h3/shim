@@ -417,8 +417,11 @@ class TestExecuteWait:
         assert slept == [5]
         assert result.type == "wait_complete"
         assert result.success is True
-        assert result.data.get("duration") == 5
+        # ``duration`` is the measured wall-clock wait time; with sleep
+        # mocked out it is ~0, but must be present and non-negative.
+        assert result.data.get("duration") >= 0
         assert result.data.get("reason") == "poll"
+        assert result.data.get("polls") == 0
 
     @pytest.mark.asyncio
     async def test_no_duration_does_not_sleep(self, monkeypatch):
@@ -431,7 +434,7 @@ class TestExecuteWait:
         monkeypatch.setattr(asyncio, "sleep", fake_sleep)
         result = await loop._execute_wait(Wait(reason="no-time"))
         assert slept == []
-        assert result.data.get("duration") == 0
+        assert result.data.get("duration") >= 0
         assert result.success is True
 
     @pytest.mark.asyncio
@@ -439,6 +442,153 @@ class TestExecuteWait:
         loop = _make_loop()
         result = await loop._execute_wait(Wait(reason="r"))
         assert result.duration_ms >= 0.0
+
+    # ── poll_endpoint polling ────────────────────────────────────────
+
+    @staticmethod
+    def _mock_http_client(responses=None, side_effect=None):
+        """Build an AsyncMock standing in for ``httpx.AsyncClient``.
+
+        ``responses`` is a list of (status_code, json_body) tuples
+        returned in order; the last one repeats once exhausted.
+        ``side_effect`` (e.g. an exception instance) is raised from
+        every ``get`` call instead.
+        """
+        mock_client = AsyncMock()
+        mock_client.__aenter__.return_value = mock_client
+        mock_client.__aexit__.return_value = False
+
+        if side_effect is not None:
+            mock_client.get.side_effect = side_effect
+        else:
+            calls = {"n": 0}
+
+            def _next_response(*_args, **_kw):
+                idx = min(calls["n"], len(responses) - 1)
+                calls["n"] += 1
+                status, body = responses[idx]
+                resp = MagicMock()
+                resp.status_code = status
+                resp.json.return_value = body
+                return resp
+
+            mock_client.get.side_effect = _next_response
+        return mock_client
+
+    @pytest.mark.asyncio
+    async def test_polling_endpoint_completes(self, monkeypatch):
+        loop = _make_loop()
+        mock_client = self._mock_http_client(
+            responses=[(200, {"status": "complete"})]
+        )
+        monkeypatch.setattr(
+            "h3_shim.shim_loop.httpx.AsyncClient",
+            lambda *a, **kw: mock_client,
+        )
+        result = await loop._execute_wait(
+            Wait(reason="poll", poll_endpoint="http://h/job/1")
+        )
+        assert result.type == "wait_complete"
+        assert result.success is True
+        assert result.data.get("polls") == 1
+        assert result.data.get("poll_endpoint") == "http://h/job/1"
+        assert result.data.get("reason") == "poll"
+        assert "error" not in result.data
+        assert mock_client.get.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_polling_endpoint_retries_then_completes(self, monkeypatch):
+        loop = _make_loop()
+        loop.poll_interval = 0  # keep the test fast
+        mock_client = self._mock_http_client(
+            responses=[
+                (200, {"status": "pending"}),
+                (200, {"status": "pending"}),
+                (200, {"status": "pending"}),
+                (200, {"status": "complete"}),
+            ]
+        )
+        monkeypatch.setattr(
+            "h3_shim.shim_loop.httpx.AsyncClient",
+            lambda *a, **kw: mock_client,
+        )
+        result = await loop._execute_wait(
+            Wait(reason="poll", poll_endpoint="http://h/job/2")
+        )
+        assert result.success is True
+        assert result.data.get("polls") == 4
+        assert mock_client.get.call_count == 4
+
+    @pytest.mark.asyncio
+    async def test_polling_endpoint_timeout(self, monkeypatch):
+        loop = _make_loop()
+        loop.max_polls = 5
+        loop.poll_interval = 0
+        mock_client = self._mock_http_client(
+            responses=[(200, {"status": "pending"})]
+        )
+        monkeypatch.setattr(
+            "h3_shim.shim_loop.httpx.AsyncClient",
+            lambda *a, **kw: mock_client,
+        )
+        result = await loop._execute_wait(
+            Wait(reason="poll", poll_endpoint="http://h/job/3")
+        )
+        assert result.type == "wait_complete"
+        assert result.success is False
+        assert result.data.get("polls") == 5
+        assert "did not complete" in result.data.get("error", "")
+        assert mock_client.get.call_count == 5
+
+    @pytest.mark.asyncio
+    async def test_polling_endpoint_http_error(self, monkeypatch):
+        import httpx
+
+        loop = _make_loop()
+        mock_client = self._mock_http_client(
+            side_effect=httpx.RequestError("connection refused")
+        )
+        monkeypatch.setattr(
+            "h3_shim.shim_loop.httpx.AsyncClient",
+            lambda *a, **kw: mock_client,
+        )
+        result = await loop._execute_wait(
+            Wait(reason="poll", poll_endpoint="http://h/job/4")
+        )
+        assert result.type == "wait_complete"
+        assert result.success is False
+        assert "poll request failed" in result.data.get("error", "")
+        assert result.data.get("polls") == 1
+
+    @pytest.mark.asyncio
+    async def test_polling_endpoint_with_duration_sleep(self, monkeypatch):
+        loop = _make_loop()
+        slept: list[float] = []
+
+        async def fake_sleep(t):
+            slept.append(t)
+
+        monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+        mock_client = self._mock_http_client(
+            responses=[(200, {"status": "complete"})]
+        )
+        monkeypatch.setattr(
+            "h3_shim.shim_loop.httpx.AsyncClient",
+            lambda *a, **kw: mock_client,
+        )
+        result = await loop._execute_wait(
+            Wait(
+                reason="sleep-then-poll",
+                duration_seconds=3,
+                poll_endpoint="http://h/job/5",
+            )
+        )
+        # Duration sleep happens BEFORE any polling.
+        assert slept == [3]
+        assert mock_client.get.call_count == 1
+        assert result.success is True
+        assert result.data.get("polls") == 1
+        assert result.data.get("poll_endpoint") == "http://h/job/5"
 
 
 # ── _execute_delegate ───────────────────────────────────────────────────────
