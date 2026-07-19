@@ -79,10 +79,10 @@
 - [x] All 6 categories 100% (Health 7/7, Process 8/8, Decisions 6/6, Results 7/7, Errors 10/10, Stress 5/5)
 - [x] Duration: 820ms
 
-## [x] QV-CROSS-01 — Scaffold-to-test developer flow: GAP FOUND (2026-07-19)
+## [x] QV-CROSS-01 — Scaffold-to-test developer flow: GAP FOUND → RESOLVED (2026-07-19)
 - [x] Existing flow verified: build sdk-go echo → go run → h3-test: works (43/43)
-- [ ] GAP: `hermes-h3 scaffold --lang go` does NOT exist — scaffold only creates config skeleton
-- [ ] Feature needed: `hermes-h3 scaffold --lang go` should generate compilable Go harness project from template
+- [x] GAP: `hermes-h3 scaffold --lang go` does NOT exist → NOW IMPLEMENTED
+- [x] Feature needed: `hermes-h3 scaffold --lang go` should generate compilable Go harness project from template → DONE (see FEAT commit 140fb27)
 
 ## [x] FEAT — Implement `hermes-h3 scaffold --lang <lang>` to generate language-specific harness projects (2026-07-19)
 - [x] Generate compilable Go harness from template (sdk-go/examples/echo/ as reference)
