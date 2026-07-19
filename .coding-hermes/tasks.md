@@ -122,12 +122,12 @@
 
 **New tasks created from findings (4):**
 
-## [ ] DEPS-001 — Upgrade 4 outdated Python packages
-- [ ] fastapi: 0.139.0 → 0.139.2 (patch — bugfixes)
-- [ ] filelock: 3.30.2 → 3.31.0 (minor)
-- [ ] importlib-metadata: 8.9.0 → 9.0.0 (major — check breaking changes)
-- [ ] pydantic-core: 2.46.4 → 2.47.0 (patch)
-- [ ] Run `uv pip install --upgrade <pkgs>`, verify `make test` still 157/157
+## [x] DEPS-001 — Upgrade 4 outdated Python packages (2026-07-19 tick — 3/4 upgraded, 1 blocked)
+- [x] fastapi: 0.139.0 → 0.139.2 (patch — bugfixes)
+- [x] filelock: 3.30.2 → 3.31.0 (minor)
+- [x] importlib-metadata: 8.9.0 → 9.0.0 (minor — no breaking changes)
+- [~] pydantic-core: 2.46.4 → 2.47.0 BLOCKED — pydantic-core 2.47.0 incompatible with pydantic 2.13.4 (pinned by fastapi 0.139.2). UV solver rejects the combination. Will auto-resolve when pydantic/fastapi next bump.
+- [x] `make test` verified: 157/157 PASS (0.62s), ruff clean
 
 ## [ ] PROTO-001 — Implement WAIT polling endpoint in shim_loop.py
 - [ ] Currently: `_execute_wait()` logs "polling endpoint not implemented" and returns success immediately
