@@ -42,6 +42,13 @@ from h3_shim.test_battery import H3TestBattery, TestReport
 
 CONFIG_PATH = Path.home() / ".hermes" / "h3" / "config.yaml"
 
+# Templates directory shipped with the package. Each language gets its
+# own subdirectory under ``templates/<lang>/``.
+TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+# Languages supported by ``hermes-h3 scaffold --lang``.
+SUPPORTED_LANGS = ("go", "py", "ts")
+
 
 def _empty_config() -> dict[str, Any]:
     """Return a fresh empty config skeleton."""
@@ -105,6 +112,137 @@ def resolve_harness(
             f"known: {sorted(harnesses) or 'none'}"
         )
     return chosen, spec
+
+
+# ---------------------------------------------------------------------------
+# Project scaffolding (``hermes-h3 scaffold --lang <lang>``)
+# ---------------------------------------------------------------------------
+
+
+def _lang_template_dir(lang: str) -> Path:
+    """Return the on-disk template directory for ``lang``.
+
+    Raises :class:`click.ClickException` if the language is unknown or
+    the template directory is missing from the installed package.
+    """
+    if lang not in SUPPORTED_LANGS:
+        raise click.ClickException(
+            f"unsupported language {lang!r}; "
+            f"choose one of: {', '.join(SUPPORTED_LANGS)}"
+        )
+    tpl_dir = TEMPLATES_DIR / lang
+    if not tpl_dir.is_dir():
+        raise click.ClickException(
+            f"template directory missing: {tpl_dir}"
+        )
+    return tpl_dir
+
+
+def _render_template_file(
+    src: Path,
+    dest: Path,
+    substitutions: dict[str, str],
+) -> None:
+    """Copy ``src`` to ``dest``, substituting ``{{KEY}}`` placeholders."""
+    text = src.read_text(encoding="utf-8")
+    for key, value in substitutions.items():
+        text = text.replace("{{" + key + "}}", value)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(text, encoding="utf-8")
+
+
+def _copy_template_tree(
+    src_dir: Path,
+    dest_dir: Path,
+    substitutions: dict[str, str],
+) -> list[Path]:
+    """Recursively copy ``src_dir`` into ``dest_dir`` and render templates.
+
+    Returns the list of files written (relative to ``dest_dir``).
+    """
+    written: list[Path] = []
+    for src in sorted(src_dir.rglob("*")):
+        if src.is_dir():
+            continue
+        rel = src.relative_to(src_dir)
+        dest = dest_dir / rel
+        _render_template_file(src, dest, substitutions)
+        written.append(rel)
+    return written
+
+
+def scaffold_project(
+    lang: str,
+    output_dir: Path,
+    project_name: str | None = None,
+    overwrite: bool = False,
+) -> Path:
+    """Generate a new H3 harness project.
+
+    Returns the absolute path of the generated project root.
+    """
+    tpl_dir = _lang_template_dir(lang)
+    project_name = project_name or f"h3-harness-{lang}"
+    dest = output_dir.resolve() / f"h3-harness-{lang}"
+
+    if dest.exists():
+        if not overwrite:
+            raise click.ClickException(
+                f"project directory already exists: {dest} "
+                "(pass --force to overwrite)"
+            )
+        # Wipe the existing directory so a stale scaffold can't leak.
+        import shutil
+
+        shutil.rmtree(dest)
+
+    dest.mkdir(parents=True)
+    _copy_template_tree(
+        tpl_dir,
+        dest,
+        substitutions={"MODULE_PATH": project_name},
+    )
+    return dest
+
+
+def _format_run_instructions(lang: str, project_dir: Path) -> str:
+    """Return a multi-line string telling the user how to build + run."""
+    lines = [f"Generated {lang} harness at: {project_dir}"]
+    lines.append("")
+    if lang == "go":
+        lines.extend(
+            [
+                "Build and run:",
+                f"  cd {project_dir}",
+                "  go mod tidy",
+                "  go run .",
+                "",
+                "The harness listens on http://localhost:9191",
+            ]
+        )
+    elif lang == "py":
+        lines.extend(
+            [
+                "Build and run:",
+                f"  cd {project_dir}",
+                "  pip install -e .",
+                "  python main.py",
+                "",
+                "The harness listens on http://localhost:9191",
+            ]
+        )
+    elif lang == "ts":
+        lines.extend(
+            [
+                "Build and run:",
+                f"  cd {project_dir}",
+                "  npm install",
+                "  npm run build && npm start",
+                "",
+                "The harness listens on http://localhost:9191",
+            ]
+        )
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -431,21 +569,73 @@ def verify(ctx: click.Context, harness: str | None, endpoint: str | None) -> Non
         click.echo(f"caps:     {', '.join(payload['capabilities'])}")
 
 
-@hermes_h3.command(help="Create an empty config file if it doesn't exist.")
+@hermes_h3.command(
+    help="Create an empty config file or scaffold a new harness project."
+)
 @click.option(
     "--force",
     is_flag=True,
-    help="Overwrite an existing config with an empty skeleton.",
+    help="Overwrite an existing config file or project directory.",
+)
+@click.option(
+    "--lang",
+    "lang",
+    type=click.Choice(SUPPORTED_LANGS, case_sensitive=False),
+    default=None,
+    help=(
+        "Generate a complete harness project for the given language "
+        "(go, py, ts) in a new 'h3-harness-<lang>/' subdirectory. "
+        "Without --lang, an empty config skeleton is written instead."
+    ),
+)
+@click.option(
+    "--output-dir",
+    "output_dir",
+    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
+    default=Path("."),
+    show_default="current directory",
+    help="Parent directory under which the new project is created.",
 )
 @click.pass_context
-def scaffold(ctx: click.Context, force: bool) -> None:
-    """Initialise the config file at ``~/.hermes/h3/config.yaml``."""
-    path = _config_path(ctx)
-    if path.exists() and not force:
-        click.echo(f"config already exists at {path}")
+def scaffold(
+    ctx: click.Context,
+    force: bool,
+    lang: str | None,
+    output_dir: Path,
+) -> None:
+    """Initialise the config file or scaffold a new harness project.
+
+    Without ``--lang``:
+        Create ``~/.hermes/h3/config.yaml`` (or the path supplied via
+        ``--config``) if it doesn't already exist. Existing files are
+        preserved unless ``--force`` is passed.
+
+    With ``--lang <go|py|ts>``:
+        Render the corresponding template tree into
+        ``<output-dir>/h3-harness-<lang>/`` and print build/run/verify
+        instructions. Existing project directories are preserved unless
+        ``--force`` is passed.
+    """
+    if lang is None:
+        # Backwards-compatible behaviour: empty config file at CONFIG_PATH.
+        path = _config_path(ctx)
+        if path.exists() and not force:
+            click.echo(f"config already exists at {path}")
+            return
+        save_config(_empty_config(), path)
+        click.echo(f"wrote empty config to {path}")
         return
-    save_config(_empty_config(), path)
-    click.echo(f"wrote empty config to {path}")
+
+    project_dir = scaffold_project(
+        lang=lang,
+        output_dir=output_dir,
+        overwrite=force,
+    )
+    click.echo(_format_run_instructions(lang, project_dir))
+    click.echo("")
+    click.echo(
+        "Run h3-test --endpoint http://localhost:9191 to verify"
+    )
 
 
 @hermes_h3.command(help="Show the session → harness routing table.")

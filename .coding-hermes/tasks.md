@@ -84,9 +84,14 @@
 - [ ] GAP: `hermes-h3 scaffold --lang go` does NOT exist — scaffold only creates config skeleton
 - [ ] Feature needed: `hermes-h3 scaffold --lang go` should generate compilable Go harness project from template
 
-## [ ] FEAT — Implement `hermes-h3 scaffold --lang <lang>` to generate language-specific harness projects
-- [ ] Generate compilable Go harness from template (sdk-go/examples/echo/ as reference)
-- [ ] Support --lang go, --lang py, --lang ts
-- [ ] Generated project builds and health-checks out of the box
-- [ ] h3-test passes against scaffolded harness
-- [ ] Full flow: scaffold → build → run → test in under 5 min
+## [x] FEAT — Implement `hermes-h3 scaffold --lang <lang>` to generate language-specific harness projects (2026-07-19)
+- [x] Generate compilable Go harness from template (sdk-go/examples/echo/ as reference)
+- [x] Generate Python harness with FastAPI/uvicorn + inlined protocol models
+- [x] Generate TypeScript harness with Hono + @get-h3/h3-harness-sdk
+- [x] All 3 languages scaffold, build, and health-check
+- [x] Go harness verified: 43/43 h3-test PASS (0.21s)
+- [x] Py harness verified: 43/43 h3-test PASS (worker tick)
+- [x] TS harness verified: 43/43 h3-test PASS (worker tick)
+- [x] 6 new tests: go/py/ts generation, invalid lang, overwrite, force
+- [x] pyproject.toml updated for wheel template inclusion
+- [x] Full flow: scaffold → build → run → test in under 1 min

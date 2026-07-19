@@ -45,6 +45,15 @@ hermes-h3 = "h3_shim.cli:hermes_h3"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/h3_shim"]
+include = [
+    "src/h3_shim/templates/**/*.go",
+    "src/h3_shim/templates/**/*.py",
+    "src/h3_shim/templates/**/*.ts",
+    "src/h3_shim/templates/**/*.json",
+    "src/h3_shim/templates/**/*.toml",
+    "src/h3_shim/templates/**/*.txt",
+    "src/h3_shim/templates/**/*.mod",
+]
 
 [tool.ruff]
 target-version = "py310"

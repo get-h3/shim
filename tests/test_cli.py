@@ -198,6 +198,72 @@ class TestScaffold:
         data = yaml.safe_load(cfg_path.read_text())
         assert data["default_harness"] is None
 
+    def test_scaffold_lang_go_generates_files(self, tmp_path, runner):
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--lang", "go", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        project = tmp_path / "h3-harness-go"
+        assert project.is_dir()
+        assert (project / "main.go").is_file()
+        assert (project / "go.mod").is_file()
+        # go.mod has the substituted module name.
+        mod = (project / "go.mod").read_text()
+        assert "module h3-harness-go" in mod
+        assert "github.com/get-h3/sdk-go" in mod
+        # Instructions printed.
+        assert "h3-test --endpoint http://localhost:9191" in result.output
+
+    def test_scaffold_lang_py_generates_files(self, tmp_path, runner):
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--lang", "py", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        project = tmp_path / "h3-harness-py"
+        assert project.is_dir()
+        assert (project / "main.py").is_file()
+        assert (project / "requirements.txt").is_file()
+        assert (project / "pyproject.toml").is_file()
+        assert "h3-test --endpoint http://localhost:9191" in result.output
+
+    def test_scaffold_lang_ts_generates_files(self, tmp_path, runner):
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--lang", "ts", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code == 0
+        project = tmp_path / "h3-harness-ts"
+        assert project.is_dir()
+        assert (project / "index.ts").is_file()
+        assert (project / "package.json").is_file()
+        assert (project / "tsconfig.json").is_file()
+        assert "h3-test --endpoint http://localhost:9191" in result.output
+
+    def test_scaffold_lang_invalid_rejected(self, tmp_path, runner):
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--lang", "rust", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code != 0
+        assert "unsupported" in result.output.lower() or "invalid" in result.output.lower()
+
+    def test_scaffold_lang_project_exists_without_force(self, tmp_path, runner):
+        project = tmp_path / "h3-harness-go"
+        project.mkdir()
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--lang", "go", "--output-dir", str(tmp_path)]
+        )
+        assert result.exit_code != 0
+        assert "already exists" in result.output
+
+    def test_scaffold_lang_force_overwrites_project(self, tmp_path, runner):
+        project = tmp_path / "h3-harness-go"
+        project.mkdir()
+        result = runner.invoke(
+            hermes_h3,
+            ["scaffold", "--lang", "go", "--output-dir", str(tmp_path), "--force"],
+        )
+        assert result.exit_code == 0
+        assert (project / "main.go").is_file()
+
 
 # ── install ────────────────────────────────────────────────────────────────
 
