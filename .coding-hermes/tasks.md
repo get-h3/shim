@@ -72,3 +72,21 @@
   - OnResult(): respect streaming mode (don't force end in streaming sessions)
 - [x] Commit 6f1aaa1 pushed to get-h3/sdk-go, guard PASS, build+vet+test green
 - [x] CROSS-REPO: fix committed by shim-foreman directly (simple 3-line change, no worker needed)
+
+## [x] QV-SHIM-01 — Test battery against live Go echo harness (2026-07-19)
+- [x] Go echo harness built from sdk-go/examples/echo/, runs on :9191
+- [x] h3-test --endpoint http://localhost:9191 --json: 43/43 PASS
+- [x] All 6 categories 100% (Health 7/7, Process 8/8, Decisions 6/6, Results 7/7, Errors 10/10, Stress 5/5)
+- [x] Duration: 820ms
+
+## [x] QV-CROSS-01 — Scaffold-to-test developer flow: GAP FOUND (2026-07-19)
+- [x] Existing flow verified: build sdk-go echo → go run → h3-test: works (43/43)
+- [ ] GAP: `hermes-h3 scaffold --lang go` does NOT exist — scaffold only creates config skeleton
+- [ ] Feature needed: `hermes-h3 scaffold --lang go` should generate compilable Go harness project from template
+
+## [ ] FEAT — Implement `hermes-h3 scaffold --lang <lang>` to generate language-specific harness projects
+- [ ] Generate compilable Go harness from template (sdk-go/examples/echo/ as reference)
+- [ ] Support --lang go, --lang py, --lang ts
+- [ ] Generated project builds and health-checks out of the box
+- [ ] h3-test passes against scaffolded harness
+- [ ] Full flow: scaffold → build → run → test in under 5 min
