@@ -243,7 +243,8 @@ class TestScaffold:
             hermes_h3, ["scaffold", "--lang", "rust", "--output-dir", str(tmp_path)]
         )
         assert result.exit_code != 0
-        assert "unsupported" in result.output.lower() or "invalid" in result.output.lower()
+        output = result.output.lower()
+        assert "unsupported" in output or "invalid" in output
 
     def test_scaffold_lang_project_exists_without_force(self, tmp_path, runner):
         project = tmp_path / "h3-harness-go"
