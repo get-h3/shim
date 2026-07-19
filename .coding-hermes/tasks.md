@@ -84,6 +84,12 @@
 - [x] GAP: `hermes-h3 scaffold --lang go` does NOT exist → NOW IMPLEMENTED
 - [x] Feature needed: `hermes-h3 scaffold --lang go` should generate compilable Go harness project from template → DONE (see FEAT commit 140fb27)
 
+### [x] CI-FIX — E501 lint fix test_cli.py:246 (2026-07-19 d29e70e, foreman-direct)
+- [x] CI run 29695114752 failed on ruff E501 (91 > 88 chars) — pre-existing from scaffold feature
+- [x] Fixed: split long assert line in test_scaffold_lang_unsupported
+- [x] Ruff clean, 43/43 CLI tests pass, guard PASS, pushed
+- [x] GitReins tasks qv-shim-test-battery + qv-cross-scaffold completed (were stale in-progress)
+
 ## [x] FEAT — Implement `hermes-h3 scaffold --lang <lang>` to generate language-specific harness projects (2026-07-19)
 - [x] Generate compilable Go harness from template (sdk-go/examples/echo/ as reference)
 - [x] Generate Python harness with FastAPI/uvicorn + inlined protocol models
