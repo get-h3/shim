@@ -129,11 +129,13 @@
 - [~] pydantic-core: 2.46.4 → 2.47.0 BLOCKED — pydantic-core 2.47.0 incompatible with pydantic 2.13.4 (pinned by fastapi 0.139.2). UV solver rejects the combination. Will auto-resolve when pydantic/fastapi next bump.
 - [x] `make test` verified: 157/157 PASS (0.62s), ruff clean
 
-## [ ] PROTO-001 — Implement WAIT polling endpoint in shim_loop.py
-- [ ] Currently: `_execute_wait()` logs "polling endpoint not implemented" and returns success immediately
-- [ ] Spec S06 §Decision Types: WAIT with poll_endpoint should call the harness periodically until finished
-- [ ] Needs: harness-side webhook or polling loop against the harness endpoint
-- [ ] Add test: `test_wait_polling_endpoint()` in test_shim_loop.py
+## [x] PROTO-001 — Implement WAIT polling endpoint in shim_loop.py (2026-07-19 2ce63ff)
+- [x] _execute_wait() now polls poll_endpoint via httpx.AsyncClient (max_polls=30, interval=1.0s, timeout=5.0s)
+- [x] 2xx + {"status":"complete"} or {"finished":true} → success; non-2xx → retry; exhausted → timeout error
+- [x] httpx.RequestError → error result; duration_seconds sleep preserved (runs before polling)
+- [x] 5 new tests in TestExecuteWait (completes, retries-then-completes, timeout, http-error, sleep-then-poll)
+- [x] Also fixed .gitreins/config.yaml: hoisted test_command to flat guards.* key (pre-commit gate was broken)
+- [x] 162/162 tests PASS, ruff clean, gitreins guard PASS
 
 ## [ ] DUCKBRAIN-001 — Populate h3 namespace with project knowledge
 - [ ] Current: 0 memories, embedding model not configured
