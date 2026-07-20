@@ -13,3 +13,5 @@ build/
 .vfs/graph/.last_warm
 uv.lock
 .gitreins/tasks.yaml
+.coverage
+.gitreins/history/
