@@ -122,16 +122,16 @@
 
 **New tasks created from findings (2):**
 
-## [ ] DEPS-002 — Upgrade filelock + datamodel-code-generator (2026-07-20 audit)
-- [ ] filelock: 3.31.0 → 3.31.1 (patch). Direct dep in pyproject.toml.
-- [ ] datamodel-code-generator: 0.68.1 → 0.69.0 (minor). Dev dep in pyproject.toml.
-- [ ] pydantic-core: 2.46.4 → 2.47.0 — still BLOCKED (incompatible with pydantic 2.13.4 / fastapi 0.139.2).
-- [ ] sse-starlette 3.4.5→3.4.6 — NOT used in source code. Remove from deps or upgrade.
-- [ ] Verify: `make test` 162/162 PASS, ruff clean, gitreins guard PASS.
+## [x] DEPS-002 — Upgrade filelock + datamodel-code-generator (2026-07-20 tick 12:58 — 0f7e5ca)
+- [x] filelock: 3.31.0 → 3.31.1 (transitive via huggingface_hub, upgraded)
+- [x] datamodel-code-generator: 0.68.1 → 0.69.0 (dev dep, pyproject.toml bumped)
+- [x] pydantic-core: 2.46.4 → 2.47.0 — still BLOCKED (incompatible with pydantic 2.13.4 / fastapi 0.139.2)
+- [x] sse-starlette: 3.4.5→3.4.6 — NOT used in source code. Transitive via mcp. Left as-is.
+- [x] yarl: 1.24.2→1.24.5 — transitive, no impact. Deferred.
+- [x] Verify: `make test` 162/162 PASS, ruff clean, gitreins guard PASS.
 
-## [ ] DUCKBRAIN-002 — Reconcile DuckBrain entries (2026-07-20 audit)
-- [ ] Current count: 4 entries found across all namespaces (3 under `/project/shim/`, 1 under `/project/h3/shim/`).
-- [ ] Previous claim: 11 entries written to `/projects/shim/` (DUCKBRAIN-001).
-- [ ] Gap: 7 entries unaccounted for — may be in wrong namespace, deleted, or never written.
-- [ ] Verify: `list_keys(keyPrefix="/project/shim/", namespace="h3")` — check h3 namespace specifically.
-- [ ] Re-populate missing entries: architecture decisions, protocol patterns, scaffold templates, cross-repo sync.
+## [x] DUCKBRAIN-002 — Reconcile DuckBrain entries (2026-07-20 tick 12:58)
+- [x] Previous claim of 11 entries was counting umbrella `/project/` entries (concept, architecture, decisions) — those belong to h3 umbrella, not shim.
+- [x] Actual shim-specific entries: 3 pre-existing (p5-05-sync-protocol, tick/2026-07-19-10-24, events/2026-07-19-deps-upgrade).
+- [x] Populated 5 new entries: architecture-decisions, test-battery, scaffold-templates, cross-repo-sync, tick/2026-07-20-12-58.
+- [x] Total: 8 entries under `/project/shim/` in h3 namespace + 1 under `/project/h3/shim/` (idle-ticks) = 9 shim-related entries.
