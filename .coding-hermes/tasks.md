@@ -152,9 +152,9 @@
 - [x] Add test: `test_timeout_returns_error_decision` — mock harness timeout → Decision(END, reason=TIMEOUT) with error- prefix
 - [x] AC: 167/167 tests pass; ruff clean; no unhandled exceptions on timeout
 
-## [ ] QV-SHIM-04 — Health check detects dead harness, falls back to native
-- [ ] Modify `loader.py` health_check_loop to detect consecutive health check failures
-- [ ] After N consecutive failures (configurable, default 3), auto-route sessions to native loop
-- [ ] Log the fallback event with harness name and failure count
-- [ ] Add test: mock harness that fails health checks, verify fallback triggers
-- [ ] AC: `make test` passes; fallback test verifies routing switch; no sessions lost on harness death
+## [x] QV-SHIM-04 — Health check detects dead harness, falls back to native (2026-07-20 4e085b4)
+- [x] Modify `loader.py` health_check_loop to detect consecutive health check failures
+- [x] After N consecutive failures (configurable, default 3), auto-route sessions to native loop
+- [x] Log the fallback event with harness name and failure count
+- [x] Add test: mock harness that fails health checks, verify fallback triggers
+- [x] AC: `make test` passes (171/171); fallback test verifies routing switch; no sessions lost on harness death
