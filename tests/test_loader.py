@@ -313,6 +313,19 @@ class TestHealthChecks:
 
 
 class TestHealthLoop:
+    @staticmethod
+    async def _run_checks(loader, monkeypatch, count):
+        sleep_calls = 0
+
+        async def stop_after_count(_delay):
+            nonlocal sleep_calls
+            sleep_calls += 1
+            if sleep_calls >= count:
+                raise asyncio.CancelledError
+
+        monkeypatch.setattr(asyncio, "sleep", stop_after_count)
+        await loader.health_check_loop()
+
     @pytest.mark.asyncio
     async def test_loop_marks_healthy_on_ok(self, monkeypatch):
         ok = HealthResponse(status=HealthStatus.OK, version="1")
@@ -374,4 +387,82 @@ class TestHealthLoop:
         except asyncio.CancelledError:
             pass
         # The session that was on alpha must have been moved to native.
+        assert loader.get_session_harness("sess_x") == "native"
+
+    @pytest.mark.asyncio
+    async def test_single_failure_does_not_reroute(self, monkeypatch):
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+            }
+        )
+        loader.route_session("sess_x", "alpha")
+        loader._harness_healthy["alpha"] = True
+
+        await self._run_checks(loader, monkeypatch, 1)
+
+        assert loader.get_session_harness("sess_x") == "alpha"
+        assert loader._consecutive_failures["alpha"] == 1
+
+    @pytest.mark.asyncio
+    async def test_three_consecutive_failures_reroute(self, monkeypatch):
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+            }
+        )
+        loader.route_session("sess_x", "alpha")
+        loader._harness_healthy["alpha"] = True
+
+        await self._run_checks(loader, monkeypatch, 3)
+
+        assert loader.get_session_harness("sess_x") == "native"
+        assert loader._consecutive_failures["alpha"] == 3
+
+    @pytest.mark.asyncio
+    async def test_success_resets_failure_counter(self, monkeypatch):
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+            }
+        )
+        ok = HealthResponse(status=HealthStatus.OK, version="1")
+        loader.harnesses["alpha"].health = AsyncMock(
+            side_effect=[
+                Exception("first"),
+                ok,
+                Exception("second"),
+                Exception("third"),
+            ]
+        )
+        loader.route_session("sess_x", "alpha")
+        loader._harness_healthy["alpha"] = True
+
+        await self._run_checks(loader, monkeypatch, 4)
+
+        assert loader.get_session_harness("sess_x") == "alpha"
+        assert loader._consecutive_failures["alpha"] == 2
+
+    @pytest.mark.asyncio
+    async def test_custom_max_consecutive_failures_config(self, monkeypatch):
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "max_consecutive_failures": 2,
+                "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+            }
+        )
+        loader.route_session("sess_x", "alpha")
+        loader._harness_healthy["alpha"] = True
+
+        await self._run_checks(loader, monkeypatch, 2)
+
+        assert loader.max_consecutive_failures == 2
         assert loader.get_session_harness("sess_x") == "native"
