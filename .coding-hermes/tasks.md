@@ -135,3 +135,25 @@
 - [x] Actual shim-specific entries: 3 pre-existing (p5-05-sync-protocol, tick/2026-07-19-10-24, events/2026-07-19-deps-upgrade).
 - [x] Populated 5 new entries: architecture-decisions, test-battery, scaffold-templates, cross-repo-sync, tick/2026-07-20-12-58.
 - [x] Total: 8 entries under `/project/shim/` in h3 namespace + 1 under `/project/h3/shim/` (idle-ticks) = 9 shim-related entries.
+
+---
+
+*Propagated from umbrella board (h3-foreman, 2026-07-20)*
+
+## [ ] QV-SHIM-02 — Test report JSON matches TestReport schema
+- [ ] Audit `test_battery.py` TestReport dataclass against JSON Schema `schemas/v1/test-report.json`
+- [ ] Verify all fields serialize correctly: summary (passed/failed/total/duration), results array, harness info
+- [ ] Add validation test: generate a test report, validate against JSON Schema
+- [ ] AC: `h3-test --json` output validates against test-report.json schema; `make test` passes
+
+## [ ] QV-SHIM-03 — Shim handles harness timeout gracefully
+- [ ] Add timeout handling to `client.py` H3Client — when harness doesn't respond within timeout, return a user-visible error decision
+- [ ] Add test: mock harness that sleeps beyond timeout, verify shim returns error Decision (not crash)
+- [ ] AC: `make test` passes; timeout test included; no unhandled exceptions on timeout
+
+## [ ] QV-SHIM-04 — Health check detects dead harness, falls back to native
+- [ ] Modify `loader.py` health_check_loop to detect consecutive health check failures
+- [ ] After N consecutive failures (configurable, default 3), auto-route sessions to native loop
+- [ ] Log the fallback event with harness name and failure count
+- [ ] Add test: mock harness that fails health checks, verify fallback triggers
+- [ ] AC: `make test` passes; fallback test verifies routing switch; no sessions lost on harness death
