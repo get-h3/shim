@@ -140,11 +140,12 @@
 
 *Propagated from umbrella board (h3-foreman, 2026-07-20)*
 
-## [ ] QV-SHIM-02 — Test report JSON matches TestReport schema
-- [ ] Audit `test_battery.py` TestReport dataclass against JSON Schema `schemas/v1/test-report.json`
-- [ ] Verify all fields serialize correctly: summary (passed/failed/total/duration), results array, harness info
-- [ ] Add validation test: generate a test report, validate against JSON Schema
-- [ ] AC: `h3-test --json` output validates against test-report.json schema; `make test` passes
+## [x] QV-SHIM-02 — Test report JSON matches TestReport schema (2026-07-20 ddb2624)
+- [x] Created ``protocol/schemas/v1/test-report.json`` — JSON Schema (Draft 2020-12) matching TestReport/TestResult dataclasses
+- [x] Added ``validate_test_report()`` to ``h3_shim.test_battery`` — validates serialised report dict, returns error list
+- [x] Added ``jsonschema>=4.20`` to dev dependencies
+- [x] 4 schema validation tests: passing+failing validate, missing field caught, bad type caught
+- [x] AC: 166/166 tests pass; ruff clean; schema committed to protocol@1e0c728d
 
 ## [ ] QV-SHIM-03 — Shim handles harness timeout gracefully
 - [ ] Add timeout handling to `client.py` H3Client — when harness doesn't respond within timeout, return a user-visible error decision
