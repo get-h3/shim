@@ -39,12 +39,14 @@ class H3Loader:
         # ------------------------------------------------------------------
         self._config = config
         self.default_harness = config.get("default_harness", "native")
+        self.max_consecutive_failures = config.get("max_consecutive_failures", 3)
 
         # ------------------------------------------------------------------
         # Harness state
         # ------------------------------------------------------------------
         self.harnesses: dict[str, H3Client] = {}
         self._harness_healthy: dict[str, bool] = {}  # name → healthy?
+        self._consecutive_failures: dict[str, int] = {}
 
         # ------------------------------------------------------------------
         # Session routing
@@ -131,9 +133,9 @@ class H3Loader:
     async def health_check_loop(self) -> None:
         """Background coroutine — health-check every harness every 30 s.
 
-        * On success the harness is marked healthy.
-        * On failure a warning is logged and sessions routed to the
-          failed harness are moved to :attr:`default_harness`.
+        * On success the harness is marked healthy and its failure count resets.
+        * Once failures reach :attr:`max_consecutive_failures`, sessions routed
+          to the failed harness are moved to :attr:`default_harness`.
         * The loop runs until cancelled.
         """
         try:
@@ -141,6 +143,7 @@ class H3Loader:
                 for name, client in self.harnesses.items():
                     try:
                         health = await client.health()
+                        self._consecutive_failures[name] = 0
                         was_healthy = self._harness_healthy.get(name, False)
                         self._harness_healthy[name] = (
                             health.status == HealthStatus.OK
@@ -154,12 +157,20 @@ class H3Loader:
                                 health.degraded_reason or "unknown",
                             )
                     except Exception:
+                        failure_count = self._consecutive_failures.get(name, 0) + 1
+                        self._consecutive_failures[name] = failure_count
                         logger.warning(
                             "Harness %s: health check failed", name,
                             exc_info=True,
                         )
-                        if self._harness_healthy.get(name):
+                        if failure_count >= self.max_consecutive_failures:
                             self._harness_healthy[name] = False
+                            logger.warning(
+                                "Harness %s: falling back after %d "
+                                "consecutive failures",
+                                name,
+                                failure_count,
+                            )
                             self._reroute_sessions(name)
 
                 await asyncio.sleep(30)
