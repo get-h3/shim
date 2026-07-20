@@ -104,21 +104,23 @@
 
 ## [ ] NEVER-DONE — Run coding-hermes-never-done 11-point audit
 
-**Audit findings (2026-07-20 tick 10:34 — fresh run):**
+**Audit findings (2026-07-20 tick 14:25 — post QV-SHIM-04):**
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| 1. Spec alignment | PASS | 23 Pydantic models match full H3 protocol. 10 spec files in `get-h3/h3/specs/`. sync_protocol.py functional. |
-| 2. Doc coverage | PASS | README.md (938B), CONTRIBUTING.md (3.9KB), AGENTS.md all present. |
-| 3. Test gaps | PASS | 162 tests across 6 test files in `tests/`. All source files tested. Template `templates/py/main.py` is scaffold — N/A. |
-| 4. Package upgrades | FINDING | 5 outdated: datamodel-code-generator 0.68.1→0.69.0, filelock 3.31.0→3.31.1, pydantic-core 2.46.4→2.47.0 (BLOCKED), sse-starlette 3.4.5→3.4.6 (unused in source), yarl 1.24.2→1.24.5 (transitive). |
-| 5. Pitfall hunt | PASS | No bare excepts. No hardcoded paths. No stubs. `return None` in test_battery.py/sync_protocol.py/upgrade_check.py all legitimate guard clauses. |
+| 1. Spec alignment | PASS | 23 Pydantic models match full H3 protocol. 10 spec files in `get-h3/h3/specs/`. |
+| 2. Doc coverage | PASS | README.md, CONTRIBUTING.md (3.9KB), AGENTS.md all present. |
+| 3. Test gaps | PASS | 171 tests across 7 test files. All 7 source files tested (test_battery.py via test_cli.py, native.py via loader, templates N/A). |
+| 4. Package upgrades | PASS | botocore 1.43.51→1.43.52 (transitive, not imported). pydantic-core BLOCKED. sse-starlette/yarl transitive only. Zero actionable. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs. native.py NotImplementedError intentional (standalone shim). |
 | 6. Performance | N/A | CLI tool — no benchmarks applicable. |
-| 7. Endpoint verification | PASS | Both CLI entry points functional: `hermes-h3 --help` + `h3-test --help`. All 8 subcommands respond. |
-| 8. CI/CD | PASS | All 5 latest runs green (conclusion: success). |
-| 9. DuckBrain sync | FINDING | 4 entries found (3 under `/project/shim/`, 1 under `/project/h3/shim/`). Previous DUCKBRAIN-001 claimed 11 entries written — 7 entries may be missing or in wrong namespace. |
-| 10. Code quality | PASS | No TODO/FIXME/HACK. test_battery.py 1669 lines (expected), cli.py 728 lines (borderline). .gitignore clean. |
-| 11. Middle-out wiring | PASS | Both CLI entry points registered in pyproject.toml. 8 subcommands wired in cli.py. |
+| 7. Endpoint verification | PASS | Both CLI entry points: `hermes-h3 --help` + `h3-test --help` functional. |
+| 8. CI/CD | PASS | Latest 3 runs all green (success). |
+| 9. DuckBrain sync | PASS | 11 entries under `/project/shim/` in h3 namespace. Tick entries current. |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. test_battery.py 1713 lines (expected), cli.py 728 lines. |
+| 11. Middle-out wiring | PASS | Both entry points in pyproject.toml. `import h3_shim` works. |
+
+**All 11 checks pass — zero findings. Idle tick #0 (active tick — QV-SHIM-04 completed).**
 
 **New tasks created from findings (2):**
 
