@@ -143,8 +143,8 @@
 - [x] Write: scaffold template patterns (go/py/ts), test battery structure
 - [x] Target: 8-12 memory entries → ACHIEVED: 11 entries
 
-## [ ] DOC-001 — Add CONTRIBUTING.md
-- [ ] Dev setup: venv, make install, make test
-- [ ] Code style: ruff format + ruff check
-- [ ] Test requirements: 157 must pass before PR
-- [ ] Cross-repo: how to sync protocol models via sync_protocol.py
+## [x] DOC-001 — Add CONTRIBUTING.md (2026-07-20 tick — foreman-direct)
+- [x] Dev setup: venv, make install, make test
+- [x] Code style: ruff format + ruff check
+- [x] Test requirements: 162 must pass before PR
+- [x] Cross-repo: how to sync protocol models via sync_protocol.py
