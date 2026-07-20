@@ -120,7 +120,21 @@
 | 10. Code quality | PASS | 0 TODOs/FIXMEs. test_battery.py 1713 lines (expected), cli.py 728 lines. |
 | 11. Middle-out wiring | PASS | Both entry points in pyproject.toml. `import h3_shim` works. |
 
-**All 11 checks pass — zero findings. Idle tick #0 (active tick — QV-SHIM-04 completed).**
+**Idle tick #1 (2026-07-20 tick 14:54 — re-audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 9 source files. Specs in umbrella `get-h3/h3/specs/`. |
+| 2. Doc coverage | PASS | README (938B), CONTRIBUTING (3.9KB), AGENTS (1.2KB). |
+| 3. Test gaps | PASS | 171 tests collected in 0.12s. All 7 source files tested. |
+| 4. Package upgrades | PASS | 5 outdated (aiohttp, botocore, pydantic-core, sse-starlette, yarl) — all transitive (not in pyproject.toml). pydantic-core still blocked. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs. 5 `return None` hits all legit guard clauses. native.py NotImplementedError intentional. |
+| 6. Performance | N/A | CLI tool — no benchmarks. |
+| 7. Endpoint verification | PASS | hermes-h3 + h3-test both functional. |
+| 8. CI/CD | PASS | 5/5 recent runs green. |
+| 9. DuckBrain sync | PASS | 13 entries (2 new: idle-ticks + tick entry). |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. No untracked files. test_battery.py (1713) + cli.py (728) expected. |
+| 11. Middle-out wiring | PASS | Venv imports OK. Both entry points in pyproject.toml verified.
 
 **New tasks created from findings (2):**
 
