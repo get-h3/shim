@@ -174,3 +174,23 @@
 - [x] Log the fallback event with harness name and failure count
 - [x] Add test: mock harness that fails health checks, verify fallback triggers
 - [x] AC: `make test` passes (171/171); fallback test verifies routing switch; no sessions lost on harness death
+
+---
+
+**Idle tick #2 (2026-07-20 tick 15:15 — re-audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 11 spec files in umbrella `get-h3/h3/specs/`. 10 source files covering all protocol models. |
+| 2. Doc coverage | PASS | README (938B), CONTRIBUTING (3.9KB), AGENTS (37 lines). |
+| 3. Test gaps | PASS | 171/171 tests pass in 0.58s. All 7 source files tested. |
+| 4. Package upgrades | PASS | 5 outdated (aiohttp, botocore, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pip-audit clean. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs. 8 `return None` hits all legit guard clauses or expected error paths. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `hermes-h3 --help` + `h3-test --help` functional. Both entry points in pyproject.toml. |
+| 8. CI/CD | PASS | 5/5 recent runs green (latest: 2026-07-20T20:00:05Z). |
+| 9. DuckBrain sync | PASS | Entries under `/project/h3/shim/` and `/project/shim/` in h3 namespace. |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. No untracked files. test_battery.py (1713) + cli.py (728) expected. |
+| 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points verified. Scheduler unreachable (no cooldown check). |
+
+Counter: 2/7 idle ticks. No action at ≤2. If ≥3, escalate cooldown to 14400s.
