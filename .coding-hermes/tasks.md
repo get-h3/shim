@@ -102,7 +102,7 @@
 - [x] pyproject.toml updated for wheel template inclusion
 - [x] Full flow: scaffold → build → run → test in under 1 min
 
-## [x] NEVER-DONE — 11-point self-improvement audit (2026-07-19 tick — findings below)
+## [ ] NEVER-DONE — Run coding-hermes-never-done 11-point audit
 
 **Audit findings:**
 
