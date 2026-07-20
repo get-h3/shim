@@ -104,47 +104,34 @@
 
 ## [ ] NEVER-DONE — Run coding-hermes-never-done 11-point audit
 
-**Audit findings:**
+**Audit findings (2026-07-20 tick 10:34 — fresh run):**
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| 1. Spec alignment | PASS | Specs in `get-h3/h3/specs/` (12 files). Shim protocol.py matches h3-protocol.yaml via sync_protocol.py. WAIT polling is a known gap (see Check 5). |
-| 2. Doc coverage | MINOR | README.md + AGENTS.md exist. Missing CONTRIBUTING.md. |
-| 3. Test gaps | FINDING | 157 tests, all PASS. native.py: 0% cov (7 stmts — stub by design). cli.py: 85%. upgrade_check.py: 90%. |
-| 4. Package upgrades | FINDING | 4 outdated: fastapi 0.139.0→0.139.2, filelock 3.30.2→3.31.0, importlib-metadata 8.9→9.0 (major), pydantic-core 2.46.4→2.47.0 |
-| 5. Pitfall hunt | FINDING | WAIT polling endpoint not implemented (shim_loop.py:289 — logged but not acted on). No bare excepts, no TODO/FIXME, no .gitleaks.toml (no false-negative allowlists). |
-| 6. Performance | N/A | CLI tool, no benchmarks applicable. |
-| 7. Endpoint verification | PASS | 9 CLI subcommands all wired and operational. |
-| 8. CI/CD | PASS | Latest CI green (f6736ec). 1 historical failure (E501 — fixed d29e70e). |
-| 9. DuckBrain sync | FINDING | h3 namespace: 0 memories. Embedding model not configured. |
-| 10. Code quality | PASS | No TODO/FIXME/HACK. test_battery.py 1669 lines (expected). cli.py 728 lines (25 handlers — borderline). |
-| 11. Middle-out wiring | PASS | All 9 CLI subcommands wired. native.py is a documented stub. |
+| 1. Spec alignment | PASS | 23 Pydantic models match full H3 protocol. 10 spec files in `get-h3/h3/specs/`. sync_protocol.py functional. |
+| 2. Doc coverage | PASS | README.md (938B), CONTRIBUTING.md (3.9KB), AGENTS.md all present. |
+| 3. Test gaps | PASS | 162 tests across 6 test files in `tests/`. All source files tested. Template `templates/py/main.py` is scaffold — N/A. |
+| 4. Package upgrades | FINDING | 5 outdated: datamodel-code-generator 0.68.1→0.69.0, filelock 3.31.0→3.31.1, pydantic-core 2.46.4→2.47.0 (BLOCKED), sse-starlette 3.4.5→3.4.6 (unused in source), yarl 1.24.2→1.24.5 (transitive). |
+| 5. Pitfall hunt | PASS | No bare excepts. No hardcoded paths. No stubs. `return None` in test_battery.py/sync_protocol.py/upgrade_check.py all legitimate guard clauses. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | Both CLI entry points functional: `hermes-h3 --help` + `h3-test --help`. All 8 subcommands respond. |
+| 8. CI/CD | PASS | All 5 latest runs green (conclusion: success). |
+| 9. DuckBrain sync | FINDING | 4 entries found (3 under `/project/shim/`, 1 under `/project/h3/shim/`). Previous DUCKBRAIN-001 claimed 11 entries written — 7 entries may be missing or in wrong namespace. |
+| 10. Code quality | PASS | No TODO/FIXME/HACK. test_battery.py 1669 lines (expected), cli.py 728 lines (borderline). .gitignore clean. |
+| 11. Middle-out wiring | PASS | Both CLI entry points registered in pyproject.toml. 8 subcommands wired in cli.py. |
 
-**New tasks created from findings (4):**
+**New tasks created from findings (2):**
 
-## [x] DEPS-001 — Upgrade 4 outdated Python packages (2026-07-19 tick — 3/4 upgraded, 1 blocked)
-- [x] fastapi: 0.139.0 → 0.139.2 (patch — bugfixes)
-- [x] filelock: 3.30.2 → 3.31.0 (minor)
-- [x] importlib-metadata: 8.9.0 → 9.0.0 (minor — no breaking changes)
-- [~] pydantic-core: 2.46.4 → 2.47.0 BLOCKED — pydantic-core 2.47.0 incompatible with pydantic 2.13.4 (pinned by fastapi 0.139.2). UV solver rejects the combination. Will auto-resolve when pydantic/fastapi next bump.
-- [x] `make test` verified: 157/157 PASS (0.62s), ruff clean
+## [ ] DEPS-002 — Upgrade filelock + datamodel-code-generator (2026-07-20 audit)
+- [ ] filelock: 3.31.0 → 3.31.1 (patch). Direct dep in pyproject.toml.
+- [ ] datamodel-code-generator: 0.68.1 → 0.69.0 (minor). Dev dep in pyproject.toml.
+- [ ] pydantic-core: 2.46.4 → 2.47.0 — still BLOCKED (incompatible with pydantic 2.13.4 / fastapi 0.139.2).
+- [ ] sse-starlette 3.4.5→3.4.6 — NOT used in source code. Remove from deps or upgrade.
+- [ ] Verify: `make test` 162/162 PASS, ruff clean, gitreins guard PASS.
 
-## [x] PROTO-001 — Implement WAIT polling endpoint in shim_loop.py (2026-07-19 2ce63ff)
-- [x] _execute_wait() now polls poll_endpoint via httpx.AsyncClient (max_polls=30, interval=1.0s, timeout=5.0s)
-- [x] 2xx + {"status":"complete"} or {"finished":true} → success; non-2xx → retry; exhausted → timeout error
-- [x] httpx.RequestError → error result; duration_seconds sleep preserved (runs before polling)
-- [x] 5 new tests in TestExecuteWait (completes, retries-then-completes, timeout, http-error, sleep-then-poll)
-- [x] Also fixed .gitreins/config.yaml: hoisted test_command to flat guards.* key (pre-commit gate was broken)
-- [x] 162/162 tests PASS, ruff clean, gitreins guard PASS
-
-## [x] DUCKBRAIN-001 — Populate h3 namespace with project knowledge (2026-07-19 — 11 entries written)
-- [x] Current: 0 memories, embedding model not configured → FIXED: 11 entries now in /projects/shim/
-- [x] Write: architecture decisions, protocol patterns, pitfall WAIT polling gap, cross-repo sync flow (sync_protocol.yml)
-- [x] Write: scaffold template patterns (go/py/ts), test battery structure
-- [x] Target: 8-12 memory entries → ACHIEVED: 11 entries
-
-## [x] DOC-001 — Add CONTRIBUTING.md (2026-07-20 tick — foreman-direct)
-- [x] Dev setup: venv, make install, make test
-- [x] Code style: ruff format + ruff check
-- [x] Test requirements: 162 must pass before PR
-- [x] Cross-repo: how to sync protocol models via sync_protocol.py
+## [ ] DUCKBRAIN-002 — Reconcile DuckBrain entries (2026-07-20 audit)
+- [ ] Current count: 4 entries found across all namespaces (3 under `/project/shim/`, 1 under `/project/h3/shim/`).
+- [ ] Previous claim: 11 entries written to `/projects/shim/` (DUCKBRAIN-001).
+- [ ] Gap: 7 entries unaccounted for — may be in wrong namespace, deleted, or never written.
+- [ ] Verify: `list_keys(keyPrefix="/project/shim/", namespace="h3")` — check h3 namespace specifically.
+- [ ] Re-populate missing entries: architecture decisions, protocol patterns, scaffold templates, cross-repo sync.
