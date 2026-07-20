@@ -37,6 +37,7 @@ dev = [
     "ruff>=0.1",
     "datamodel-code-generator>=0.25",
     "build>=1.0",
+    "jsonschema>=4.20",
 ]
 
 [project.scripts]
