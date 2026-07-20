@@ -193,4 +193,20 @@
 | 10. Code quality | PASS | 0 TODOs/FIXMEs. No untracked files. test_battery.py (1713) + cli.py (728) expected. |
 | 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points verified. Scheduler unreachable (no cooldown check). |
 
-Counter: 2/7 idle ticks. No action at ≤2. If ≥3, escalate cooldown to 14400s.
+**Idle tick #3 (2026-07-20 tick 15:46 — re-audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 11 spec files in umbrella `get-h3/h3/specs/`. 10 source files covering all protocol models. |
+| 2. Doc coverage | PASS | README (938B), CONTRIBUTING (3.9KB), AGENTS (37 lines). |
+| 3. Test gaps | PASS | 171/171 tests pass in 0.63s. All 7 source files tested. |
+| 4. Package upgrades | PASS | 5 outdated (aiohttp, botocore, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pip-audit clean. pydantic-core still blocked. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs. ruff clean. All `return None` hits legit guard clauses. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `hermes-h3 --help` + `h3-test --help` functional. Both entry points in pyproject.toml. `import h3_shim` OK. |
+| 8. CI/CD | PASS | 3/3 recent runs green (all success). |
+| 9. DuckBrain sync | PASS | Entries under `/project/shim/` in h3 namespace. Base interval + idle-ticks updated. |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. No untracked files. test_battery.py (1713) + cli.py (728) expected. |
+| 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points verified. |
+
+Counter: 3/7 idle ticks. **ESCALATED to 4h intervals** (cooldown 900s → 14400s). Base interval 900s stored in DuckBrain `/project/shim/status/base-interval`. Next tick at ≥19:46.
