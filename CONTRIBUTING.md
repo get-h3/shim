@@ -1,112 +1,134 @@
 # Contributing to H3 Shim
 
-Thanks for contributing. The H3 Shim is a Python plugin for Hermes Core that implements the H3 agent protocol. This guide covers everything you need to submit a change.
+The shim is the Hermes-side implementation of the H3 protocol — the bridge between Hermes Core and external agent harnesses. It's a Python package published to PyPI as `hermes-h3-shim`.
 
 ## Development Setup
 
 ```bash
-# Clone
-git clone https://github.com/get-h3/shim.git
-cd shim
-
-# Create venv and install
-make install
-
-# Verify everything works
-make test
+cd shim/
+python -m venv .venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 ```
 
-All development happens inside a `.venv` virtual environment. `make install` creates it and installs the package in editable mode with all dev dependencies.
+## Project Structure
 
-## Code Style
+```
+shim/
+├── src/h3_shim/
+│   ├── protocol.py       # Pydantic models (generated from protocol repo)
+│   ├── client.py         # REST client for harness communication
+│   ├── loader.py         # Harness discovery, health check, session routing
+│   ├── shim_loop.py      # H3ShimLoop: process → execute → result → loop
+│   ├── native.py         # Native Hermes loop as H3 harness wrapper
+│   ├── cli.py            # `hermes h3` subcommands (8 commands)
+│   ├── test_battery.py   # 43 compliance tests — THE GATE
+│   └── upgrade_check.py  # Hermes update pre-flight hook
+├── tests/
+│   ├── test_protocol.py
+│   ├── test_client.py
+│   ├── test_loader.py
+│   ├── test_shim_loop.py
+│   ├── test_cli.py
+│   └── test_upgrade_check.py
+└── scripts/
+    └── sync_protocol.py  # Regenerate types from upstream protocol
+```
 
-We use ruff for both formatting and linting. No configuration needed — the settings in `pyproject.toml` are authoritative.
+## Before Making Changes
+
+### Run Tests
 
 ```bash
-make fmt    # ruff format — auto-fix formatting
-make lint   # ruff check — catch issues
-make build  # verify imports resolve
+python -m pytest tests/ -v
+# 151 unit tests
 ```
 
-Run `make lint` before committing. CI enforces a clean lint pass.
-
-## Running Tests
+### Run the Test Battery
 
 ```bash
-make test        # fast: pytest -x --tb=short -q
-make test-full   # verbose: pytest -x -v
+# Against the Go echo harness
+h3-test --endpoint http://localhost:9191
+# 43 compliance tests, 6 regions
 ```
 
-**162 tests must pass before any PR is merged.** Tests use pytest with `--tb=short` for readable output. Run the full suite — partial test runs are not accepted.
+### Sync Protocol Types
 
-### Test Structure
-
-| File | Tests | What it covers |
-|---|---|---|
-| `tests/test_protocol.py` | 13 | Pydantic model validation and serialization |
-| `tests/test_client.py` | 22 | REST client with mocked HTTP |
-| `tests/test_loader.py` | 26 | Harness config parsing and routing |
-| `tests/test_shim_loop.py` | 39 | Decision execution, iteration limits, WAIT polling |
-| `tests/test_cli.py` | 37 | CLI command parsing and scaffold generation |
-| `tests/test_battery.py` | 25 | Compliance battery helpers + assertions |
-
-The test battery (`test_battery.py`) is the gate — it verifies ANY H3 harness against the protocol spec (43 checks across 6 categories). Use `h3-test --endpoint http://localhost:9191` to run it against a live harness.
-
-## Commit Rules
-
-This repo uses GitReins as its quality gate. Every commit runs guards:
+If the upstream protocol changed:
 
 ```bash
-gitreins guard   # secrets, lint, tests
+python scripts/sync_protocol.py
 ```
 
-- Secrets violations block the commit (no exceptions)
-- Tests must pass for changed code
-- All commits must include a `Co-authored-by` trailer
+This regenerates `src/h3_shim/protocol.py` from `get-h3/protocol` schemas.
 
-## Cross-Repo Protocol Sync
+## Making Changes
 
-Protocol models in `src/h3_shim/protocol.py` are generated from the canonical JSON Schema in the `get-h3/protocol` repository. When the protocol schema changes, a GitHub Actions workflow automatically regenerates and publishes a new release.
+### Protocol Changes
 
-### How it works
+- Regenerate types with `sync_protocol.py` after upstream protocol changes
+- Never hand-edit generated Pydantic models
+- If a protocol change breaks Pydantic validation, fix the generation script, not the output
 
-1. The `get-h3/protocol` repo dispatches a `protocol-updated` event
-2. `.github/workflows/sync-protocol.yml` triggers in this repo
-3. The workflow regenerates Pydantic models, runs tests, tags a release, and publishes to PyPI
+### Shim Loop Changes
 
-### Manual sync
+- `shim_loop.py` is the core — changes here affect every session
+- All new decision types must be handled by the loop's executor
+- Test with a real harness endpoint, not mocks
+
+### CLI Changes
+
+- New subcommands go in `cli.py`
+- Every subcommand gets a `--help` entry
+- CLI integration tests in `tests/test_cli.py`
+
+### Test Battery Changes
+
+- New test regions go in `test_battery.py`
+- Tests must pass against all 3 SDK echo examples
+- Tests are protocol-level — they verify harnesses, not the shim itself
+
+## Quality Gates
+
+### Pre-Commit
 
 ```bash
-# Generate models from a local protocol checkout
-make sync-protocol
-
-# Diff-only — check what WOULD change without writing
-make sync-protocol-diff
+make lint       # ruff check + ruff format --check
+make test       # pytest (151 tests)
+make typecheck  # mypy src/
 ```
 
-Both commands invoke `scripts/sync_protocol.py`, which reads JSON Schema from `get-h3/protocol/schemas/v1/` and generates Pydantic v2 models with `datamodel-code-generator`.
+### CI Pipeline
 
-### Adding a new protocol field
+GitHub Actions runs on every PR:
+1. Lint (ruff)
+2. Type check (mypy)
+3. Unit tests (pytest, 151 tests)
+4. Test battery against Go echo harness (43 compliance tests)
+5. Test battery against Python echo harness
+6. Test battery against TypeScript echo harness
 
-1. Update the JSON Schema in `get-h3/protocol`
-2. Run `make sync-protocol-diff` to preview model changes
-3. Run `make sync-protocol` to regenerate
-4. Update any shim code that uses the changed models
-5. Run `make test` — tests will catch schema mismatches
+All must pass.
 
-## Release Process
+## Release
 
-Releases are automated via CI. When the protocol schema changes:
+```bash
+# After merge to main, create a tag:
+git tag v1.0.0
+git push origin v1.0.0
+# CI publishes to PyPI automatically
+```
 
-1. `repository_dispatch` triggers `.github/workflows/sync-protocol.yml`
-2. The workflow validates against the Go SDK echo harness (43/43 compliance)
-3. A git tag is created matching the protocol version (e.g., `v1.0.0`)
-4. The package is published to PyPI as `hermes-h3-shim`
+## Review Checklist
 
-For manual releases, use `make build-dist` to create the wheel and sdist.
+- [ ] `make test` passes (151 tests)
+- [ ] `make lint` passes
+- [ ] `make typecheck` passes
+- [ ] `h3-test --endpoint http://localhost:9191` passes against all 3 SDKs
+- [ ] New features have test battery coverage
+- [ ] Protocol changes regenerated via `sync_protocol.py`
+- [ ] CLI changes have help text and tests
 
 ## Questions?
 
-Check the specs in `get-h3/h3/specs/`, especially:
-- `specs/05-Test-Battery.md` — compliance test design
-- `specs/06-Hermes-Core-Integration.md` — shim loop architecture
+See the umbrella project at [get-h3/h3](https://github.com/get-h3/h3) for architecture, specs, and the cross-repo task board.
