@@ -4,12 +4,18 @@ Talks to an H3 harness over HTTP/1.1 using ``httpx.AsyncClient``.
 Mirrors the methods specified in S06 §3 of the Hermes Core integration spec.
 """
 
+import logging
+from uuid import uuid4
+
 import httpx
 
 from h3_shim.protocol import (
     CancelResponse,
     Context,
     Decision,
+    DecisionType,
+    End,
+    EndReason,
     ExecutionResult,
     HealthResponse,
     Identity,
@@ -17,6 +23,8 @@ from h3_shim.protocol import (
     ProcessRequest,
     ResultRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class H3Client:
@@ -57,9 +65,24 @@ class H3Client:
             identity=identity,
             context=context,
         )
-        resp = await self._rest.post("/v1/process", json=req.model_dump())
-        resp.raise_for_status()
-        return Decision(**resp.json())
+        try:
+            resp = await self._rest.post("/v1/process", json=req.model_dump())
+            resp.raise_for_status()
+            return Decision(**resp.json())
+        except httpx.TimeoutException:
+            logger.warning(
+                "H3Client: harness timed out after %.1fs for session %s",
+                self.timeout,
+                session_id,
+            )
+            return Decision(
+                decision=DecisionType.END,
+                decision_id=f"error-{uuid4().hex[:8]}",
+                end=End(
+                    reason=EndReason.TIMEOUT,
+                    summary=f"Harness request timed out after {self.timeout:.0f}s",
+                ),
+            )
 
     async def result(
         self,
@@ -72,9 +95,29 @@ class H3Client:
             decision_id=decision_id,
             result=result,
         )
-        resp = await self._rest.post("/v1/result", json=req.model_dump())
-        resp.raise_for_status()
-        return Decision(**resp.json())
+        try:
+            resp = await self._rest.post("/v1/result", json=req.model_dump())
+            resp.raise_for_status()
+            return Decision(**resp.json())
+        except httpx.TimeoutException:
+            logger.warning(
+                "H3Client: harness timed out during result POST after %.1fs "
+                "for session %s (decision %s)",
+                self.timeout,
+                session_id,
+                decision_id,
+            )
+            return Decision(
+                decision=DecisionType.END,
+                decision_id=f"error-{uuid4().hex[:8]}",
+                end=End(
+                    reason=EndReason.TIMEOUT,
+                    summary=(
+                        f"Harness result request timed out after "
+                        f"{self.timeout:.0f}s"
+                    ),
+                ),
+            )
 
     async def cancel(
         self, session_id: str, reason: str = "user_interrupt"
