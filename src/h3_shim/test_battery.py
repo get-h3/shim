@@ -1667,3 +1667,47 @@ def report_as_dict(report: TestReport) -> dict[str, Any]:
     # Computed property needs to be serialised explicitly.
     out["all_passing"] = report.all_passing
     return out
+
+
+def validate_test_report(
+    data: dict[str, Any],
+    schema_path: str | None = None,
+) -> list[str]:
+    """Validate a test-report dict against the JSON Schema.
+
+    Parameters
+    ----------
+    data:
+        Serialised report dict (as returned by :func:`report_as_dict`).
+    schema_path:
+        Path to ``test-report.json``.  When *None*, it is resolved
+        relative to the protocol repo checked out alongside this one:
+        ``<project-root>/../protocol/schemas/v1/test-report.json``.
+
+    Returns
+    -------
+    list[str]
+        Validation error messages.  Empty means **valid** (no errors).
+    """
+    import json
+    from pathlib import Path
+
+    import jsonschema
+
+    if schema_path is None:
+        # Resolve relative to the shim project root.
+        schema_path = str(
+            Path(__file__).resolve().parents[2]
+            / ".." / "protocol" / "schemas" / "v1" / "test-report.json"
+        )
+
+    with open(schema_path) as fh:
+        schema = json.load(fh)
+
+    validator_cls = jsonschema.validators.validator_for(schema)
+    validator = validator_cls(schema)
+    errors = list(validator.iter_errors(data))
+    return [
+        f"{' → '.join(str(p) for p in e.absolute_path)}: {e.message}"
+        for e in errors
+    ]

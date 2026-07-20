@@ -11,7 +11,7 @@ real user configs are never touched, and stubs out ``asyncio.run`` /
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -613,3 +613,128 @@ class TestLegacyMain:
             main()
         # argparse returns 2 for usage errors.
         assert exc_info.value.code == 2
+
+
+class TestReportSchema:
+    """Validate that the test battery JSON output matches the schema."""
+
+    # Minimal inline schema for self-contained tests.
+    # protocol/schemas/v1/test-report.json is the canonical full schema
+    # with $defs — this mirrors its constraints.
+    _REPORT_SCHEMA = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "results", "total", "passed", "failed",
+            "duration_ms", "timestamp", "all_passing",
+        ],
+        "properties": {
+            "results": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": [
+                        "name", "passed", "detail",
+                        "duration_ms", "category",
+                    ],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "passed": {"type": "boolean"},
+                        "detail": {"type": "string"},
+                        "duration_ms": {"type": "number"},
+                        "category": {"type": "string"},
+                    },
+                },
+            },
+            "total": {"type": "integer"},
+            "passed": {"type": "integer"},
+            "failed": {"type": "integer"},
+            "duration_ms": {"type": "number"},
+            "timestamp": {"type": "string"},
+            "all_passing": {"type": "boolean"},
+        },
+    }
+
+    # Simpler variant for negative tests (loose array item constraints).
+    _REPORT_SCHEMA_LOOSE = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "results", "total", "passed", "failed",
+            "duration_ms", "timestamp", "all_passing",
+        ],
+        "properties": {
+            "results": {"type": "array"},
+            "total": {"type": "integer"},
+            "passed": {"type": "integer"},
+            "failed": {"type": "integer"},
+            "duration_ms": {"type": "number"},
+            "timestamp": {"type": "string"},
+            "all_passing": {"type": "boolean"},
+        },
+    }
+
+    @staticmethod
+    def _write_schema(tmp_path, schema):
+        import json
+        sp = tmp_path / "test-report.json"
+        sp.write_text(json.dumps(schema))
+        return str(sp)
+
+    def test_passing_report_validates(self, tmp_path):
+        """A passing report serialises to JSON that validates against the schema."""
+        from h3_shim.test_battery import validate_test_report
+
+        report = _passing_report()
+        data = asdict(report)
+        data["all_passing"] = report.all_passing  # type: ignore[union-attr]
+
+        schema_path = self._write_schema(tmp_path, self._REPORT_SCHEMA)
+        errors = validate_test_report(data, schema_path=schema_path)
+        assert errors == [], f"Schema validation errors: {errors}"
+
+    def test_failing_report_validates(self, tmp_path):
+        """A failing report also validates against the schema."""
+        from h3_shim.test_battery import validate_test_report
+
+        report = _failing_report()
+        data = asdict(report)
+        data["all_passing"] = report.all_passing  # type: ignore[union-attr]
+
+        schema_path = self._write_schema(tmp_path, self._REPORT_SCHEMA)
+        errors = validate_test_report(data, schema_path=schema_path)
+        assert errors == [], f"Schema validation errors: {errors}"
+
+    def test_missing_field_fails(self, tmp_path):
+        """Report with missing required field produces validation errors."""
+        from h3_shim.test_battery import validate_test_report
+
+        schema_path = self._write_schema(tmp_path, self._REPORT_SCHEMA_LOOSE)
+        data = {
+            "results": [],
+            "passed": 0,
+            "failed": 0,
+            "duration_ms": 0.0,
+            "timestamp": "2024-01-01T00:00:00",
+            "all_passing": True,
+        }
+        errors = validate_test_report(data, schema_path=schema_path)
+        assert len(errors) > 0
+        assert any("total" in e for e in errors)
+
+    def test_bad_type_fails(self, tmp_path):
+        """A field with wrong type produces validation errors."""
+        from h3_shim.test_battery import validate_test_report
+
+        schema_path = self._write_schema(tmp_path, self._REPORT_SCHEMA_LOOSE)
+        data = {
+            "results": [],
+            "total": "not-an-integer",
+            "passed": 0,
+            "failed": 0,
+            "duration_ms": 0.0,
+            "timestamp": "2024-01-01T00:00:00",
+            "all_passing": True,
+        }
+        errors = validate_test_report(data, schema_path=schema_path)
+        assert len(errors) > 0
