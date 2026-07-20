@@ -194,6 +194,23 @@ class TestProcess:
                 context=Context(),
             )
 
+    async def test_timeout_returns_error_decision(self):
+        """Harness timeout yields a user-visible END decision, not an exception."""
+        c = _make_client(timeout_ms=5000)
+        c._rest.post.side_effect = httpx.TimeoutException("timed out")
+        decision = await c.process(
+            session_id="s_timeout",
+            message=Message(role="user", content="hi"),
+            identity=Identity(platform="cli", chat_id="0"),
+            context=Context(),
+        )
+        assert isinstance(decision, Decision)
+        assert decision.decision == DecisionType.END
+        assert decision.end is not None
+        assert decision.end.reason == EndReason.TIMEOUT
+        assert "timed out" in (decision.end.summary or "").lower()
+        assert decision.decision_id.startswith("error-")
+
 
 # ── result() ────────────────────────────────────────────────────────────────
 

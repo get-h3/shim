@@ -147,10 +147,10 @@
 - [x] 4 schema validation tests: passing+failing validate, missing field caught, bad type caught
 - [x] AC: 166/166 tests pass; ruff clean; schema committed to protocol@1e0c728d
 
-## [ ] QV-SHIM-03 — Shim handles harness timeout gracefully
-- [ ] Add timeout handling to `client.py` H3Client — when harness doesn't respond within timeout, return a user-visible error decision
-- [ ] Add test: mock harness that sleeps beyond timeout, verify shim returns error Decision (not crash)
-- [ ] AC: `make test` passes; timeout test included; no unhandled exceptions on timeout
+## [x] QV-SHIM-03 — Shim handles harness timeout gracefully (2026-07-20 tick 13:48 — worker)
+- [x] Add timeout handling to `client.py` H3Client — catch `httpx.TimeoutException` in `process()` + `result()`, return END/TIMEOUT Decision with user-visible summary
+- [x] Add test: `test_timeout_returns_error_decision` — mock harness timeout → Decision(END, reason=TIMEOUT) with error- prefix
+- [x] AC: 167/167 tests pass; ruff clean; no unhandled exceptions on timeout
 
 ## [ ] QV-SHIM-04 — Health check detects dead harness, falls back to native
 - [ ] Modify `loader.py` health_check_loop to detect consecutive health check failures
