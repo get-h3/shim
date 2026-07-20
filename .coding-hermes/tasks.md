@@ -137,11 +137,11 @@
 - [x] Also fixed .gitreins/config.yaml: hoisted test_command to flat guards.* key (pre-commit gate was broken)
 - [x] 162/162 tests PASS, ruff clean, gitreins guard PASS
 
-## [ ] DUCKBRAIN-001 — Populate h3 namespace with project knowledge
-- [ ] Current: 0 memories, embedding model not configured
-- [ ] Write: architecture decisions, protocol patterns, pitfall WAIT polling gap, cross-repo sync flow (sync_protocol.yml)
-- [ ] Write: scaffold template patterns (go/py/ts), test battery structure
-- [ ] Target: 8-12 memory entries
+## [x] DUCKBRAIN-001 — Populate h3 namespace with project knowledge (2026-07-19 — 11 entries written)
+- [x] Current: 0 memories, embedding model not configured → FIXED: 11 entries now in /projects/shim/
+- [x] Write: architecture decisions, protocol patterns, pitfall WAIT polling gap, cross-repo sync flow (sync_protocol.yml)
+- [x] Write: scaffold template patterns (go/py/ts), test battery structure
+- [x] Target: 8-12 memory entries → ACHIEVED: 11 entries
 
 ## [ ] DOC-001 — Add CONTRIBUTING.md
 - [ ] Dev setup: venv, make install, make test
