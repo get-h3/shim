@@ -1,0 +1,14 @@
+# Gitleaks config — allowlist for H3 test tokens (S12 auth spec format)
+# h3_hx_<hex> tokens in test files are fake, not real secrets.
+[allowlist]
+  description = "H3 test tokens in test files"
+  paths = [
+    '''tests/test_client.py''',
+    '''tests/test_loader.py''',
+  ]
+  regexes = [
+    '''h3_hx_abc123def456''',
+    '''h3_hx_token_only''',
+    '''h3_hx_abc123''',
+    '''h3_hx_abc''',
+  ]

@@ -35,8 +35,13 @@ def _patch_h3_client_factory(monkeypatch, **attrs):
     """
     fake = MagicMock(wraps=H3Client)
 
-    def _factory(endpoint, transport="rest", timeout_ms=30_000):
-        c = _fake_client(endpoint=endpoint, transport=transport, timeout_ms=timeout_ms)
+    def _factory(endpoint, transport="rest", timeout_ms=30_000,
+                 hermes_token=None, hermes_identity=None,
+                 protocol_version="1.0"):
+        c = _fake_client(endpoint=endpoint, transport=transport,
+                         timeout_ms=timeout_ms, hermes_token=hermes_token,
+                         hermes_identity=hermes_identity,
+                         protocol_version=protocol_version)
         # Pre-program the .health() mock if the test set one.
         if "health_return" in attrs:
             c.health = AsyncMock(return_value=attrs["health_return"])
@@ -112,6 +117,41 @@ class TestLoad:
         cfg = {"harnesses": {"alpha": {"endpoint": "http://a:1", "timeout_ms": 9999}}}
         H3Loader(cfg)
         assert fake.call_args.kwargs["timeout_ms"] == 9999
+
+    def test_identity_config_passed_to_client(self, monkeypatch):
+        """Identity block (hermes_token, hermes_identity) flows to H3Client."""
+        fake = _patch_h3_client_factory(monkeypatch)
+        cfg = {
+            "identity": {
+                "hermes_token": "h3_hx_abc123",
+                "hermes_identity": "hermes-main",
+                "protocol_version": "1.1",
+            },
+            "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+        }
+        H3Loader(cfg)
+        assert fake.call_args.kwargs["hermes_token"] == "h3_hx_abc123"
+        assert fake.call_args.kwargs["hermes_identity"] == "hermes-main"
+        assert fake.call_args.kwargs["protocol_version"] == "1.1"
+
+    def test_missing_identity_block_passes_none(self, monkeypatch):
+        """Without identity block, hermes_token/identity are None."""
+        fake = _patch_h3_client_factory(monkeypatch)
+        cfg = {"harnesses": {"alpha": {"endpoint": "http://a:1"}}}
+        H3Loader(cfg)
+        assert fake.call_args.kwargs["hermes_token"] is None
+        assert fake.call_args.kwargs["hermes_identity"] is None
+        assert fake.call_args.kwargs["protocol_version"] == "1.0"
+
+    def test_identity_defaults_to_v1_0(self, monkeypatch):
+        """Missing protocol_version defaults to 1.0."""
+        fake = _patch_h3_client_factory(monkeypatch)
+        cfg = {
+            "identity": {"hermes_token": "h3_hx_abc"},
+            "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+        }
+        H3Loader(cfg)
+        assert fake.call_args.kwargs["protocol_version"] == "1.0"
 
     def test_initial_health_is_false(self, monkeypatch):
         _patch_h3_client_factory(monkeypatch)
