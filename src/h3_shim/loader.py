@@ -67,7 +67,17 @@ class H3Loader:
 
         Skips ``"native"`` (no HTTP endpoint) and entries whose
         ``endpoint`` is ``None`` or missing.
+
+        If *config* contains an ``identity`` block (``hermes_token``,
+        ``hermes_identity``), those values are passed to every
+        :class:`H3Client` so that all requests carry auth headers per
+        S12 §5.1.
         """
+        identity = config.get("identity", {})
+        hermes_token: str | None = identity.get("hermes_token")
+        hermes_identity: str | None = identity.get("hermes_identity")
+        protocol_version: str = identity.get("protocol_version", "1.0")
+
         for name, hconfig in config.get("harnesses", {}).items():
             if name == "native":
                 continue
@@ -79,6 +89,9 @@ class H3Loader:
                 endpoint=endpoint,
                 transport=hconfig.get("transport", "rest"),
                 timeout_ms=hconfig.get("timeout_ms", 30_000),
+                hermes_token=hermes_token,
+                hermes_identity=hermes_identity,
+                protocol_version=protocol_version,
             )
             self._harness_healthy[name] = False
 

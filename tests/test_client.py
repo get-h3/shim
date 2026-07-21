@@ -92,6 +92,44 @@ class TestConstruction:
         c = H3Client(endpoint="http://localhost:9000///")
         assert c.endpoint == "http://localhost:9000"
 
+    def test_auth_headers_present_when_token_and_identity_provided(self):
+        c = H3Client(
+            endpoint="http://localhost:9000",
+            hermes_token="h3_hx_abc123def456",
+            hermes_identity="hermes-main",
+            protocol_version="1.1",
+        )
+        assert c.hermes_token == "h3_hx_abc123def456"
+        assert c.hermes_identity == "hermes-main"
+        assert c.protocol_version == "1.1"
+
+    def test_no_auth_headers_when_token_is_none(self):
+        """Backward compat: no auth when hermes_token not provided."""
+        c = H3Client(endpoint="http://localhost:9000")
+        assert c.hermes_token is None
+        assert c.hermes_identity is None
+        assert c.protocol_version == "1.0"
+
+    def test_token_only_sends_auth_and_protocol_version(self):
+        """Token without identity still sends Authorization + Protocol-Version."""
+        c = H3Client(
+            endpoint="http://localhost:9000",
+            hermes_token="h3_hx_token_only",
+        )
+        assert c.hermes_token == "h3_hx_token_only"
+        assert c.hermes_identity is None
+
+    def test_identity_only_sends_identity_and_protocol_version(self):
+        """Identity without token sends H3-Hermes-Identity + Protocol-Version."""
+        c = H3Client(
+            endpoint="http://localhost:9000",
+            hermes_identity="hermes-alt",
+            protocol_version="1.1",
+        )
+        assert c.hermes_token is None
+        assert c.hermes_identity == "hermes-alt"
+        assert c.protocol_version == "1.1"
+
 
 # ── health() ────────────────────────────────────────────────────────────────
 

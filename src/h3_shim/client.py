@@ -39,13 +39,42 @@ class H3Client:
     All response payloads are validated against the Pydantic models in
     ``h3_shim.protocol``; non-2xx responses raise ``httpx.HTTPStatusError``
     via ``resp.raise_for_status()``.
+
+    When *hermes_token* is provided, every request carries an
+    ``Authorization: Bearer h3_hx_<token>`` header per S12 §5.1.
+    *hermes_identity* is sent as ``H3-Hermes-Identity`` and the
+    protocol version as ``H3-Protocol-Version``.
     """
 
-    def __init__(self, endpoint: str, transport: str = "rest", timeout_ms: int = 30000):
+    def __init__(
+        self,
+        endpoint: str,
+        transport: str = "rest",
+        timeout_ms: int = 30000,
+        hermes_token: str | None = None,
+        hermes_identity: str | None = None,
+        protocol_version: str = "1.0",
+    ):
         self.endpoint = endpoint.rstrip("/")
         self.transport = transport
         self.timeout = timeout_ms / 1000
-        self._rest = httpx.AsyncClient(base_url=self.endpoint, timeout=self.timeout)
+        self.hermes_token = hermes_token
+        self.hermes_identity = hermes_identity
+        self.protocol_version = protocol_version
+
+        headers: dict[str, str] = {}
+        if hermes_token:
+            headers["Authorization"] = f"Bearer {hermes_token}"
+        if hermes_identity:
+            headers["H3-Hermes-Identity"] = hermes_identity
+        if hermes_token or hermes_identity:
+            headers["H3-Protocol-Version"] = protocol_version
+
+        self._rest = httpx.AsyncClient(
+            base_url=self.endpoint,
+            timeout=self.timeout,
+            headers=headers if headers else None,
+        )
 
     async def health(self) -> HealthResponse:
         resp = await self._rest.get("/v1/health")
