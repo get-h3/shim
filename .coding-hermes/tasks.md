@@ -232,3 +232,27 @@ Counter: 3/7 idle ticks. **ESCALATED to 4h intervals** (cooldown 900s → 14400s
 **Cooldown reversion:** Cooldown reverted 14400s→7200s (1st reversion, likely daemon restart). Re-fixed to 14400s via API PUT. Warning tracked.
 
 Counter: 4/7 idle ticks. Cooldown: 14400s (4h).
+
+---
+
+**Idle tick #5 (2026-07-20 tick 22:16 — re-audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 12 spec files in umbrella `get-h3/h3/specs/`. 8 source + 6 test files covering all protocol models. |
+| 2. Doc coverage | PASS | README (40 lines), CONTRIBUTING (134 lines), AGENTS (37 lines). **LICENSE created** (MIT template — pyproject.toml already declared it, file was missing). |
+| 3. Test gaps | PASS | 171/171 tests pass in 0.69s. All 7 source files tested. |
+| 4. Package upgrades | PASS | 5 outdated (aiohttp, botocore, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pip-audit clean. pydantic-core still blocked. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs. 4 `return None` hits — all legit guard clauses. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `hermes-h3 --help` + `h3-test --help` functional. All modules importable. |
+| 8. CI/CD | PASS | 5/5 recent runs green (all success). |
+| 9. DuckBrain sync | PASS | 21 entries under `/project/shim/` in h3 namespace (19 + 2 new tick entries). |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. Hilo: 116 edges, 18 files. Clean working tree. |
+| 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points in pyproject.toml verified. |
+
+**Mechanical self-heal:** LICENSE file created (MIT, 20 lines). pyproject.toml declared MIT but file was missing. Foreman-direct fix per never-done skill §2.
+
+**Scheduler:** Unreachable on :9090 — cooldown not verified. Previous cooldown was 14400s (4h).
+
+Counter: 5/7 idle ticks. Cooldown: 14400s (4h).
