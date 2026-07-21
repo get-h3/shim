@@ -333,3 +333,25 @@ curl -X PUT http://127.0.0.1:9090/api/v1/projects/h3-shim-foreman \
 ```
 
 Counter: 7/7 idle ticks. Cooldown: 14400s (4h). **ESCALATED to Bane.**
+
+---
+
+**Idle tick #8 (2026-07-21 tick 16:42 — audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 13 spec files in umbrella `get-h3/h3/specs/`. 9 source files covering all protocol models. |
+| 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
+| 3. Test gaps | PASS | 178/178 tests pass in 1.32s. All 9 source files tested. |
+| 4. Package upgrades | PASS | 6 outdated (aiohttp, botocore, filelock, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pydantic-core still blocked. pip-audit clean. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs. 0 `return None` stubs in src/. ruff clean. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `hermes-h3 --help` + `h3-test --help` functional. `import h3_shim` OK. |
+| 8. CI/CD | PASS | 5/5 recent runs green (all success). |
+| 9. DuckBrain sync | PASS | 17 entries under `/project/shim/` in h3 namespace. Tick #8 written. |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. Hilo: 116 edges, 18 files. Clean working tree. |
+| 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points in pyproject.toml verified. |
+
+**Scheduler:** CooldownS=14400, Enabled=True — stable (no reversion). Escalation already delivered at tick #7 (04:37).
+
+Counter: 8/7+ idle ticks. Cooldown: 14400s (4h). **Escalation already sent at tick #7 — awaiting Bane action.**
