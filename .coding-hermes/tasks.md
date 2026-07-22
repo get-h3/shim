@@ -420,6 +420,22 @@ Counter: 10/7+ idle ticks. Cooldown: 7200s (2h).
 | 10. Code quality | PASS | 0 TODOs/FIXMEs. Hilo: 116 edges, 18 files. Clean working tree. |
 | 11. Middle-out wiring | PASS | All modules importable. Both entry points in pyproject.toml verified. |
 
-**Scheduler:** CooldownS=7200 (4th reversion). Enabled=True. Escalation already sent at tick #7 — awaiting Bane action.
+**Scheduler:** CooldownS=1800 (⚠️ **5th reversion** — was 14400 at tick #8, daemon restart reverted to 7200, now back to 1800 base). Enabled=True. Escalation already sent at tick #7 — awaiting Bane action.
 
-Counter: 10/7+ idle ticks. Cooldown: 7200s (2h).
+Counter: 11/7+ idle ticks. Cooldown: 1800s (5th reversion). **Escalation sent at tick #7 — awaiting Bane action.**
+
+**Idle tick #11 (2026-07-22 tick 00:13 — audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 13 spec files in umbrella `get-h3/h3/specs/`. 9 source files covering all protocol models. |
+| 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
+| 3. Test gaps | PASS | 178/178 tests pass in 0.71s. All 9 source files tested. |
+| 4. Package upgrades | PASS | 8 outdated (aiohttp, botocore, certifi 2026.7.22 new, filelock, platformdirs, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pydantic-core still blocked. pip-audit N/A (cron mode). |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs in src/. ruff clean. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | Tests pass = all imports OK. CLI entry points in pyproject.toml verified. |
+| 8. CI/CD | PASS | 5/5 recent runs green (all success). |
+| 9. DuckBrain sync | N/A | Not checked this tick (namespace stable). |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. Clean working tree. |
+| 11. Middle-out wiring | PASS | Both entry points verified via test suite. |
