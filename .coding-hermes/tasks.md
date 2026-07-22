@@ -745,12 +745,14 @@ Counter: 24/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| Tests | PASS | 178/178 pass in 2.85s |
+| Tests | ⚠️ PASS (flaky) | 177/178 on first run (`test_loop_reroutes_on_failure` flaked — mock leak). 178/178 on re-run (0.60s). Confirmed test isolation issue. |
 | Ruff | PASS | All checks passed |
-| Git | PASS | Clean tree, no remote changes |
-| CI/CD | PASS | 3/3 recent runs green (all success) |
-| DuckBrain | ⚠️ | Not checked this tick (minimal audit, prior 28 entries stable) |
+| Git | PASS | Clean tree, no remote changes. 24 prior board-update commits. |
+| DuckBrain | PASS | 28 entries under `/project/shim/` in h3 namespace. |
+| CI/CD | N/A | Not checked (prior 5 runs all green). |
 
-**Scheduler:** CooldownS=1800 (⚠️ **11th reversion** — was 14400 at tick #8, reverted by daemon restarts). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (11 reversions, far beyond escalation threshold). Umbrella h3 repo has active development but no protocol changes affecting shim.
+**Test flake:** `test_loop_reroutes_on_failure` — `Exception: health not stubbed` on first full-suite run, passes on re-run and in isolation. Intermittent mock leak from another async test. Pre-existing, not a regression.
+
+**Scheduler:** CooldownS=1800 (⚠️ **12th reversion** — was 14400 at tick #8). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (12 reversions, far beyond escalation threshold). Cooldown reset on restart pattern confirmed — daemon fleet.toml overwrites PUT values.
 
 Counter: 25/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
