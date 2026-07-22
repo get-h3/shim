@@ -424,6 +424,28 @@ Counter: 10/7+ idle ticks. Cooldown: 7200s (2h).
 
 Counter: 11/7+ idle ticks. Cooldown: 1800s (5th reversion). **Escalation sent at tick #7 — awaiting Bane action.**
 
+**Idle tick #13 (2026-07-22 tick 01:25 — audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 26 spec files in umbrella. 9 source files. |
+| 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
+| 3. Test gaps | PASS | 178/178 tests pass in 0.61s. All source files tested. |
+| 4. Package upgrades | PASS | 8 outdated (aiohttp, botocore, certifi, filelock, platformdirs, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pydantic-core still blocked. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs in src/. Ruff clean. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | 178 tests pass = all imports + CLI paths verified. |
+| 8. CI/CD | PASS | 3/3 recent runs green. |
+| 9. DuckBrain sync | PASS | Entries under `/project/shim/` in h3 namespace. Namespace stable. |
+| 10. Code quality | PASS | Hilo: 116 edges, 18 files. Clean working tree. |
+| 11. Middle-out wiring | PASS | Both entry points in pyproject.toml verified via test suite. |
+
+**Scheduler:** CooldownS=1800 (⚠️ **7th reversion** — was 14400 at tick #8, reverted again by daemon restart). Enabled=True. Escalation already sent at tick #7 (04:37 + 2 days ago) — awaiting Bane action. NOT re-fixing cooldown (7 reversions, beyond escalation threshold).
+
+Counter: 13/7+ idle ticks. Cooldown: 1800s (30m). **Escalation sent at tick #7 — awaiting Bane decision.**
+
+---
+
 **Idle tick #12 (2026-07-22 tick 00:52 — audit):**
 
 | Check | Status | Findings |
