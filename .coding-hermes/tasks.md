@@ -494,14 +494,38 @@ Counter: 14/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| 1. Spec alignment | PASS | 13 spec files in umbrella `get-h3/h3/specs/`. 9 source files covering all protocol models. |
+| 1. Spec alignment | PASS | 13 spec files in umbrella. 9 source files. |
 | 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
 | 3. Test gaps | PASS | 178/178 tests pass in 0.71s. All 9 source files tested. |
-| 4. Package upgrades | PASS | 8 outdated (aiohttp, botocore, certifi 2026.7.22 new, filelock, platformdirs, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pydantic-core still blocked. pip-audit N/A (cron mode). |
+| 4. Package upgrades | PASS | 8 outdated — all transitive, zero in pyproject.toml. pydantic-core still blocked. |
 | 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs in src/. ruff clean. |
 | 6. Performance | N/A | CLI tool — no benchmarks applicable. |
-| 7. Endpoint verification | PASS | Tests pass = all imports OK. CLI entry points in pyproject.toml verified. |
+| 7. Endpoint verification | PASS | Tests pass = all imports OK. |
 | 8. CI/CD | PASS | 5/5 recent runs green (all success). |
 | 9. DuckBrain sync | N/A | Not checked this tick (namespace stable). |
 | 10. Code quality | PASS | 0 TODOs/FIXMEs. Clean working tree. |
 | 11. Middle-out wiring | PASS | Both entry points verified via test suite. |
+
+---
+
+**Idle tick #15 (2026-07-22 tick 02:02 — audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 26 spec files in umbrella. 9 source files. |
+| 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
+| 3. Test gaps | PASS | 178/178 tests pass in 0.74s. All 9 source files tested. |
+| 4. Package upgrades | PASS | pip-audit clean (2 local deps not on PyPI, zero vulns). pydantic-core still blocked. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs in src/. Ruff clean. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `import h3_shim` OK. Both CLI entry points functional. |
+| 8. CI/CD | PASS | Tick #14 CI in-progress (board update); prior 5 runs all green. |
+| 9. DuckBrain sync | PASS | Tick #15 entry written to h3 namespace. |
+| 10. Code quality | PASS | Hilo: 116 edges, 18 files. Clean working tree (6 stale temp scripts cleaned). |
+| 11. Middle-out wiring | PASS | Both entry points verified via test suite. |
+
+**Self-heal:** Removed 6 stale temp scripts from `.coding-hermes/` (debug/query leftovers from prior ticks).
+
+**Scheduler:** CooldownS=1800 (⚠️ **8th reversion** — was 14400 at tick #8). Enabled=True. Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision. NOT re-fixing cooldown (8 reversions, far beyond escalation threshold).
+
+Counter: 15/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
