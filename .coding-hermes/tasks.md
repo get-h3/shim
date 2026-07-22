@@ -354,4 +354,26 @@ Counter: 7/7 idle ticks. Cooldown: 14400s (4h). **ESCALATED to Bane.**
 
 **Scheduler:** CooldownS=14400, Enabled=True — stable (no reversion). Escalation already delivered at tick #7 (04:37).
 
-Counter: 8/7+ idle ticks. Cooldown: 14400s (4h). **Escalation already sent at tick #7 — awaiting Bane action.**
+Counter: 9/7+ idle ticks. Cooldown: 7200s (3rd reversion). **Escalation already sent at tick #7 — awaiting Bane action.**
+
+---
+
+**Idle tick #9 (2026-07-21 tick 20:30 — audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| 1. Spec alignment | PASS | 13 spec files in umbrella `get-h3/h3/specs/`. 9 source files covering all protocol models. |
+| 2. Doc coverage | PASS | README, CONTRIBUTING, AGENTS, LICENSE all present. |
+| 3. Test gaps | PASS | 178/178 tests pass in 1.44s. All 9 source files tested. |
+| 4. Package upgrades | PASS | 6 outdated (aiohttp 3.14.2, botocore 1.43.53, filelock 3.32.0, pydantic-core 2.47.0, sse-starlette 3.4.6, yarl 1.24.5) — all transitive, zero in pyproject.toml. pydantic-core still blocked. pip-audit N/A. |
+| 5. Pitfall hunt | PASS | 0 TODOs/FIXMEs/HACKs. ruff clean. All `return None` in legit guard clauses. |
+| 6. Performance | N/A | CLI tool — no benchmarks applicable. |
+| 7. Endpoint verification | PASS | `hermes-h3 --help` + `h3-test --help` functional. `import h3_shim` OK. |
+| 8. CI/CD | PASS | 3/3 recent runs green (all success). |
+| 9. DuckBrain sync | PASS | 18 entries under `/project/shim/` in h3 namespace. Tick #9 written. |
+| 10. Code quality | PASS | 0 TODOs/FIXMEs. Hilo: 116 edges, 18 files. Clean working tree (no untracked). |
+| 11. Middle-out wiring | PASS | `import h3_shim` OK. Both CLI entry points in pyproject.toml verified. |
+
+**Scheduler:** CooldownS=7200 (3rd reversion — was 14400 at tick #8, daemon restarted again). Enabled=true. Escalation already sent at tick #7 (04:37).
+
+**⚠️ 3rd cooldown reversion:** Daemon restart reverted cooldown 14400s→7200s again. Not re-fixing — escalation already delivered, awaiting Bane decision.
