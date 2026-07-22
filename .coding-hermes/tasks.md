@@ -738,3 +738,19 @@ Counter: 23/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 **Scheduler:** CooldownS=1800 (⚠️ **11th reversion** — was 14400 at tick #8). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (11 reversions, far beyond escalation threshold).
 
 Counter: 24/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
+---
+
+**Idle tick #25 (2026-07-22 17:16 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 2.85s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes |
+| CI/CD | PASS | 3/3 recent runs green (all success) |
+| DuckBrain | ⚠️ | Not checked this tick (minimal audit, prior 28 entries stable) |
+
+**Scheduler:** CooldownS=1800 (⚠️ **11th reversion** — was 14400 at tick #8, reverted by daemon restarts). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (11 reversions, far beyond escalation threshold). Umbrella h3 repo has active development but no protocol changes affecting shim.
+
+Counter: 25/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
