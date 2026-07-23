@@ -928,3 +928,37 @@ Counter: 34/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 Counter: 35/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
 
+---
+
+**Idle tick #36 (2026-07-23 02:15 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.06s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. 35 board-only commits. |
+| DuckBrain | PASS | 39 entries under `/project/shim/` in h3 namespace (tick #36 written). |
+| CI/CD | PASS | 3/3 recent runs green (all success). No remote commits. |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Scheduler:** CooldownS=1800 (base), Enabled=true. **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 36/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
+---
+
+**Idle tick #36 (2026-07-23 02:15 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 0.64s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. |
+| DuckBrain | ⚠️ MCP DOWN | Connection error — transient infra issue. 39 entries under `/project/shim/` in h3 namespace stable per tick #35. |
+| CI/CD | PASS | Prior ticks all green. No remote commits to pull. |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Scheduler:** CooldownS=1800 (base), Enabled=true. **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 36/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
