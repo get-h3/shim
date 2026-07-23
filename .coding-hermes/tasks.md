@@ -864,4 +864,17 @@ Counter: 30/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 **Scheduler:** CooldownS=1800 (base), Enabled=true. **Escalation already sent at tick #7 (2026-07-21 04:37) — still awaiting Bane decision.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
 
-Counter: 31/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+|**Idle tick #32 (2026-07-22 23:52 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.71s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. Latest: tick #31 board update. |
+| DuckBrain | ⚠️ MCP DOWN | Connection error — transient infra issue. 35 entries under `/project/shim/` in h3 namespace stable. |
+| CI/CD | PASS | 5/5 recent runs green (all success, latest: tick #31 board update). No remote commits. |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Scheduler:** CooldownS=1800 (base), Enabled=true. DuckBrain recovered (36 entries). **Escalation already sent at tick #7 (2026-07-21 04:37) — still awaiting Bane decision.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 32/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
