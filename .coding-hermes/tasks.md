@@ -756,3 +756,19 @@ Counter: 24/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 **Scheduler:** CooldownS=1800 (⚠️ **12th reversion** — was 14400 at tick #8). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (12 reversions, far beyond escalation threshold). Cooldown reset on restart pattern confirmed — daemon fleet.toml overwrites PUT values.
 
 Counter: 25/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
+---
+
+**Idle tick #26 (2026-07-22 20:17 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.22s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes |
+| DuckBrain | PASS | 29 entries under `/project/shim/` in h3 namespace. Tick #26 written. |
+| CI/CD | N/A | Not checked (5/5 recent runs all green per prior tick) |
+
+**Scheduler:** CooldownS=1800 (⚠️ **13th reversion** — was 14400 at tick #8, reverted repeatedly by daemon restarts). Enabled=True. **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (13 reversions, far beyond escalation threshold).
+
+Counter: 26/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
