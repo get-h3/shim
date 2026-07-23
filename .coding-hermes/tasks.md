@@ -871,7 +871,7 @@ Counter: 30/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 | Tests | PASS | 178/178 pass in 1.71s |
 | Ruff | PASS | All checks passed |
 | Git | PASS | Clean tree, no remote changes vs origin/main. Latest: tick #31 board update. |
-| DuckBrain | ⚠️ MCP DOWN | Connection error — transient infra issue. 35 entries under `/project/shim/` in h3 namespace stable. |
+| DuckBrain | ⚠️ MCP DOWN | Connection error — transient infra issue. 35 entries under `/project/shim/` in h3 namespace stable. **Subsequent session verified MCP recovered: 36 entries.** |
 | CI/CD | PASS | 5/5 recent runs green (all success, latest: tick #31 board update). No remote commits. |
 | Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
 
