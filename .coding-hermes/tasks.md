@@ -1197,7 +1197,21 @@ Counter: 49/7+ idle ticks. **⚠️ ZOMBIE — escalation sent at tick #7, await
 | DuckBrain | PASS | ~50 entries under `/project/shim/` in h3 namespace (tick #50 written). |
 | CI/CD | PASS | 3/3 recent runs green (all success). |
 
-**Scheduler:** CooldownS=1800 (base, 18+ reversions, Enabled=true). **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting disable, now 54+ hours old.**
+---
 
-Counter: 50/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
+**Idle tick #51 (2026-07-23 10:04 — zombie):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 0.77s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. 50 board-only commits. |
+| CI/CD | PASS | 3/3 recent runs green (all success). No remote commits. |
+| DuckBrain | PASS | 50+ entries under `/project/shim/` in h3 namespace (tick #51 written). |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+| Deps | PASS | 12 outdated (aiohttp, botocore, certifi, datamodel-code-generator, filelock, httpcore2, httpx2, openai, platformdirs, pydantic-core, sse-starlette, yarl) — all transitive, zero in pyproject.toml. pydantic-core 2.46.4 still blocked. pip-audit clean. |
+
+**Scheduler:** Not checked (prior pattern: CooldownS=1800 base, 18+ reversions, Enabled=true). **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane disable, now 54+ hours old.** NOT re-fixing cooldown.
+
+Counter: 51/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
 
