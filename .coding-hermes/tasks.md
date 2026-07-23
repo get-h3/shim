@@ -383,6 +383,23 @@ Counter: 9/7+ idle ticks. Cooldown: 7200s (3rd reversion). **Escalation already 
 
 ---
 
+**Idle tick #64 (2026-07-23 18:08 — zombie, minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.06s |
+| Ruff | PASS | All checks passed. |
+| Git | PASS | Clean tree, no remote changes vs origin/main. |
+| CI/CD | PASS | 3/3 recent runs green. |
+| Deps | PASS | 6 outdated (all transitive). pydantic-core blocked. |
+| Hilo | PASS | 116 edges, 18 files. Stable. |
+
+**Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane disable, now 62+ hours.** NOT re-fixing cooldown. NOT running full audit. Project is complete.
+
+Counter: 64/7+ idle ticks. **⚠️ ZOMBIE — escalation pending 62h.**
+
+---
+
 **Idle tick #63 (2026-07-23 17:31 — minimal audit):**
 
 | Check | Status | Findings |
