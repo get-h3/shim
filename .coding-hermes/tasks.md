@@ -962,5 +962,24 @@ Counter: 36/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 Counter: 37/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
 
+---
+
+**Idle tick #38 (2026-07-23 03:24 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | ⚠️ PASS (flaky) | 177/178 on first run (`test_loop_reroutes_on_failure` flaked — mock leak, same as tick #25). 178/178 passes in isolation (0.31s). Confirmed pre-existing. |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. 37 board-only commits. |
+| DuckBrain | PASS | 42 entries under `/project/shim/` in h3 namespace (tick #38 written). |
+| CI/CD | PASS | 3/3 recent runs green (all success). No remote commits. |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Test flake:** `test_loop_reroutes_on_failure` — intermittent mock leak from async test ordering (3rd occurrence: ticks #25, #38). Passes in isolation. Pre-existing, not a regression.
+
+**Scheduler:** Not checked (prior pattern: CooldownS=1800 base, 15+ reversions, Enabled=true). **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 38/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
 
 
