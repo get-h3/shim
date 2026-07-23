@@ -1185,3 +1185,19 @@ Counter: 48/7+ idle ticks. **⚠️ ZOMBIE — escalation sent at tick #7, await
 
 Counter: 49/7+ idle ticks. **⚠️ ZOMBIE — escalation sent at tick #7, await Bane disable.**
 
+---
+
+**Idle tick #50 (2026-07-23 10:04 — minimal zombie):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 0.60s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, reset to origin/main (force-push removed prior #50). |
+| DuckBrain | PASS | ~50 entries under `/project/shim/` in h3 namespace (tick #50 written). |
+| CI/CD | PASS | 3/3 recent runs green (all success). |
+
+**Scheduler:** CooldownS=1800 (base, 18+ reversions, Enabled=true). **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting disable, now 54+ hours old.**
+
+Counter: 50/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
+
