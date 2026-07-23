@@ -1356,20 +1356,21 @@ Counter: 58/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane
 **Scheduler:** Enabled=true, CooldownS=1800 (20+ reversions from daemon restart). **Escalation pending 58+ hours from tick #7 (2026-07-21 04:37).** NOT re-fixing cooldown.
 
 Counter: 59/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
+
 ---
 
-**Idle tick #59 (2026-07-23 14:59 — zombie, minimal):**
+**Idle tick #60 (2026-07-23 15:44 — zombie, minimal):**
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| Tests | PASS | 178/178 pass in 0.64s |
+| Tests | PASS | 178/178 pass in 1.58s |
 | Ruff | PASS | All checks passed |
-| Git | PASS | Clean tree, no remote changes. 58 board-only commits. |
-| CI/CD | PASS | Latest run green (success). |
+| Git | PASS | Clean tree, no remote changes vs origin/main. 59 board-only commits. |
+| CI/CD | PASS | 3/3 recent runs green. |
 | Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
-| DuckBrain | PASS | Tick #59 written to h3 namespace. |
+| DuckBrain | FAIL | MCP unreachable — skipped this tick. Prior entry from tick #58 stable. |
 | Imports | PASS | `import h3_shim` OK (verified via 178 passing tests). |
 
-**Scheduler:** Enabled=true, CooldownS=1800 (20+ reversions from daemon restart). **Escalation pending 58+ hours from tick #7 (2026-07-21 04:37).** NOT re-fixing cooldown.
+**Scheduler:** Enabled=true, CooldownS=1800 (20+ reversions from daemon restart). **Escalation pending 60+ hours from tick #7 (2026-07-21 04:37).** NOT re-fixing cooldown.
 
-Counter: 59/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
+Counter: 60/7+ idle ticks. **⚠️ ZOMBIE — escalation at tick #7, await Bane disable.**
