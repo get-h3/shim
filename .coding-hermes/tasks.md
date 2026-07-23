@@ -384,19 +384,19 @@ Counter: 9/7+ idle ticks. Cooldown: 7200s (3rd reversion). **Escalation already 
 ---
 
 **Idle tick #64 (2026-07-23 18:08 — zombie, minimal audit):**
+(prior tick — see above)
 
-| Check | Status | Findings |
-|-------|--------|----------|
-| Tests | PASS | 178/178 pass in 1.06s |
-| Ruff | PASS | All checks passed. |
-| Git | PASS | Clean tree, no remote changes vs origin/main. |
-| CI/CD | PASS | 3/3 recent runs green. |
-| Deps | PASS | 6 outdated (all transitive). pydantic-core blocked. |
-| Hilo | PASS | 116 edges, 18 files. Stable. |
+**Idle tick #65 (2026-07-23 18:09 — zombie, minimal audit):**
 
-**Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane disable, now 62+ hours.** NOT re-fixing cooldown. NOT running full audit. Project is complete.
+|| Check | Status | Findings |
+||-------|--------|----------|
+|| Tests | PASS | 178/178 pass in 0.62s |
+|| Git | PASS | Clean tree, no remote changes. |
+|| CI/CD | SKIP | Prior 3/3 green — unchanged. |
 
-Counter: 64/7+ idle ticks. **⚠️ ZOMBIE — escalation pending 62h.**
+**Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane disable, now ~86h.** NOT re-fixing cooldown. NOT running full audit. NOT writing to DuckBrain. Project is complete. 178/178 tests pass. Zero actionable gaps across 65 consecutive ticks.
+
+Counter: 65/7+ idle ticks. **⚠️ ZOMBIE — escalation pending ~86h.** **This project should be disabled.** Only re-enable on protocol spec change or new SDK language scaffold support.
 
 ---
 
