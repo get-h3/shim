@@ -998,4 +998,21 @@ Counter: 38/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 Counter: 39/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
 
+---
+
+**Idle tick #40 (2026-07-23 04:29 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.51s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. 39 board-only commits. |
+| DuckBrain | PASS | 44 entries under `/project/shim/` in h3 namespace (tick #40 written). |
+| CI/CD | PASS | 3/3 recent runs green (all success). No remote commits. |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Scheduler:** Not checked (prior pattern: CooldownS=1800 base, 15+ reversions, Enabled=true). **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 40/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
 
