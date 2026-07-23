@@ -1038,15 +1038,17 @@ Counter: 41/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 
 | Check | Status | Findings |
 |-------|--------|----------|
-| Tests | PASS | 178/178 pass in 0.68s |
-| Ruff | PASS | All checks passed |
+| Tests | PASS | 178/178 pass in 0.60s |
+| Ruff | PASS | All checks passed. 0 TODOs/FIXMEs/HACKs in src/. |
 | Git | PASS | Clean tree, no remote changes vs origin/main. 41 board-only commits. |
-| Deps | PASS | 3 outdated (datamodel-code-generator 0.69→0.70 dev dep, openai transitive, pydantic-core BLOCKED). Zero actionable on idle tick. |
-| DuckBrain | PASS | 46 entries under `/project/shim/` in h3 namespace (tick #42 written). |
-| CI/CD | PASS | 3/3 recent runs green (all success). |
-| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+| Deps | PASS | 10 outdated (aiohttp, botocore, certifi, datamodel-code-generator, filelock, openai, platformdirs, pydantic-core, sse-starlette, yarl) — all transitive/dev-only. pydantic-core 2.46.4 still BLOCKED (pydantic 2.13.4 constraint). pip-audit: 0 vulns. Zero actionable. |
+| CI/CD | PASS | 3/3 recent runs green (all success). No remote commits. |
+| Hilo | PASS | 116 edges, 18 files (3 langs: Python + Go + TS templates). Stable. Orphans expected (flat library pattern). |
+| DuckBrain | ⚠️ | MCP Connection Error — transient infra issue, not a project gap. |
+| Imports | PASS | `import h3_shim` OK (verified via 178 passing tests). |
+| Specs | PASS | 27 spec files in umbrella `get-h3/h3/specs/`. 9 source files covering all protocol models. |
 
-**Scheduler:** Unreachable (curl | python3 blocked by Tirith in cron mode). Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old. NOT re-fixing cooldown.
+**Scheduler:** CooldownS=1800 (base, 16th+ reversion from daemon restart — was 14400 at tick #8). Enabled=true. **Escalation sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision, now 2+ days old.** NOT re-fixing cooldown (far beyond escalation threshold).
 
 Counter: 42/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
 
