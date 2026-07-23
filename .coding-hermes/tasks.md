@@ -848,3 +848,20 @@ Counter: 29/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decisi
 **Scheduler:** Not checked (prior pattern: CooldownS=1800, 15th+ reversion, Enabled=True). **Escalation already sent at tick #7 (2026-07-21 04:37) — awaiting Bane decision.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
 
 Counter: 30/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
+
+---
+
+**Idle tick #31 (2026-07-22 23:21 — minimal audit):**
+
+| Check | Status | Findings |
+|-------|--------|----------|
+| Tests | PASS | 178/178 pass in 1.32s |
+| Ruff | PASS | All checks passed |
+| Git | PASS | Clean tree, no remote changes vs origin/main. Latest: tick #30 board update. |
+| DuckBrain | PASS | 35 entries under `/project/shim/` in h3 namespace (tick #31 written). |
+| CI/CD | PASS | 5/5 recent runs green (all success, latest: tick #29 board update). |
+| Hilo | PASS | 116 edges, 18 files (3 langs). Stable. |
+
+**Scheduler:** CooldownS=1800 (base), Enabled=true. **Escalation already sent at tick #7 (2026-07-21 04:37) — still awaiting Bane decision.** NOT re-fixing cooldown (15+ reversions, far beyond escalation threshold).
+
+Counter: 31/7+ idle ticks. **Escalation sent at tick #7 — awaiting Bane decision.**
