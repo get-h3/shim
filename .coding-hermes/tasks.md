@@ -1,3 +1,28 @@
+<!--
+  ⚠️  BOARD FORMAT — coding-hermes-model-router v1.3 (2026-07-24)
+  All tasks MUST use matrix format: | ID | Task | Pri | Cpx | Deps | Tags | Model | Reasoning | Fallback |
+  Before editing this file, load the skill: skill_view(name='coding-hermes-model-router')
+  Validate: python3 ~/.hermes/scripts/validate-board-format.py .coding-hermes/tasks.md
+- [ ] **GITREINS-JUDGE — Configure LLM evaluator for commit quality review**
+  | 🔴 Critical | — | — | deepseek-v4-flash @ deepseek-foreman | GITREINS_LLM_API_KEY in ~/.hermes/.env | foreman-direct |
+
+  Run: `python3 ~/.hermes/scripts/check-gitreins-judge.py .` to verify.
+  Default limits (adjust per-project based on codebase size and task complexity):
+  - Fast/small projects: `max_iterations: 50`, `max_time: 10m`, tokens: `0.2M/0.4M`
+  - Large repos (Go monorepos, 100+ files): `max_iterations: 100`, `max_time: 30m`, tokens: `1M/2M`
+  - C++/Rust (slow compiles): `max_time: 30m` minimum
+  - Scheduler/production infra: `max_time: 30m`, tokens: `1M/2M`
+  Supervisor auto-flags projects where limits are too low for codebase size.
+
+| 🔴 Critical | — | — | deepseek-v4-flash @ deepseek-foreman | GITREINS_LLM_API_KEY in ~/.hermes/.env | foreman-direct |
+
+  Run: `python3 ~/.hermes/scripts/check-gitreins-judge.py .` to verify.
+  If missing, create/edit .gitreins/config.yaml with evaluator section using deepseek-v4-flash.
+  This is CRITICAL for code quality — no automated review of worker output without it.
+
+  NEVER remove the matrix header row or NEVER-DONE / E2E-001 fixtures.
+-->
+
 # H3 Shim — Model Router Task Matrix
 
 **Core purpose:** Hermes H3 plugin — bridges Hermes agent loop to external AI harnesses via the H3 protocol. Python, 151 unit tests, 43/43 test battery passes. CLI: `hermes h3` (8 subcommands).
@@ -14,7 +39,6 @@
 | P4-02 | `hermes h3 scaffold --lang go/python/ts` — template gen | 🔴 Open | 4 | P4-01 | ++cli, ++code-generation | GLM-5.2 | Template generator | DeepSeek V4 Pro |
 | P4-03 | `hermes h3 verify` — post-install verification | 🔴 Open | 2 | P4-01 | ++cli, +testing | DeepSeek V4 Flash | Verification CLI | Step 3.7 Flash |
 | P4-05 | Hermes update pre-flight hook (S11 §3) | 🔴 Open | 3 | — | ++cli, +integration | DeepSeek V4 Pro | Upgrade survival hook | GLM-5.2 |
-| QV-SHIM-01 | h3-test 43/43 against live Go harness | 🔴 Open | 3 | Live harness | +++testing, ++python | Step 3.7 Flash | Live shim verification | DeepSeek V4 Pro |
 | QV-SHIM-02 | Test report JSON matches TestReport schema | 🔴 Open | 2 | QV-SHIM-01 | ++testing, +format | DeepSeek V4 Flash | Report validation | Step 3.7 Flash |
 | QV-SHIM-03 | Shim handles harness timeout gracefully | 🔴 Open | 3 | — | +++resilience, +testing | DeepSeek V4 Pro | Timeout handling | GLM-5.2 |
 | QV-SHIM-04 | Health check detects dead harness, falls back to native | 🔴 Open | 3 | — | +++resilience, ++integration | DeepSeek V4 Pro | Health + fallback | GLM-5.2 |
@@ -50,5 +74,7 @@
 | P3-01..09 | Test battery: runner, 6 regions (43 tests), CLI, CI | High | 4 | 0b02c55, 94e82cd | DeepSeek V4 Pro |
 | P5-05 | Sync-protocol + PyPI publish pipeline | Medium | 2 | 372b32b | DeepSeek V4 Pro |
 | DOC-04 | Missing CONTRIBUTING.md added | Low | 1 | — | DeepSeek V4 Flash |
+| QV-SHIM-01 | h3-test 43/43 against live Go harness | High | 3 | — | GitReins verdict: PASS (2026-07-19) |
+| QV-CROSS-01 | Scaffold-to-test developer flow | High | 2 | — | GitReins verdict: PASS (2026-07-19) |
 
-> Tick #74: Project zombie. All core tasks complete. 178/178 tests pass. 17 open tasks remain (QV/RES/OBS/PERF/DEPS — all low-priority or blocked). Cooldown at 43200s (12h). 74 consecutive idle ticks. **Escalation to Bane re-filed.**
+> Tick #75: Board staleness corrected — QV-SHIM-01 and QV-CROSS-01 were complete in GitReins since 2026-07-19 but board showed Open. SECURITY.md + CHANGELOG.md created. 11-point audit: 10/11 PASS (1 recurring: P3-10 blocked on PYPI_API_TOKEN). 178/178 tests pass. Idle ticks reset to 1. Cooldown: 900s.
