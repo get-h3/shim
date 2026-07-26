@@ -592,6 +592,50 @@ class TestVerifyCommand:
         assert "version:  1.2.3" in result.output
         assert "foo" in result.output
 
+    def test_verify_with_endpoint_and_fallback_healthy(
+        self, runner, monkeypatch
+    ):
+        """Healthy harness + --fallback flag → shows STANDBY fallback info."""
+        from h3_shim.protocol import HealthResponse, HealthStatus
+
+        fake_client = MagicMock()
+        instance = MagicMock()
+        instance.health = AsyncMock(
+            return_value=HealthResponse(
+                status=HealthStatus.OK, version="1.2.3", capabilities=["foo"],
+            ),
+        )
+        instance.close = AsyncMock()
+        fake_client.return_value = instance
+        monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
+
+        result = runner.invoke(
+            hermes_h3,
+            ["verify", "--endpoint", "http://x:1", "--fallback"],
+        )
+        assert result.exit_code == 0
+        assert "status:   HealthStatus.OK" in result.output
+        assert "Fallback path" in result.output
+        assert "STANDBY" in result.output
+        assert "harness: <override>" in result.output
+
+    def test_verify_with_endpoint_and_fallback_unreachable(
+        self, runner, monkeypatch
+    ):
+        """Unreachable harness + --fallback flag → shows ENGAGED fallback."""
+        fake_client = MagicMock(side_effect=ConnectionError("connection refused"))
+        monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
+
+        result = runner.invoke(
+            hermes_h3,
+            ["verify", "--endpoint", "http://x:1", "--fallback"],
+        )
+        assert result.exit_code == 0
+        assert "UNREACHABLE" in result.output
+        assert "Fallback path" in result.output
+        assert "ENGAGED" in result.output
+        assert "connection refused" in result.output
+
 
 # ── legacy main() ──────────────────────────────────────────────────────────
 

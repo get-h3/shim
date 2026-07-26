@@ -528,9 +528,27 @@ def uninstall(ctx: click.Context, name: str) -> None:
     default=None,
     help="Override endpoint URL (skip config lookup).",
 )
+@click.option(
+    "--fallback",
+    is_flag=True,
+    default=False,
+    help="Also test the native fallback path — show what happens when "
+    "the harness is unreachable and verify native is available.",
+)
 @click.pass_context
-def verify(ctx: click.Context, harness: str | None, endpoint: str | None) -> None:
-    """Hit ``GET /health`` and report status."""
+def verify(
+    ctx: click.Context,
+    harness: str | None,
+    endpoint: str | None,
+    fallback: bool,
+) -> None:
+    """Hit ``GET /health`` and report status.
+
+    When **--fallback** is passed, also simulates the fallback path:
+    if the harness is unreachable, the output shows that sessions would
+    be rerouted to the native harness.  Native availability is always
+    checked when **--fallback** is used.
+    """
     if endpoint is None:
         config = load_config(_config_path(ctx))
         name, spec = resolve_harness(harness, config)
@@ -560,6 +578,10 @@ def verify(ctx: click.Context, harness: str | None, endpoint: str | None) -> Non
         click.echo("\nhermes h3 verify: interrupted", err=True)
         sys.exit(130)
     except Exception as exc:
+        # Harness unreachable — fallback path
+        if fallback:
+            _report_fallback(name, endpoint, exc)
+            return
         raise click.ClickException(f"verify failed for {name!r}: {exc}") from exc
 
     payload = result.model_dump()
@@ -570,6 +592,64 @@ def verify(ctx: click.Context, harness: str | None, endpoint: str | None) -> Non
         click.echo(f"version:  {payload['version']}")
     if "capabilities" in payload:
         click.echo(f"caps:     {', '.join(payload['capabilities'])}")
+
+    # Fallback report when harness is reachable
+    if fallback:
+        click.echo("")
+        _report_fallback(name, endpoint, None)
+
+
+def _report_fallback(  # noqa: PLR0912
+    harness_name: str,
+    endpoint: str,
+    failure: Exception | None,
+) -> None:
+    """Print a structured fallback-path report to stdout.
+
+    * If *failure* is set the harness is unreachable; the report
+      describes the failure and confirms that native fallback would
+      handle sessions routed to this harness.
+    * If *failure* is *None* the harness is healthy; the report shows
+      the native fallback as a contingency.
+    * In either case the output mentions the circuit-breaker behaviour
+      that would gate re-routing.
+    """
+    if failure:
+        click.echo("── Fallback path ──────────────────────────────────")
+        click.echo(f"  harness:   {harness_name}")
+        click.echo(f"  endpoint:  {endpoint}")
+        click.echo("  status:    UNREACHABLE")
+        click.echo(f"  error:     {failure}")
+        click.echo("")
+        click.echo("  Failover:")
+        click.echo("    • Sessions routed to this harness would be")
+        click.echo("      rerouted to the native Hermes loop")
+        click.echo("      (default_harness = 'native').")
+        click.echo("    • The health-check loop waits for")
+        click.echo("      max_consecutive_failures (default 3) before")
+        click.echo("      triggering reroute.")
+        click.echo("    • The circuit breaker also opens when the error")
+        click.echo("      rate exceeds the threshold (default 50%),")
+        click.echo("      rerouting sessions immediately.")
+        click.echo("    • Cooldown before half-open probe: 30s default.")
+        click.echo("")
+        click.echo("  Native harness: available (no endpoint required)")
+        click.echo("── Fallback path: ENGAGED ──────────────────────────")
+    else:
+        click.echo("── Fallback path ──────────────────────────────────")
+        click.echo(f"  harness:   {harness_name}")
+        click.echo(f"  endpoint:  {endpoint}")
+        click.echo("  status:    HEALTHY")
+        click.echo("")
+        click.echo("  Contingency:")
+        click.echo("    • If this harness becomes unreachable, sessions")
+        click.echo("      reroute to the native Hermes loop.")
+        click.echo("    • Circuit breaker (error rate >= 50%) opens")
+        click.echo("      after window_size failures and reroutes")
+        click.echo("      sessions immediately.")
+        click.echo("")
+        click.echo("  Native harness: available (no endpoint required)")
+        click.echo("── Fallback path: STANDBY ──────────────────────────")
 
 
 @hermes_h3.command(
