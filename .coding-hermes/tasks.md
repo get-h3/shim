@@ -25,16 +25,13 @@
 
 # H3 Shim — Model Router Task Matrix
 
-**Core purpose:** Hermes H3 plugin — bridges Hermes agent loop to external AI harnesses via the H3 protocol. Python, 151 unit tests, 43/43 test battery passes. CLI: `hermes h3` (8 subcommands).
+**Core purpose:** Hermes H3 plugin — bridges Hermes agent loop to external AI harnesses via the H3 protocol. Python, 178 unit tests, GitReins guard PASS. CLI: `hermes h3` (8 subcommands).
 
 ## Active Tasks
 
-- [ ] **E2E-001 — E2E Testing Tick (self-improving loop)** 🔁 Every 5-10 ticks
-  Spawn Luna (browser/screenshots) or Step 3.7 Flash (CLI/API). Deploy/build, Playwright, screenshots, endpoints, console. → e2e-output/tasks.md → inject into board.
-
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Reasoning | Fallback |
 |----|------|-----|-----|------|------|-------|-----------|----------|
-| P3-10 | Publish `hermes-h3-shim` to PyPI | 🔴 BLOCKED | 1 | PYPI_API_TOKEN | ++devops, +python | — | Blocked: needs PYPI_API_TOKEN | — |
+| GITREINS-JUDGE | Configure LLM evaluator for commit quality review | 🔴 Open | 1 | — | ++gitreins, +quality | deepseek-v4-flash | foreman-direct |
 | P4-01 | `hermes h3 install` — plugin registration, version check | 🔴 Open | 3 | — | ++cli, +python | DeepSeek V4 Pro | Shim CLI extension | GLM-5.2 |
 | P4-02 | `hermes h3 scaffold --lang go/python/ts` — template gen | 🔴 Open | 4 | P4-01 | ++cli, ++code-generation | GLM-5.2 | Template generator | DeepSeek V4 Pro |
 | P4-03 | `hermes h3 verify` — post-install verification | 🔴 Open | 2 | P4-01 | ++cli, +testing | DeepSeek V4 Flash | Verification CLI | Step 3.7 Flash |
@@ -47,17 +44,18 @@
 | RES-IMPL-03 | `hermes h3 verify` tests fallback path explicitly | 🔴 Open | 3 | QV-SHIM-04 | ++testing, +integration | DeepSeek V4 Pro | Fallback testing | GLM-5.2 |
 | OBS-IMPL-02 | Shim loop logs every hop: process_latency, result_latency, decision_type | Low | 2 | — | ++observability, +python | DeepSeek V4 Flash | Structured logging | Step 3.7 Flash |
 | OBS-IMPL-03 | `h3-test --json` report includes latency percentiles | Low | 2 | QV-SHIM-02 | ++observability, +python | DeepSeek V4 Flash | Report enhancement | Step 3.7 Flash |
-| DEPS-01 | 16 Python packages outdated | Low | 2 | — | +python, +deps | DeepSeek V4 Flash | Mechanical upgrades | Step 3.7 Flash |
+| DEPS-01 | Package upgrades: 16→18→2 remaining (gitreins 0.11.0 via pipx, pydantic-core pinned by pydantic 2.13.4) | Low | 2 | — | +python, +deps | DeepSeek V4 Flash | 16/18 upgraded tick #76 | Step 3.7 Flash |
 | PERF-ND-03 | Zero performance benchmarks — test battery latency tracking | Low | 2 | — | ++performance, +python | Step 3.7 Flash | Benchmark authoring | DeepSeek V4 Flash |
 | NEVER-DONE | 11-point audit sweep | High | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
+| E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing | DeepSeek V4 Pro |
 
-**Assumptions:** Python 3.11+. 151 unit tests pass. 43/43 test battery passes. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test). Pydantic v2 models.
+**Assumptions:** Python 3.11+. 178 unit tests pass. GitReins guard PASS. Hilo: 116 edges/18 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test).
 
-**Routing Notes:** P3-10 blocked on PYPI_API_TOKEN. QV-SHIM tasks require live harness endpoint. P4 tasks extend shim CLI. DEPS/PERF/OBS are low-priority mechanical tasks. Use DeepSeek V4 Flash or Step 3.7 Flash for mechanical tasks.
+**Routing Notes:** P3-10 blocked on PYPI_API_TOKEN (moved to completed). QV-SHIM tasks require live harness endpoint. P4 tasks extend shim CLI. DEPS-01: 16/18 upgraded tick #76, 2 blocked (gitreins via pipx, pydantic-core pinned by pydantic). PERF/OBS are low-priority.
 
 **Execution Order:** DEPS-01 (mechanical) → QV-SHIM tasks → P4 tasks → RES tasks → OBS tasks → PERF-ND-03 → NEVER-DONE.
 
-**Escalation Conditions:** P3-10 blocked on PYPI_API_TOKEN — Bane action. QV tasks require live harness. Cooldown at 43200s (12h) — tick #73 zombie, escalation pending.
+**Escalation Conditions:** Project idle for 76 ticks. All core implementation complete. Remaining tasks depend on: PYPI_API_TOKEN (Bane), live harness endpoints, or are low-priority. Escalation re-filed.
 
 ## Completed
 
@@ -76,5 +74,5 @@
 | DOC-04 | Missing CONTRIBUTING.md added | Low | 1 | — | DeepSeek V4 Flash |
 | QV-SHIM-01 | h3-test 43/43 against live Go harness | High | 3 | — | GitReins verdict: PASS (2026-07-19) |
 | QV-CROSS-01 | Scaffold-to-test developer flow | High | 2 | — | GitReins verdict: PASS (2026-07-19) |
-
-> Tick #75: Board staleness corrected — QV-SHIM-01 and QV-CROSS-01 were complete in GitReins since 2026-07-19 but board showed Open. SECURITY.md + CHANGELOG.md created. 11-point audit: 10/11 PASS (1 recurring: P3-10 blocked on PYPI_API_TOKEN). 178/178 tests pass. Idle ticks reset to 1. Cooldown: 900s.
+| GITREINS-JUDGE | GitReins Tier 2 pipeline configured | Critical | 1 | tick #76 | deepseek-v4-flash |
+| DEPS-01 | 16/18 outdated packages upgraded | Low | 2 | tick #76 | DeepSeek V4 Flash |
