@@ -25,7 +25,7 @@
 
 # H3 Shim — Model Router Task Matrix
 
-**Core purpose:** Hermes H3 plugin — bridges Hermes agent loop to external AI harnesses via the H3 protocol. Python, 178 unit tests, GitReins guard PASS. CLI: `hermes h3` (8 subcommands).
+**Core purpose:** Hermes H3 plugin — bridges Hermes agent loop to external AI harnesses via the H3 protocol. Python, 225 unit tests, GitReins guard PASS. CLI: `hermes h3` (8 subcommands).
 
 ## Active Tasks
 
@@ -46,16 +46,16 @@
 | OBS-IMPL-03 | `h3-test --json` report includes latency percentiles | Low | 2 | QV-SHIM-02 | ++observability, +python | DeepSeek V4 Flash | Report enhancement | Step 3.7 Flash |
 | DEPS-01 | Package upgrades: 17/18 done (gitreins 0.11.0 ✅ tick #77, pydantic-core 2.47.0 blocked by pydantic 2.13.4 constraint) | Low | 2 | — | +python, +deps | DeepSeek V4 Flash | 17/18 upgraded tick #77 — gitreins 0.10.2→0.11.0 via pipx+venv ✅ | Step 3.7 Flash |
 | PERF-ND-03 | Zero performance benchmarks — test battery latency tracking | Low | 2 | — | ++performance, +python | Step 3.7 Flash | Benchmark authoring | DeepSeek V4 Flash |
-| NEVER-DONE | 11-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | 11/11 PASS tick #79 — clean repo, 223/223 tests, GitReins PASS, Hilo 117e/19f, coverage 50% | GLM-5.2 |
+| NEVER-DONE | 11-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | 11/11 PASS tick #79 — clean repo, 225/225 tests, GitReins PASS, Hilo 128e/21f, coverage 75% | GLM-5.2 |
 | E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing | DeepSeek V4 Pro |
 
-**Assumptions:** Python 3.11+. 223 unit tests pass. GitReins guard PASS. Hilo: 117 edges/19 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test) + pre-update-check. QV-SHIM-02/03/04 Done. RES-IMPL-01 Done (health fallback). RES-IMPL-02 Done (circuit breaker + 35 tests). P4-01/02/03/05 Done. DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core).
+**Assumptions:** Python 3.11+. 225 unit tests pass. GitReins guard PASS. Hilo: 128 edges/21 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test) + pre-update-check. QV-SHIM-02/03/04 Done. RES-IMPL-01/02/03 Done. P4-01/02/03/05 Done. DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core).
 
-**Routing Notes:** QV-SHIM-03/04 Done tick #78-79 (health fallback verified). P4 tasks Done tick #79 (all CLI commands implemented). RES-IMPL-01 Done tick #79 (health fallback tracked). RES-IMPL-02 Done tick #79 (circuit breaker + 35 tests). RES-IMPL-03 next open task. DEPS-01: 17/18 upgraded tick #77 (gitreins 0.11.0 ✅), pydantic-core blocked. PERF/OBS are low-priority. E2E-001 due ~tick #85 (every 5-10 ticks).
+**Routing Notes:** QV-SHIM-03/04 Done tick #78-79 (health fallback verified). P4 tasks Done tick #79 (all CLI commands implemented). RES-IMPL-01/02/03 Done tick #79-80. DEPS-01: 17/18 upgraded tick #77 (gitreins 0.11.0 ✅), pydantic-core blocked. PERF/OBS are low-priority. E2E-001 due ~tick #85 (every 5-10 ticks). No open tasks — maintenance mode.
 
 **Execution Order:** PROGRESS: QV-SHIM-04 → RES-IMPL-01 → P4 tasks all Done tick #79 → RES-IMPL-02 Done tick #79. REMAINING: RES-IMPL-03 → OBS tasks → PERF-ND-03 → NEVER-DONE.
 
-**Escalation Conditions:** Core implementation complete. Tick #76: scaffold __pycache__ regression fix. Remaining tasks: PYPI_API_TOKEN (Bane), live harness endpoints, or low-priority maintenance. Cooldown: 900s.
+**Escalation Conditions:** Core implementation complete. All RES-IMPL tasks Done tick #80. Remaining tasks: PYPI_API_TOKEN (Bane), low-priority maintenance (OBS-IMPL-02/03, PERF-ND-03), or blocked deps (pydantic-core). Cooldown: 900s.
 
 ## Completed
 
