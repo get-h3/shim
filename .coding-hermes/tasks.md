@@ -79,3 +79,4 @@
 | QV-SHIM-04 | Health check detects dead harness, falls back to native | 🟢 Done | 3 | 4e085b4 | DeepSeek V4 Pro |
 | RES-IMPL-01 | 3 consecutive failures → auto-fallback to native | 🟢 Done | 4 | 4e085b4 | DeepSeek V4 Pro |
 | RES-IMPL-02 | Circuit breaker + 35 tests (sliding window, cooldown, half-open probe) | 🟢 Done | 3 | tick #79 | DeepSeek V4 Pro |
+| RES-IMPL-03 | `hermes h3 verify` --fallback tests fallback path explicitly | 🟢 Done | 3 | tick #80 | DeepSeek V4 Pro |
