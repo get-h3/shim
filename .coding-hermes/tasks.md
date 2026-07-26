@@ -37,7 +37,7 @@
 | P4-03 | `hermes h3 verify` — post-install verification | 🔴 Open | 2 | P4-01 | ++cli, +testing | DeepSeek V4 Flash | Verification CLI | Step 3.7 Flash |
 | P4-05 | Hermes update pre-flight hook (S11 §3) | 🔴 Open | 3 | — | ++cli, +integration | DeepSeek V4 Pro | Upgrade survival hook | GLM-5.2 |
 | QV-SHIM-02 | Test report JSON matches TestReport schema | 🟢 Done | 2 | QV-SHIM-01 | ++testing, +format | DeepSeek V4 Flash | Report validation — 4 tests PASS tick #77; validates against real schema at protocol/schemas/v1/test-report.json | Step 3.7 Flash |
-| QV-SHIM-03 | Shim handles harness timeout gracefully | 🔴 Open | 3 | — | +++resilience, +testing | DeepSeek V4 Pro | Timeout handling | GLM-5.2 |
+| QV-SHIM-03 | Shim handles harness timeout gracefully | 🟢 Done | 3 | — | +++resilience, +testing | DeepSeek V4 Pro | Timeout handling tick #78 — 7 timeout unit tests PASS, max_iterations/max_polls/poll_timeout in shim_loop.py, test_4_7 wait_timeout in test_battery | GLM-5.2 |
 | QV-SHIM-04 | Health check detects dead harness, falls back to native | 🔴 Open | 3 | — | +++resilience, ++integration | DeepSeek V4 Pro | Health + fallback | GLM-5.2 |
 | RES-IMPL-01 | 3 consecutive harness failures → auto-fallback to native | 🔴 Open | 4 | — | +++resilience, ++concurrency | DeepSeek V4 Pro | Resilience circuit breaker | GLM-5.2 |
 | RES-IMPL-02 | Circuit breaker: error rate tracking, open at 50% failures | 🔴 Open | 3 | RES-IMPL-01 | ++resilience, +concurrency | DeepSeek V4 Pro | Circuit breaker | GLM-5.2 |
@@ -49,9 +49,9 @@
 | NEVER-DONE | 11-point audit sweep | High | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | Audit runs every tick | GLM-5.2 |
 | E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing | DeepSeek V4 Pro |
 
-**Assumptions:** Python 3.11+. 178 unit tests pass. GitReins guard PASS. Hilo: 117 edges/19 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test). QV-SHIM-02 verified: validate_test_report passes against real schema at protocol/schemas/v1/test-report.json. DEPS-01: 17/18 upgraded, 1 blocked.
+**Assumptions:** Python 3.11+. 178 unit tests pass. GitReins guard PASS. Hilo: 117 edges/19 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test). QV-SHIM-02/03 done. QV-SHIM-04 needs live harness endpoint. DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core).
 
-**Routing Notes:** P3-10 blocked on PYPI_API_TOKEN (moved to completed). QV-SHIM-02 done tick #77. QV-SHIM-03/04 need live harness endpoint. P4 tasks extend shim CLI. DEPS-01: 17/18 upgraded tick #77 (gitreins 0.11.0 ✅), pydantic-core blocked. PERF/OBS are low-priority. E2E-001 due ~tick #80 (every 5-10 ticks).
+**Routing Notes:** QV-SHIM-03 Done tick #78 (timeout handling verified). P3-10 blocked on PYPI_API_TOKEN (moved to completed). QV-SHIM-04 needs live harness endpoint + health-check logic. P4 tasks extend shim CLI. DEPS-01: 17/18 upgraded tick #77 (gitreins 0.11.0 ✅), pydantic-core blocked. PERF/OBS are low-priority. E2E-001 due ~tick #80 (every 5-10 ticks).
 
 **Execution Order:** DEPS-01 (mechanical) → QV-SHIM tasks → P4 tasks → RES tasks → OBS tasks → PERF-ND-03 → NEVER-DONE.
 
