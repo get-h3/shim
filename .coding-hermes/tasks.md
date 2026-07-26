@@ -55,7 +55,7 @@
 
 **Execution Order:** DEPS-01 (mechanical) → QV-SHIM tasks → P4 tasks → RES tasks → OBS tasks → PERF-ND-03 → NEVER-DONE.
 
-**Escalation Conditions:** Project idle for 76 ticks. All core implementation complete. Remaining tasks depend on: PYPI_API_TOKEN (Bane), live harness endpoints, or are low-priority. Escalation re-filed.
+**Escalation Conditions:** Core implementation complete. Tick #76: scaffold __pycache__ regression fix. Remaining tasks: PYPI_API_TOKEN (Bane), live harness endpoints, or low-priority maintenance. Cooldown: 900s.
 
 ## Completed
 
@@ -75,4 +75,4 @@
 | QV-SHIM-01 | h3-test 43/43 against live Go harness | High | 3 | — | GitReins verdict: PASS (2026-07-19) |
 | QV-CROSS-01 | Scaffold-to-test developer flow | High | 2 | — | GitReins verdict: PASS (2026-07-19) |
 | GITREINS-JUDGE | GitReins Tier 2 pipeline configured | Critical | 1 | tick #76 | deepseek-v4-flash |
-| DEPS-01 | 16/18 outdated packages upgraded | Low | 2 | tick #76 | DeepSeek V4 Flash |
+|| --- | **Tick #76 — Scaffold template __pycache__ regression fix** | Medium | 1 | de5e8bf | Foreman-direct (debug) |
