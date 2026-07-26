@@ -3,6 +3,7 @@ guards:
   lint: true
   tests: true
   test_mode: diff
+  test_command: .venv/bin/python -m pytest -x --tb=short -q
 
 pipeline:
   stages:
