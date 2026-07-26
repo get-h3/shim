@@ -164,6 +164,9 @@ def _copy_template_tree(
     for src in sorted(src_dir.rglob("*")):
         if src.is_dir():
             continue
+        # Skip __pycache__ and compiled bytecode files.
+        if "__pycache__" in src.parts or src.suffix == ".pyc":
+            continue
         rel = src.relative_to(src_dir)
         dest = dest_dir / rel
         _render_template_file(src, dest, substitutions)
