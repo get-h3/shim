@@ -9,13 +9,12 @@ shortened sleep so cancellation behavior can be verified.
 """
 
 import asyncio
-import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from h3_shim.client import H3Client
-from h3_shim.loader import CLOSED, HALF_OPEN, OPEN, CircuitBreaker, H3Loader
+from h3_shim.loader import CircuitBreaker, H3Loader
 from h3_shim.protocol import HealthResponse, HealthStatus
 
 # ── helpers ─────────────────────────────────────────────────────────────────
