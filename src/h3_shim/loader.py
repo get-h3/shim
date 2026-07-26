@@ -7,11 +7,151 @@ when harnesses are unreachable or no route matches.
 
 import asyncio
 import logging
+import time
+from collections import deque
 
 from h3_shim.client import H3Client
 from h3_shim.protocol import HealthStatus
 
 logger = logging.getLogger(__name__)
+
+# ── Circuit Breaker ────────────────────────────────────────────────────
+
+# Circuit breaker states
+CLOSED = "CLOSED"
+OPEN = "OPEN"
+HALF_OPEN = "HALF_OPEN"
+
+
+class CircuitBreaker:
+    """Sliding-window circuit breaker with cooldown and half-open probing.
+
+    Tracks the last *window_size* outcomes (success / failure) in a
+    sliding window.  When the error rate reaches *error_threshold*
+    (default 0.5) the circuit opens and all requests are blocked until
+    *cooldown_seconds* (default 30) have elapsed.  Once the cooldown
+    expires the breaker moves to half-open and allows exactly one probe
+    request.  A successful probe closes the circuit; a failed probe
+    re-opens it immediately.
+
+    Parameters
+    ----------
+    window_size:
+        Number of recent outcomes to track (default 20).
+    error_threshold:
+        Fraction of failures that triggers OPEN (default 0.5).
+    cooldown_seconds:
+        Seconds to wait before allowing a half-open probe (default 30).
+    """
+
+    def __init__(
+        self,
+        window_size: int = 20,
+        error_threshold: float = 0.5,
+        cooldown_seconds: float = 30.0,
+    ) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be >= 1")
+        if not 0 < error_threshold <= 1:
+            raise ValueError("error_threshold must be in (0, 1]")
+        if cooldown_seconds < 0:
+            raise ValueError("cooldown_seconds must be >= 0")
+
+        self._window_size = window_size
+        self._error_threshold = error_threshold
+        self._cooldown_seconds = cooldown_seconds
+
+        self._outcomes: deque[bool] = deque(maxlen=window_size)
+        self._state: str = CLOSED
+        self._opened_at: float | None = None
+        self._half_open_probe_sent: bool = False
+
+    # ── public API ──────────────────────────────────────────────────
+
+    @property
+    def state(self) -> str:
+        """Current breaker state: ``CLOSED``, ``OPEN``, or ``HALF_OPEN``."""
+        return self._state
+
+    @property
+    def failure_count(self) -> int:
+        """Number of failures in the current window."""
+        return sum(1 for ok in self._outcomes if not ok)
+
+    @property
+    def error_rate(self) -> float:
+        """Current error rate (failures / window_size)."""
+        if len(self._outcomes) == 0:
+            return 0.0
+        return self.failure_count / len(self._outcomes)
+
+    def allow_request(self) -> bool:
+        """Return ``True`` if a request should be allowed.
+
+        * CLOSED → always allowed.
+        * OPEN → allowed only when the cooldown has expired (moves to
+          HALF_OPEN).
+        * HALF_OPEN → allowed only when no probe has been sent yet.
+        """
+        self._recalc_state()
+        if self._state == CLOSED:
+            return True
+        if self._state == OPEN:
+            return False
+        # HALF_OPEN — allow exactly one probe
+        if self._half_open_probe_sent:
+            return False
+        self._half_open_probe_sent = True
+        return True
+
+    def record_outcome(self, success: bool) -> None:
+        """Record a request outcome and recalculate state.
+
+        Parameters
+        ----------
+        success:
+            ``True`` for a successful request, ``False`` for a failure.
+        """
+        self._outcomes.append(success)
+
+        if self._state == HALF_OPEN:
+            if success:
+                # Probe succeeded — close the circuit
+                self._state = CLOSED
+                self._outcomes.clear()
+                self._opened_at = None
+                self._half_open_probe_sent = False
+            else:
+                # Probe failed — re-open immediately
+                self._state = OPEN
+                self._opened_at = time.monotonic()
+                self._half_open_probe_sent = False
+            return
+
+        self._recalc_state()
+
+    # ── internal ────────────────────────────────────────────────────
+
+    def _recalc_state(self) -> None:
+        """Re-evaluate and transition state based on window + cooldown."""
+        if self._state == CLOSED:
+            if (len(self._outcomes) == self._window_size
+                    and self.error_rate >= self._error_threshold):
+                self._state = OPEN
+                self._opened_at = time.monotonic()
+                self._half_open_probe_sent = False
+            return
+
+        if self._state == OPEN:
+            if self._opened_at is None:
+                return
+            elapsed = time.monotonic() - self._opened_at
+            if elapsed >= self._cooldown_seconds:
+                self._state = HALF_OPEN
+                self._half_open_probe_sent = False
+            return
+
+        # HALF_OPEN — no automatic transition; record_outcome handles it
 
 
 class H3Loader:
@@ -41,12 +181,18 @@ class H3Loader:
         self.default_harness = config.get("default_harness", "native")
         self.max_consecutive_failures = config.get("max_consecutive_failures", 3)
 
+        # Circuit breaker config
+        self._cb_window = config.get("circuit_breaker_window", 20)
+        self._cb_cooldown = config.get("circuit_breaker_cooldown", 30.0)
+        self._cb_threshold = config.get("circuit_breaker_threshold", 0.5)
+
         # ------------------------------------------------------------------
         # Harness state
         # ------------------------------------------------------------------
         self.harnesses: dict[str, H3Client] = {}
         self._harness_healthy: dict[str, bool] = {}  # name → healthy?
         self._consecutive_failures: dict[str, int] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
         # ------------------------------------------------------------------
         # Session routing
@@ -94,6 +240,11 @@ class H3Loader:
                 protocol_version=protocol_version,
             )
             self._harness_healthy[name] = False
+            self._circuit_breakers[name] = CircuitBreaker(
+                window_size=self._cb_window,
+                error_threshold=self._cb_threshold,
+                cooldown_seconds=self._cb_cooldown,
+            )
 
     # ── session routing ─────────────────────────────────────────────────
 
@@ -149,11 +300,26 @@ class H3Loader:
         * On success the harness is marked healthy and its failure count resets.
         * Once failures reach :attr:`max_consecutive_failures`, sessions routed
           to the failed harness are moved to :attr:`default_harness`.
+        * The circuit breaker records every outcome.  When the circuit opens
+          (error rate exceeds threshold) sessions are rerouted immediately
+          without waiting for consecutive failures.
+        * When the circuit is OPEN the health check is skipped for that
+          harness until the cooldown expires (half-open probe).
         * The loop runs until cancelled.
         """
         try:
             while True:
                 for name, client in self.harnesses.items():
+                    cb = self._circuit_breakers.get(name)
+                    # Skip health check when circuit is OPEN (saves resources)
+                    if cb is not None and cb.state == OPEN:
+                        logger.warning(
+                            "Harness %s: circuit OPEN — skipping health check",
+                            name,
+                        )
+                        self._harness_healthy[name] = False
+                        self._reroute_sessions(name)
+                        continue
                     try:
                         health = await client.health()
                         self._consecutive_failures[name] = 0
@@ -163,12 +329,16 @@ class H3Loader:
                         )
                         if self._harness_healthy[name]:
                             logger.debug("Harness %s: healthy", name)
+                            if cb is not None:
+                                cb.record_outcome(True)
                         elif was_healthy:
                             logger.warning(
                                 "Harness %s: degraded — %s",
                                 name,
                                 health.degraded_reason or "unknown",
                             )
+                            if cb is not None:
+                                cb.record_outcome(False)
                     except Exception:
                         failure_count = self._consecutive_failures.get(name, 0) + 1
                         self._consecutive_failures[name] = failure_count
@@ -176,6 +346,8 @@ class H3Loader:
                             "Harness %s: health check failed", name,
                             exc_info=True,
                         )
+                        if cb is not None:
+                            cb.record_outcome(False)
                         if failure_count >= self.max_consecutive_failures:
                             self._harness_healthy[name] = False
                             logger.warning(
@@ -183,6 +355,16 @@ class H3Loader:
                                 "consecutive failures",
                                 name,
                                 failure_count,
+                            )
+                            self._reroute_sessions(name)
+                        # Circuit breaker open — reroute immediately
+                        elif cb is not None and cb.state == OPEN:
+                            self._harness_healthy[name] = False
+                            logger.warning(
+                                "Harness %s: circuit breaker OPEN at error "
+                                "rate %.0f%% — rerouting sessions",
+                                name,
+                                cb.error_rate * 100,
                             )
                             self._reroute_sessions(name)
 

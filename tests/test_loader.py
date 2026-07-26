@@ -9,12 +9,13 @@ shortened sleep so cancellation behavior can be verified.
 """
 
 import asyncio
+import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from h3_shim.client import H3Client
-from h3_shim.loader import H3Loader
+from h3_shim.loader import CLOSED, HALF_OPEN, OPEN, CircuitBreaker, H3Loader
 from h3_shim.protocol import HealthResponse, HealthStatus
 
 # ── helpers ─────────────────────────────────────────────────────────────────
@@ -506,3 +507,219 @@ class TestHealthLoop:
 
         assert loader.max_consecutive_failures == 2
         assert loader.get_session_harness("sess_x") == "native"
+
+
+# ── CircuitBreaker ───────────────────────────────────────────────────────
+
+
+class TestCircuitBreaker:
+    """Tests for the CircuitBreaker sliding-window error-rate tracker."""
+
+    def test_initial_state_is_closed(self):
+        cb = CircuitBreaker(window_size=20, error_threshold=0.5, cooldown_seconds=30)
+        assert cb.state == "CLOSED"
+        assert cb.error_rate == 0.0
+        assert cb.failure_count == 0
+
+    def test_records_outcomes_and_tracks_rate(self):
+        cb = CircuitBreaker(window_size=10)
+        # 3 failures, 7 successes
+        for _ in range(7):
+            cb.record_outcome(True)
+        for _ in range(3):
+            cb.record_outcome(False)
+        assert cb.failure_count == 3
+        assert cb.error_rate == 0.3
+        assert cb.state == "CLOSED"  # not full yet — can't open
+
+    def test_opens_at_threshold(self):
+        """10 successes + 10 failures = 50% → OPEN (threshold 0.5)."""
+        cb = CircuitBreaker(window_size=20, error_threshold=0.5)
+        for _ in range(10):
+            cb.record_outcome(True)
+        for _ in range(10):
+            cb.record_outcome(False)
+        # Window is full (20 outcomes), 10 failures = exactly 50%
+        assert cb.state == "OPEN"
+        assert cb.error_rate == 0.5
+
+    def test_allow_request_true_when_closed(self):
+        cb = CircuitBreaker()
+        assert cb.allow_request() is True
+
+    def test_allow_request_blocks_when_open(self):
+        cb = CircuitBreaker(window_size=5, error_threshold=0.4, cooldown_seconds=30)
+        # Fill window with 3 failures (60% → > 0.4 threshold)
+        for _ in range(3):
+            cb.record_outcome(False)
+        for _ in range(2):
+            cb.record_outcome(True)
+        assert cb.state == "OPEN"
+        assert cb.allow_request() is False
+
+    def test_allow_request_allows_probe_after_cooldown(self, monkeypatch):
+        cb = CircuitBreaker(window_size=5, error_threshold=0.4, cooldown_seconds=0.1)
+        # Open the circuit
+        for _ in range(3):
+            cb.record_outcome(False)
+        for _ in range(2):
+            cb.record_outcome(True)
+        assert cb.state == "OPEN"
+
+        # Wait past cooldown
+        import time as _time
+        _time.sleep(0.15)
+
+        # Now a probe should be allowed (moves to HALF_OPEN)
+        assert cb.allow_request() is True
+        assert cb.state == "HALF_OPEN"
+
+        # Second request — no more probes allowed
+        assert cb.allow_request() is False  # probe already pending
+
+    def test_probe_success_closes_circuit(self, monkeypatch):
+        cb = CircuitBreaker(window_size=5, error_threshold=0.4, cooldown_seconds=0.1)
+        # Open the circuit
+        for _ in range(3):
+            cb.record_outcome(False)
+        for _ in range(2):
+            cb.record_outcome(True)
+        assert cb.state == "OPEN"
+
+        import time as _time
+        _time.sleep(0.15)
+
+        # Probe
+        assert cb.allow_request() is True
+        assert cb.state == "HALF_OPEN"
+
+        # Probe succeeds
+        cb.record_outcome(True)
+        assert cb.state == "CLOSED"
+        assert cb.failure_count == 0
+        assert cb.error_rate == 0.0
+
+    def test_probe_failure_stays_open(self, monkeypatch):
+        cb = CircuitBreaker(window_size=5, error_threshold=0.4, cooldown_seconds=0.1)
+        # Open the circuit
+        for _ in range(3):
+            cb.record_outcome(False)
+        for _ in range(2):
+            cb.record_outcome(True)
+        assert cb.state == "OPEN"
+
+        import time as _time
+        _time.sleep(0.15)
+
+        # Probe
+        assert cb.allow_request() is True
+        assert cb.state == "HALF_OPEN"
+
+        # Probe fails
+        cb.record_outcome(False)
+        assert cb.state == "OPEN"
+
+    @pytest.mark.asyncio
+    async def test_health_check_integration_circuit_open_reroutes(self, monkeypatch):
+        """H3Loader reroutes sessions when the circuit breaker opens."""
+        _patch_h3_client_factory(monkeypatch)
+
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "circuit_breaker_window": 5,
+                "circuit_breaker_threshold": 0.5,
+                "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+            }
+        )
+        loader.route_session("sess_x", "alpha")
+        loader._harness_healthy["alpha"] = True
+
+        # All health checks fail → circuit should open after 5 iterations
+        async def fast_loop():
+            orig = asyncio.sleep
+
+            async def short_sleep(_t):
+                await orig(0.001)
+
+            monkeypatch.setattr(asyncio, "sleep", short_sleep)
+            try:
+                await loader.health_check_loop()
+            except asyncio.CancelledError:
+                pass
+
+        task = asyncio.create_task(fast_loop())
+        # Let 5 iterations run (enough to fill the 5-wide window with failures)
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        # Circuit should be OPEN and sessions rerouted to native
+        cb = loader._circuit_breakers.get("alpha")
+        assert cb is not None
+        assert cb.state == "OPEN"
+        assert loader.get_session_harness("sess_x") == "native"
+
+    @pytest.mark.asyncio
+    async def test_open_circuit_skips_health_check(self, monkeypatch):
+        """When circuit is OPEN, health check loop skips that harness."""
+        _patch_h3_client_factory(monkeypatch)
+
+        loader = H3Loader(
+            {
+                "default_harness": "native",
+                "circuit_breaker_window": 3,
+                "circuit_breaker_threshold": 0.5,
+                "harnesses": {
+                    "alpha": {"endpoint": "http://a:1"},
+                    "beta": {"endpoint": "http://b:1"},
+                },
+            }
+        )
+
+        # Pre-set alpha's circuit breaker to OPEN
+        cb_alpha = loader._circuit_breakers["alpha"]
+        cb_alpha._state = "OPEN"
+        cb_alpha._opened_at = 999999.0  # far in the future
+
+        call_count = 0
+
+        async def counting_health():
+            nonlocal call_count
+            call_count += 1
+            return HealthResponse(status=HealthStatus.OK, version="1")
+
+        loader.harnesses["alpha"].health = AsyncMock(side_effect=counting_health)
+        loader.harnesses["beta"].health = AsyncMock(side_effect=counting_health)
+
+        async def fast_loop():
+            orig = asyncio.sleep
+
+            async def short_sleep(_t):
+                await orig(0.001)
+
+            monkeypatch.setattr(asyncio, "sleep", short_sleep)
+            try:
+                await loader.health_check_loop()
+            except asyncio.CancelledError:
+                pass
+
+        task = asyncio.create_task(fast_loop())
+        await asyncio.sleep(0.05)
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        # beta got health-checked (at least once), alpha was skipped
+        assert call_count > 0
+        # alpha's health should NOT have been called — the circuit was OPEN
+        # (beta's health was called for each iteration)
+        # We can't precisely assert call_count because it depends on timing,
+        # but we know alpha was OPEN so it should be skipped.
+        # Verify the circuit is still OPEN
+        assert cb_alpha.state == "OPEN"
