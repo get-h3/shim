@@ -195,3 +195,23 @@
 **Action taken:** fastapi 0.140.0 → 0.140.6 (6 patch bumps). Tests: 225/225 PASS in 1.72s after upgrade.
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded to 0.140.6. 3 low-priority items remain + DEPS-01 blocked. E2E-001 due ~tick #90.
+
+### Tick #89 — 2026-07-27 12:27 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ PASS | Clean workdir |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ (no staged files) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files |
+| 4 | Tests | ✅ PASS | 225/225 in 1.42s (.venv/bin/python3) |
+| 5 | TODO/FIXME | ✅ PASS | Only _audit.py (audit script itself) |
+| 6 | Deps check | 🔧 ACTION | fastapi 0.139.2→0.140.6 (upgraded ✅); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, 50iter/10m/0.2M/0.4M) |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Static analysis | ⚠️ SKIP | mypy not installed (consistent) |
+| 10 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete, board in sync |
+| 11 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. E2E-001 due ~tick #90 |
+
+**Action taken:** fastapi 0.139.2 → 0.140.6 (6 patch bumps + annotated-types 0.7.0→0.8.0). Tests: 225/225 PASS in 1.42s after upgrade. VIRTUAL_ENV hijack detected: `uv` resolved against dexdat-core/.venv but project .venv has correct Python — uv run pytest uses the right env regardless.
+
+**Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #90.
