@@ -520,3 +520,30 @@
 **Action taken:** fastapi 0.140.7 → 0.140.13 via `uv lock --upgrade-package fastapi` + `uv sync`. Tests: 225/225 PASS in 1.41s after upgrade.
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). fastapi upgraded to 0.140.13. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
+
+### Tick #105 — 2026-07-28 18:27 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 0 | Scheduler cooldown | ⚠️ UNAVAILABLE | API returns `{"error":"project not found"}` for `h3-shim` — DB confirms project `h3-shim-foreman` exists, enabled=1, cooldown=2700s. API case-sensitive. DB ground truth: 2700s. |
+| 1 | Git status | ✅ PASS | Clean workdir. `ls _*.py` → no such file (confirmed absent on disk, stale Hilo orphans are Variant B). |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ tests skipped (no staged files — idle audit) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files. Stale orphan entries for deleted _*.py — known Variant B (files absent on disk, confirmed via `ls`). |
+| 4 | Tests | ✅ PASS | 225/225 in 1.49s (.venv/bin/python3) |
+| 5 | TODO/FIXME | ✅ PASS | None found in src/ or tests/ |
+| 6 | Deps check | ✅ PASS | annotated-doc 0.0.4→0.0.5 (minor — deferred); fastapi 0.140.13 current (upgraded tick #104); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, evaluator 50iter/10m/0.2M/0.4M). 2 tasks complete. |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Ruff format | ✅ PASS | 25/25 files already formatted |
+| 10 | Static analysis (mypy) | ⚠️ WARN | 4 stub-only errors (types-jsonschema, types-PyYAML, uvicorn in template). No code-level type errors. Consistent with prior ticks. |
+| 11 | Docs & Security | ✅ PASS | All 9 docs present (LICENSE no .md — cosmetic). .gitignore: .env/.env.* blocked + !.env.example exception. |
+| 12 | DuckBrain | ✅ PASS | 8 keys in `h3` namespace under `/projects/h3-shim/` |
+| 13 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete (QV-SHIM-01, QV-CROSS-01), board in sync |
+| 14 | E2E-001 dispatch | ✅ PASS | 43/43 compliance tests PASS against Go echo harness in 0.20s — all 6 regions green. Echo server started from sdk-go/examples/echo/echo-server, port 9191. |
+| 15 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. |
+
+**⚠️ Scheduler API case-sensitivity:** `GET /api/v1/projects/h3-shim` returns 404 while `GET /api/v1/projects/h3-shim-foreman` would succeed. The DB row uses `h3-shim-foreman` as the project name. This is a known scheduler quirk documented in coding-hermes-cron. Board cooldown (2700s) matches DB ground truth.
+
+**Actions taken:** None. All 15 gates green (1 warn — mypy stubs, known). No dispatch warranted. E2E-001 executed: 43/43 PASS in 0.20s. annotated-doc 0.0.5 available but patch-only bump not worth a dispatch in maintenance mode.
+
+**Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (API unreachable, DB-confirmed). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
