@@ -215,3 +215,65 @@
 **Action taken:** fastapi 0.139.2 → 0.140.6 (6 patch bumps + annotated-types 0.7.0→0.8.0). Tests: 225/225 PASS in 1.42s after upgrade. VIRTUAL_ENV hijack detected: `uv` resolved against dexdat-core/.venv but project .venv has correct Python — uv run pytest uses the right env regardless.
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #90.
+
+### Tick #90 — 2026-07-27 13:14 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ PASS | Clean workdir |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ (no staged files) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files |
+| 4 | Tests | ✅ PASS | 225/225 in 1.38s (.venv/bin/python3, post-fastapi-upgrade) |
+| 5 | TODO/FIXME | ✅ PASS | Only _audit.py (audit script itself) |
+| 6 | Deps check | 🔧 ACTION | fastapi 0.140.0→0.140.7 (upgraded ✅); pydantic-core 2.47.0 still blocked by pip resolution conflict despite dry-run showing compatible — pydantic 2.13.4 constraint in effect (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, 50iter/10m/0.2M/0.4M) |
+| 8 | Ruff lint | ✅ PASS | All checks passed (uv run ruff) |
+| 9 | Static analysis | ⚠️ SKIP | mypy not installed (consistent) |
+| 10 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete, board in sync |
+| 11 | E2E-001 dispatch | ✅ PASS | 43/43 compliance tests PASS against Go echo harness in 0.20s — all 6 regions green |
+
+**Action taken:** fastapi 0.140.0 → 0.140.7. Tests: 225/225 PASS after upgrade. E2E-001 executed: 43/43 passed. pydantic-core 2.47.0 pip resolution conflict reconfirmed (dry-run false positive — actual install fails).
+
+**Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded to 0.140.7. E2E-001: 43/43 PASS. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #95.
+
+### Tick #91 — 2026-07-27 14:04 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ PASS | Only tasks.md modified (foreman write — expected) |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ (no staged files) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files |
+| 4 | Tests | ✅ PASS | 225/225 in 1.39s (.venv/bin/python3, post-fastapi-upgrade) |
+| 5 | TODO/FIXME | ✅ PASS | None found |
+| 6 | Deps check | 🔧 ACTION | fastapi 0.140.0→0.140.7 (upgraded ✅); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, 50iter/10m/0.2M/0.4M) |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Static analysis | ⚠️ SKIP | mypy not installed (consistent) |
+| 10 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete (QV-SHIM-01, QV-CROSS-01), board in sync |
+| 11 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. E2E-001 due ~tick #95 |
+
+**Action taken:** fastapi 0.140.0 → 0.140.7 (tick #90 upgrade didn't persist — re-applied). Tests: 225/225 PASS after upgrade. pydantic-core 2.47.0 blocked by pydantic 2.13.4 (pip resolve conflict — known DEPS-01).
+
+**Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi re-upgraded to 0.140.7. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #95.
+
+### Tick #92 — 2026-07-27 20:56 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 1 | Git status | ✅ PASS | Only tasks.md modified (foreman write — expected) |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ (no staged files) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files |
+| 4 | Tests | ✅ PASS | 225/225 in 1.50s (.venv/bin/python3) |
+| 5 | TODO/FIXME | ✅ PASS | Only _audit.py (audit script itself) |
+| 6 | Deps check | 🔧 ACTION | fastapi 0.140.0→0.140.7 (upgraded via `uv lock --upgrade-package fastapi` — root cause: uv.lock pin, pip upgrades lost on uv sync); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, 50iter/10m/0.2M/0.4M) |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Static analysis | ✅ PASS | mypy: 10 source files, no issues found (was SKIP in prior ticks — now available via uv) |
+| 10 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete, board in sync |
+| 11 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. E2E-001 due ~tick #95 |
+
+**Action taken:** fastapi 0.140.0 → 0.140.7 via `uv lock --upgrade-package fastapi` + `uv sync`. Root cause discovery: uv.lock pins fastapi=0.140.0; uv.lock is gitignored but `uv sync` reverts pip-installed upgrades. Previous ticks #88-#91 repeatedly "upgraded" fastapi only to have it revert next tick. Fixed properly with uv lock update — will persist for this workdir. Tests: 225/225 PASS in 1.40s after upgrade.
+
+**⚠️ Gate 9 change:** mypy now PASSES (was SKIP in ticks #83-#91). `uv run mypy` resolves and runs mypy against the project .venv — 10 source files, no issues found.
+
+**Verdict:** IDLE — All gates green (11/11). Project in maintenance mode. Scheduler cooldown: 2700s. fastapi properly upgraded to 0.140.7 (uv lock method — will persist). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #95.
