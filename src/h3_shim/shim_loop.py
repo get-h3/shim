@@ -192,9 +192,7 @@ class H3ShimLoop:
                 success=False,
             )
         except Exception as e:
-            logger.error(
-                "H3ShimLoop: dispatch failed (%s)", kind, exc_info=True
-            )
+            logger.error("H3ShimLoop: dispatch failed (%s)", kind, exc_info=True)
             return ExecutionResult(
                 type="error",
                 data={"error": str(e), "phase": f"dispatch:{kind}"},
@@ -325,12 +323,9 @@ class H3ShimLoop:
                                 body = resp.json()
                             except ValueError:
                                 body = {}
-                            if (
-                                isinstance(body, dict)
-                                and (
-                                    body.get("status") == "complete"
-                                    or body.get("finished") is True
-                                )
+                            if isinstance(body, dict) and (
+                                body.get("status") == "complete"
+                                or body.get("finished") is True
                             ):
                                 logger.info(
                                     "WAIT: poll endpoint %s reported complete "
@@ -356,12 +351,12 @@ class H3ShimLoop:
                             f"poll endpoint did not complete within "
                             f"{self.max_polls} polls"
                         )
-                        logger.warning(
-                            "WAIT: %s (%s)", error, wait.poll_endpoint
-                        )
+                        logger.warning("WAIT: %s (%s)", error, wait.poll_endpoint)
             except httpx.RequestError as e:
                 logger.error(
-                    "WAIT: polling %s failed: %s", wait.poll_endpoint, e,
+                    "WAIT: polling %s failed: %s",
+                    wait.poll_endpoint,
+                    e,
                     exc_info=True,
                 )
                 success = False

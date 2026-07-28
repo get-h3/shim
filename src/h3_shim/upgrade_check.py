@@ -34,9 +34,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 CURRENT_CONFIG_SCHEMA = 1  # Current H3 config _schema version
-VERSIONS_YAML_PATH = (
-    Path(__file__).resolve().parents[3] / "protocol" / "versions.yaml"
-)
+VERSIONS_YAML_PATH = Path(__file__).resolve().parents[3] / "protocol" / "versions.yaml"
 
 
 # ---------------------------------------------------------------------------

@@ -156,9 +156,7 @@ def test_find_compat_entry_not_found(sample_versions_yaml: Path) -> None:
 
 
 def test_blocks_on_unknown_version(sample_versions_yaml: Path) -> None:
-    result = pre_update_check(
-        "0.99.0", versions_yaml_path=sample_versions_yaml
-    )
+    result = pre_update_check("0.99.0", versions_yaml_path=sample_versions_yaml)
     assert result.severity == "BLOCK"
     assert result.blocked
     assert not result.ok
@@ -167,23 +165,17 @@ def test_blocks_on_unknown_version(sample_versions_yaml: Path) -> None:
 
 def test_blocks_on_shim_too_old(sample_versions_yaml: Path) -> None:
     """Current shim is 0.1.0 — older than min_h3: 1.0.0."""
-    result = pre_update_check(
-        "0.18.0", versions_yaml_path=sample_versions_yaml
-    )
+    result = pre_update_check("0.18.0", versions_yaml_path=sample_versions_yaml)
     assert result.severity == "BLOCK"
     assert "too old" in result.message.lower()
 
 
 @patch("h3_shim.upgrade_check.h3_shim_version", "1.2.0")
-def test_ok_when_compatible(
-    sample_versions_yaml: Path, sample_config: Path
-) -> None:
+def test_ok_when_compatible(sample_versions_yaml: Path, sample_config: Path) -> None:
     """Mock shim at 1.2.0 — compatible with Hermes 0.18.0 (min 1.0.0)."""
     with patch(
         "h3_shim.upgrade_check._load_config",
-        return_value={
-            "_schema": 1, "harnesses": {}, "sessions": {}
-        },
+        return_value={"_schema": 1, "harnesses": {}, "sessions": {}},
     ):
         result = pre_update_check(
             "0.18.0",
@@ -220,14 +212,10 @@ def test_warn_on_unreachable_harness(
 ) -> None:
     """Harness health check fails → WARN."""
     mock_client = MagicMock()
-    mock_client.health = AsyncMock(
-        side_effect=ConnectionError("refused")
-    )
+    mock_client.health = AsyncMock(side_effect=ConnectionError("refused"))
     mock_client.close = AsyncMock()
 
-    with patch(
-        "h3_shim.upgrade_check.H3Client", return_value=mock_client
-    ):
+    with patch("h3_shim.upgrade_check.H3Client", return_value=mock_client):
         result = pre_update_check(
             "0.18.0",
             versions_yaml_path=sample_versions_yaml,
@@ -236,9 +224,7 @@ def test_warn_on_unreachable_harness(
     # With an unreachable harness we get at least a WARN
     assert result.severity in ("WARN", "OK")
     # The harness check should report the connection error
-    harness_checks = [
-        c for c in result.checks if c["check"].startswith("harness:")
-    ]
+    harness_checks = [c for c in result.checks if c["check"].startswith("harness:")]
     if harness_checks:
         assert harness_checks[0]["severity"] == "WARN"
 

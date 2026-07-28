@@ -183,7 +183,8 @@ class TestRun:
         client.process.return_value = _decision(DecisionType.TOOL_CALL)
         # After the tool executes, the harness returns END.
         client.result.return_value = _decision(
-            DecisionType.END, decision_id="d_002",
+            DecisionType.END,
+            decision_id="d_002",
             end=End(reason=EndReason.TASK_COMPLETE, summary="done"),
         )
         loop = _make_loop(client=client)
@@ -203,7 +204,8 @@ class TestRun:
         client.result.side_effect = [
             _decision(DecisionType.LLM_CALL, decision_id="d_002"),
             _decision(
-                DecisionType.END, decision_id="d_003",
+                DecisionType.END,
+                decision_id="d_003",
                 end=End(reason=EndReason.USER_REQUESTED, summary="bye"),
             ),
         ]
@@ -263,14 +265,18 @@ class TestRun:
     async def test_run_passes_session_message_identity_context(self):
         client = _mock_client()
         end = _decision(
-            DecisionType.END, end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
+            DecisionType.END,
+            end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
         )
         client.process.return_value = end
         msg = _msg()
         ctx = _ctx()
         ident = Identity(platform="telegram", chat_id="-100")
         loop = H3ShimLoop(
-            client=client, session_id="s_x", context=ctx, identity=ident,
+            client=client,
+            session_id="s_x",
+            context=ctx,
+            identity=ident,
         )
         await loop.run(msg)
         # process(session_id, message, identity, context)
@@ -284,11 +290,13 @@ class TestRun:
     async def test_run_result_includes_decision_id(self):
         client = _mock_client()
         client.process.return_value = _decision(
-            DecisionType.TOOL_CALL, decision_id="d_xyz",
+            DecisionType.TOOL_CALL,
+            decision_id="d_xyz",
             tool_call=ToolCall(name="my_tool", params={"x": 1}),
         )
         client.result.return_value = _decision(
-            DecisionType.END, decision_id="d_end",
+            DecisionType.END,
+            decision_id="d_end",
             end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
         )
         loop = _make_loop(client=client)
@@ -478,9 +486,7 @@ class TestExecuteWait:
     @pytest.mark.asyncio
     async def test_polling_endpoint_completes(self, monkeypatch):
         loop = _make_loop()
-        mock_client = self._mock_http_client(
-            responses=[(200, {"status": "complete"})]
-        )
+        mock_client = self._mock_http_client(responses=[(200, {"status": "complete"})])
         monkeypatch.setattr(
             "h3_shim.shim_loop.httpx.AsyncClient",
             lambda *a, **kw: mock_client,
@@ -524,9 +530,7 @@ class TestExecuteWait:
         loop = _make_loop()
         loop.max_polls = 5
         loop.poll_interval = 0
-        mock_client = self._mock_http_client(
-            responses=[(200, {"status": "pending"})]
-        )
+        mock_client = self._mock_http_client(responses=[(200, {"status": "pending"})])
         monkeypatch.setattr(
             "h3_shim.shim_loop.httpx.AsyncClient",
             lambda *a, **kw: mock_client,
@@ -569,9 +573,7 @@ class TestExecuteWait:
             slept.append(t)
 
         monkeypatch.setattr(asyncio, "sleep", fake_sleep)
-        mock_client = self._mock_http_client(
-            responses=[(200, {"status": "complete"})]
-        )
+        mock_client = self._mock_http_client(responses=[(200, {"status": "complete"})])
         monkeypatch.setattr(
             "h3_shim.shim_loop.httpx.AsyncClient",
             lambda *a, **kw: mock_client,

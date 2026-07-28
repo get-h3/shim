@@ -42,11 +42,11 @@ logger = logging.getLogger(__name__)
 class TestResult:
     """Outcome of a single compliance test."""
 
-    name: str           # e.g., "health_ok"
+    name: str  # e.g., "health_ok"
     passed: bool
-    detail: str         # e.g., "Expected 200, got 200"
+    detail: str  # e.g., "Expected 200, got 200"
     duration_ms: float
-    category: str       # e.g., "Health & Protocol"
+    category: str  # e.g., "Health & Protocol"
 
 
 @dataclass
@@ -156,8 +156,7 @@ class H3TestBattery:
         return {
             "session_id": self._sid(label),
             "message": {"role": "user", "content": content},
-            "identity": identity
-            or {"platform": "test", "chat_id": "test-chat"},
+            "identity": identity or {"platform": "test", "chat_id": "test-chat"},
             "context": ctx,
         }
 
@@ -415,16 +414,13 @@ class H3TestBattery:
             if resp.status_code != 200:
                 return done(
                     False,
-                    f"Expected 200, got {resp.status_code}; "
-                    f"body={resp.text[:200]}",
+                    f"Expected 200, got {resp.status_code}; body={resp.text[:200]}",
                 )
             data = resp.json()
             if not isinstance(data, dict):
                 return done(False, f"Response is not a dict: {type(data).__name__}")
             if "decision" not in data or "decision_id" not in data:
-                return done(
-                    False, f"Missing decision fields: {list(data.keys())}"
-                )
+                return done(False, f"Missing decision fields: {list(data.keys())}")
             return done(True, f"decision={data['decision']!r}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
@@ -456,7 +452,12 @@ class H3TestBattery:
         done = self._timed("process_decision_has_type", cat)
         body = self._process_body("decision_type")
         valid = {
-            "tool_call", "llm_call", "text", "wait", "delegate", "end",
+            "tool_call",
+            "llm_call",
+            "text",
+            "wait",
+            "delegate",
+            "end",
         }
         try:
             resp, err = await self._safe_call(
@@ -504,8 +505,7 @@ class H3TestBattery:
             if text.get("finished") is not False:
                 return done(
                     False,
-                    f"Expected finished=false, got "
-                    f"{text.get('finished')!r}",
+                    f"Expected finished=false, got {text.get('finished')!r}",
                 )
             return done(True, "text.finished=false")
         except Exception as exc:  # noqa: BLE001
@@ -595,12 +595,8 @@ class H3TestBattery:
                 "identity": {"platform": "test", "chat_id": "test-chat"},
                 "context": self._blank_context(),
             }
-            r1, e1 = await self._safe_call(
-                self.client.post("/v1/process", json=body_a)
-            )
-            r2, e2 = await self._safe_call(
-                self.client.post("/v1/process", json=body_b)
-            )
+            r1, e1 = await self._safe_call(self.client.post("/v1/process", json=body_a))
+            r2, e2 = await self._safe_call(self.client.post("/v1/process", json=body_b))
             if e1 is not None or e2 is not None or r1 is None or r2 is None:
                 return done(False, f"Exception: {e1} / {e2}")
             if r1.status_code != 200 or r2.status_code != 200:
@@ -903,8 +899,12 @@ class H3TestBattery:
         cat = CATEGORIES["decisions"]
         done = self._timed("decision_end", cat)
         valid = {
-            "task_complete", "user_requested", "error",
-            "timeout", "rate_limited", "cancelled",
+            "task_complete",
+            "user_requested",
+            "error",
+            "timeout",
+            "rate_limited",
+            "cancelled",
         }
         sid = self._sid("end")
         try:
@@ -932,9 +932,7 @@ class H3TestBattery:
                     end_seen = True
                     reason = (data.get("end") or {}).get("reason")
                     if reason not in valid:
-                        return done(
-                            False, f"Invalid end reason: {reason!r}"
-                        )
+                        return done(False, f"Invalid end reason: {reason!r}")
                     break
                 # Drive the loop forward with a blank 'text' result.
                 did = data.get("decision_id")
@@ -998,9 +996,7 @@ class H3TestBattery:
             "identity": {"platform": "test", "chat_id": "test-chat"},
             "context": ctx,
         }
-        resp, err = await self._safe_call(
-            self.client.post("/v1/process", json=body)
-        )
+        resp, err = await self._safe_call(self.client.post("/v1/process", json=body))
         if err is not None or resp is None:
             return None, None
         if resp.status_code != 200:
@@ -1019,9 +1015,7 @@ class H3TestBattery:
             "decision_id": decision_id,
             "result": result,
         }
-        resp, err = await self._safe_call(
-            self.client.post("/v1/result", json=body)
-        )
+        resp, err = await self._safe_call(self.client.post("/v1/result", json=body))
         if err is not None or resp is None:
             return None
         return resp
@@ -1144,9 +1138,7 @@ class H3TestBattery:
         """``delegate_result`` is accepted."""
         cat = CATEGORIES["results"]
         done = self._timed("result_delegate_result", cat)
-        sid, decision = await self._send_decision(
-            "r_delegate", content="delegate task"
-        )
+        sid, decision = await self._send_decision("r_delegate", content="delegate task")
         if sid is None or decision is None:
             return done(False, "Failed to set up decision")
         try:
@@ -1190,9 +1182,7 @@ class H3TestBattery:
                     False,
                     f"Server crashed on error result: status={resp.status_code}",
                 )
-            return done(
-                True, f"error handled gracefully, status={resp.status_code}"
-            )
+            return done(True, f"error handled gracefully, status={resp.status_code}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 
@@ -1257,12 +1247,8 @@ class H3TestBattery:
             if 400 <= resp.status_code < 500:
                 return done(True, f"Status {resp.status_code} (rejected)")
             if resp.status_code >= 500:
-                return done(
-                    False, f"Server crashed: status={resp.status_code}"
-                )
-            return done(
-                False, f"Expected 4xx, got {resp.status_code}"
-            )
+                return done(False, f"Server crashed: status={resp.status_code}")
+            return done(False, f"Expected 4xx, got {resp.status_code}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 
@@ -1315,9 +1301,7 @@ class H3TestBattery:
                 return done(True, "400 (rejected as expected)")
             if 200 <= resp.status_code < 400:
                 return done(True, f"Gracefully handled ({resp.status_code})")
-            return done(
-                False, f"Unexpected status {resp.status_code}"
-            )
+            return done(False, f"Unexpected status {resp.status_code}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 
@@ -1381,9 +1365,7 @@ class H3TestBattery:
         """With no tools available, no tool_call decision is returned."""
         cat = CATEGORIES["errors"]
         done = self._timed("no_tools_available", cat)
-        body = self._process_body(
-            "no_tools", content="use any tool you want", tools=[]
-        )
+        body = self._process_body("no_tools", content="use any tool you want", tools=[])
         try:
             resp, err = await self._safe_call(
                 self.client.post("/v1/process", json=body)
@@ -1465,9 +1447,7 @@ class H3TestBattery:
                 return done(True, "405 (endpoint absent)")
             if 400 <= resp.status_code < 500:
                 return done(True, f"{resp.status_code}")
-            return done(
-                False, f"Expected 404, got {resp.status_code}"
-            )
+            return done(False, f"Expected 404, got {resp.status_code}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 
@@ -1489,16 +1469,13 @@ class H3TestBattery:
         cat = CATEGORIES["stress"]
         done = self._timed("concurrent_sessions", cat)
         try:
+
             async def one(idx: int):
                 body = self._process_body(f"conc_{idx}", content=f"hi {idx}")
                 resp, err = await self._safe_call(
                     self.client.post("/v1/process", json=body)
                 )
-                return (
-                    resp is not None
-                    and err is None
-                    and resp.status_code == 200
-                )
+                return resp is not None and err is None and resp.status_code == 200
 
             results = await asyncio.gather(*(one(i) for i in range(10)))
             ok = sum(1 for r in results if r)
@@ -1646,13 +1623,10 @@ class H3TestBattery:
             late = sum(sizes[-10:]) / 10
             ratio = late / max(early, 1.0)
             if ratio > 100.0:
-                return done(
-                    False, f"Response grew {ratio:.1f}× over 100 turns"
-                )
+                return done(False, f"Response grew {ratio:.1f}× over 100 turns")
             return done(
                 True,
-                f"growth ratio {ratio:.2f}× "
-                f"(early={early:.0f}B, late={late:.0f}B)",
+                f"growth ratio {ratio:.2f}× (early={early:.0f}B, late={late:.0f}B)",
             )
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
@@ -1698,7 +1672,11 @@ def validate_test_report(
         # Resolve relative to the shim project root.
         schema_path = str(
             Path(__file__).resolve().parents[2]
-            / ".." / "protocol" / "schemas" / "v1" / "test-report.json"
+            / ".."
+            / "protocol"
+            / "schemas"
+            / "v1"
+            / "test-report.json"
         )
 
     with open(schema_path) as fh:
@@ -1708,6 +1686,5 @@ def validate_test_report(
     validator = validator_cls(schema)
     errors = list(validator.iter_errors(data))
     return [
-        f"{' → '.join(str(p) for p in e.absolute_path)}: {e.message}"
-        for e in errors
+        f"{' → '.join(str(p) for p in e.absolute_path)}: {e.message}" for e in errors
     ]

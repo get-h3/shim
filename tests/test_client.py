@@ -137,11 +137,14 @@ class TestConstruction:
 class TestHealth:
     async def test_ok_response(self):
         c = _make_client()
-        c._rest.get.return_value = _fake_response(200, {
-            "status": "ok",
-            "version": "1.2.3",
-            "capabilities": ["tool_call", "text"],
-        })
+        c._rest.get.return_value = _fake_response(
+            200,
+            {
+                "status": "ok",
+                "version": "1.2.3",
+                "capabilities": ["tool_call", "text"],
+            },
+        )
         result = await c.health()
         assert isinstance(result, HealthResponse)
         assert result.status == HealthStatus.OK
@@ -150,23 +153,29 @@ class TestHealth:
 
     async def test_degraded_response(self):
         c = _make_client()
-        c._rest.get.return_value = _fake_response(200, {
-            "status": "degraded",
-            "version": "1.0.0",
-            "degraded_reason": "model unreachable",
-            "capabilities": ["text"],
-        })
+        c._rest.get.return_value = _fake_response(
+            200,
+            {
+                "status": "degraded",
+                "version": "1.0.0",
+                "degraded_reason": "model unreachable",
+                "capabilities": ["text"],
+            },
+        )
         result = await c.health()
         assert result.status == HealthStatus.DEGRADED
         assert result.degraded_reason == "model unreachable"
 
     async def test_down_response(self):
         c = _make_client()
-        c._rest.get.return_value = _fake_response(200, {
-            "status": "down",
-            "version": "1.0.0",
-            "error": "database connection lost",
-        })
+        c._rest.get.return_value = _fake_response(
+            200,
+            {
+                "status": "down",
+                "version": "1.0.0",
+                "error": "database connection lost",
+            },
+        )
         result = await c.health()
         assert result.status == HealthStatus.DOWN
         assert result.error == "database connection lost"
@@ -184,15 +193,18 @@ class TestHealth:
 class TestProcess:
     async def _run_process(self):
         c = _make_client()
-        c._rest.post.return_value = _fake_response(200, {
-            "decision": "tool_call",
-            "decision_id": "d_proc_1",
-            "tool_call": {
-                "name": "terminal",
-                "params": {"command": "ls"},
-                "reasoning": "list",
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "tool_call",
+                "decision_id": "d_proc_1",
+                "tool_call": {
+                    "name": "terminal",
+                    "params": {"command": "ls"},
+                    "reasoning": "list",
+                },
             },
-        })
+        )
         decision = await c.process(
             session_id="s_001",
             message=Message(role="user", content="run ls"),
@@ -256,11 +268,14 @@ class TestProcess:
 class TestResult:
     async def test_returns_decision(self):
         c = _make_client()
-        c._rest.post.return_value = _fake_response(200, {
-            "decision": "end",
-            "decision_id": "d_after_result",
-            "end": {"reason": "task_complete", "summary": "ok"},
-        })
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "end",
+                "decision_id": "d_after_result",
+                "end": {"reason": "task_complete", "summary": "ok"},
+            },
+        )
         decision = await c.result(
             session_id="s_001",
             decision_id="d_001",
@@ -277,11 +292,14 @@ class TestResult:
 
     async def test_sends_result_request_payload(self):
         c = _make_client()
-        c._rest.post.return_value = _fake_response(200, {
-            "decision": "end",
-            "decision_id": "d_x",
-            "end": {"reason": "task_complete"},
-        })
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "end",
+                "decision_id": "d_x",
+                "end": {"reason": "task_complete"},
+            },
+        )
         await c.result(
             session_id="s_007",
             decision_id="d_006",
@@ -311,10 +329,13 @@ class TestResult:
 class TestCancel:
     async def test_returns_cancel_response(self):
         c = _make_client()
-        c._rest.post.return_value = _fake_response(200, {
-            "cancelled": True,
-            "cancelled_decision_id": "d_42",
-        })
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "cancelled": True,
+                "cancelled_decision_id": "d_42",
+            },
+        )
         result = await c.cancel("s_001")
         assert isinstance(result, CancelResponse)
         assert result.cancelled is True

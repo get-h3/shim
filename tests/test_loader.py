@@ -35,13 +35,22 @@ def _patch_h3_client_factory(monkeypatch, **attrs):
     """
     fake = MagicMock(wraps=H3Client)
 
-    def _factory(endpoint, transport="rest", timeout_ms=30_000,
-                 hermes_token=None, hermes_identity=None,
-                 protocol_version="1.0"):
-        c = _fake_client(endpoint=endpoint, transport=transport,
-                         timeout_ms=timeout_ms, hermes_token=hermes_token,
-                         hermes_identity=hermes_identity,
-                         protocol_version=protocol_version)
+    def _factory(
+        endpoint,
+        transport="rest",
+        timeout_ms=30_000,
+        hermes_token=None,
+        hermes_identity=None,
+        protocol_version="1.0",
+    ):
+        c = _fake_client(
+            endpoint=endpoint,
+            transport=transport,
+            timeout_ms=timeout_ms,
+            hermes_token=hermes_token,
+            hermes_identity=hermes_identity,
+            protocol_version=protocol_version,
+        )
         # Pre-program the .health() mock if the test set one.
         if "health_return" in attrs:
             c.health = AsyncMock(return_value=attrs["health_return"])
@@ -77,7 +86,12 @@ class TestLoad:
 
     def test_skips_native_entry(self, monkeypatch):
         fake = _patch_h3_client_factory(monkeypatch)
-        cfg = {"harnesses": {"native": {"endpoint": "ignored"}, "alpha": {"endpoint": "http://a:1"}}}
+        cfg = {
+            "harnesses": {
+                "native": {"endpoint": "ignored"},
+                "alpha": {"endpoint": "http://a:1"},
+            }
+        }
         loader = H3Loader(cfg)
         # ``native`` must not produce an H3Client instance.
         assert "native" not in loader.harnesses
@@ -567,6 +581,7 @@ class TestCircuitBreaker:
 
         # Wait past cooldown
         import time as _time
+
         _time.sleep(0.15)
 
         # Now a probe should be allowed (moves to HALF_OPEN)
@@ -586,6 +601,7 @@ class TestCircuitBreaker:
         assert cb.state == "OPEN"
 
         import time as _time
+
         _time.sleep(0.15)
 
         # Probe
@@ -608,6 +624,7 @@ class TestCircuitBreaker:
         assert cb.state == "OPEN"
 
         import time as _time
+
         _time.sleep(0.15)
 
         # Probe

@@ -142,8 +142,7 @@ class H3Client:
                 end=End(
                     reason=EndReason.TIMEOUT,
                     summary=(
-                        f"Harness result request timed out after "
-                        f"{self.timeout:.0f}s"
+                        f"Harness result request timed out after {self.timeout:.0f}s"
                     ),
                 ),
             )

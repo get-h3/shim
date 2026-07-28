@@ -20,3 +20,8 @@ uv.lock
 .gitreins/tasks.yaml
 .coverage
 .gitreins/history/
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example

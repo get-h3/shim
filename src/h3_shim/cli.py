@@ -132,9 +132,7 @@ def _lang_template_dir(lang: str) -> Path:
         )
     tpl_dir = TEMPLATES_DIR / lang
     if not tpl_dir.is_dir():
-        raise click.ClickException(
-            f"template directory missing: {tpl_dir}"
-        )
+        raise click.ClickException(f"template directory missing: {tpl_dir}")
     return tpl_dir
 
 
@@ -191,8 +189,7 @@ def scaffold_project(
     if dest.exists():
         if not overwrite:
             raise click.ClickException(
-                f"project directory already exists: {dest} "
-                "(pass --force to overwrite)"
+                f"project directory already exists: {dest} (pass --force to overwrite)"
             )
         # Wipe the existing directory so a stale scaffold can't leak.
         import shutil
@@ -276,12 +273,8 @@ def _format_human(report: TestReport, endpoint: str) -> str:
         lines.append(f"  {label} {passed}/{total}  {icon} {status}")
 
     totals = "PASSED" if report.all_passing else "FAILED"
-    lines.append(
-        f"  {'TOTAL':35s} {report.passed}/{report.total}  {totals}"
-    )
-    lines.append(
-        f"  {'Duration':35s} {report.duration_ms / 1000.0:.2f}s"
-    )
+    lines.append(f"  {'TOTAL':35s} {report.passed}/{report.total}  {totals}")
+    lines.append(f"  {'Duration':35s} {report.duration_ms / 1000.0:.2f}s")
     return "\n".join(lines)
 
 
@@ -418,9 +411,7 @@ def test(
                 f"harness {harness!r} has no endpoint configured"
             )
     try:
-        exit_code = asyncio.run(
-            _run_battery(endpoint, categories, as_json)
-        )
+        exit_code = asyncio.run(_run_battery(endpoint, categories, as_json))
     except KeyboardInterrupt:  # pragma: no cover
         click.echo("\nhermes h3 test: interrupted", err=True)
         sys.exit(130)
@@ -508,9 +499,7 @@ def uninstall(ctx: click.Context, name: str) -> None:
         raise click.ClickException(f"harness {name!r} not found")
     del harnesses[name]
     if config.get("default_harness") == name:
-        config["default_harness"] = (
-            next(iter(harnesses), None) if harnesses else None
-        )
+        config["default_harness"] = next(iter(harnesses), None) if harnesses else None
     save_config(config, _config_path(ctx))
     click.echo(f"uninstalled harness {name!r}")
 
@@ -554,9 +543,7 @@ def verify(
         name, spec = resolve_harness(harness, config)
         endpoint = spec.get("endpoint")
         if not endpoint:
-            raise click.ClickException(
-                f"harness {name!r} has no endpoint configured"
-            )
+            raise click.ClickException(f"harness {name!r} has no endpoint configured")
     else:
         name = harness or "<override>"
 
@@ -716,9 +703,7 @@ def scaffold(
     )
     click.echo(_format_run_instructions(lang, project_dir))
     click.echo("")
-    click.echo(
-        "Run h3-test --endpoint http://localhost:9191 to verify"
-    )
+    click.echo("Run h3-test --endpoint http://localhost:9191 to verify")
 
 
 @hermes_h3.command(help="Show the session → harness routing table.")
@@ -780,9 +765,7 @@ def pre_update_check_cmd(
         )
         sys.exit(1)
     elif result.severity == "WARN":
-        click.echo(
-            "\nWarnings found. Review before proceeding.", err=True
-        )
+        click.echo("\nWarnings found. Review before proceeding.", err=True)
     else:
         click.echo("\nAll checks passed. Safe to update.")
 
@@ -795,9 +778,7 @@ def use(ctx: click.Context, name: str) -> None:
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
     if name not in harnesses:
-        raise click.ClickException(
-            f"harness {name!r} not found; install it first"
-        )
+        raise click.ClickException(f"harness {name!r} not found; install it first")
     config["default_harness"] = name
     save_config(config, _config_path(ctx))
     click.echo(f"default harness set to {name!r}")

@@ -135,8 +135,10 @@ class CircuitBreaker:
     def _recalc_state(self) -> None:
         """Re-evaluate and transition state based on window + cooldown."""
         if self._state == CLOSED:
-            if (len(self._outcomes) == self._window_size
-                    and self.error_rate >= self._error_threshold):
+            if (
+                len(self._outcomes) == self._window_size
+                and self.error_rate >= self._error_threshold
+            ):
                 self._state = OPEN
                 self._opened_at = time.monotonic()
                 self._half_open_probe_sent = False
@@ -324,9 +326,7 @@ class H3Loader:
                         health = await client.health()
                         self._consecutive_failures[name] = 0
                         was_healthy = self._harness_healthy.get(name, False)
-                        self._harness_healthy[name] = (
-                            health.status == HealthStatus.OK
-                        )
+                        self._harness_healthy[name] = health.status == HealthStatus.OK
                         if self._harness_healthy[name]:
                             logger.debug("Harness %s: healthy", name)
                             if cb is not None:
@@ -343,7 +343,8 @@ class H3Loader:
                         failure_count = self._consecutive_failures.get(name, 0) + 1
                         self._consecutive_failures[name] = failure_count
                         logger.warning(
-                            "Harness %s: health check failed", name,
+                            "Harness %s: health check failed",
+                            name,
                             exc_info=True,
                         )
                         if cb is not None:

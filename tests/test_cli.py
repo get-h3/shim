@@ -135,31 +135,39 @@ class TestList:
         assert "no harnesses configured" in result.output
 
     def test_list_shows_harnesses(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": "alpha",
-            "harnesses": {
-                "alpha": {
-                    "endpoint": "http://a:1",
-                    "transport": "rest",
-                    "timeout_ms": 5000,
-                },
-            },
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "alpha",
+                    "harnesses": {
+                        "alpha": {
+                            "endpoint": "http://a:1",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["list"])
         assert result.exit_code == 0
         assert "alpha" in result.output
         assert "http://a:1" in result.output
 
     def test_list_marks_default(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": "alpha",
-            "harnesses": {
-                "alpha": {"endpoint": "http://a:1", "transport": "rest"},
-                "beta": {"endpoint": "http://b:1", "transport": "rest"},
-            },
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "alpha",
+                    "harnesses": {
+                        "alpha": {"endpoint": "http://a:1", "transport": "rest"},
+                        "beta": {"endpoint": "http://b:1", "transport": "rest"},
+                    },
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["list"])
         assert result.exit_code == 0
         # Default harness is preceded by "*" marker.
@@ -329,11 +337,18 @@ class TestInstall:
 
 class TestUninstall:
     def test_uninstall_removes_harness(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": None,
-            "harnesses": {"a": {"endpoint": "http://a:1"}, "b": {"endpoint": "http://b:1"}},
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": None,
+                    "harnesses": {
+                        "a": {"endpoint": "http://a:1"},
+                        "b": {"endpoint": "http://b:1"},
+                    },
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["uninstall", "a"])
         assert result.exit_code == 0
         assert "uninstalled harness 'a'" in result.output
@@ -342,22 +357,33 @@ class TestUninstall:
         assert "b" in data["harnesses"]
 
     def test_uninstall_reassigns_default(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": "a",
-            "harnesses": {"a": {"endpoint": "http://a:1"}, "b": {"endpoint": "http://b:1"}},
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "a",
+                    "harnesses": {
+                        "a": {"endpoint": "http://a:1"},
+                        "b": {"endpoint": "http://b:1"},
+                    },
+                    "sessions": {},
+                }
+            )
+        )
         runner.invoke(hermes_h3, ["uninstall", "a"])
         data = yaml.safe_load(cfg_path.read_text())
         # The new default should be one of the remaining harnesses.
         assert data["default_harness"] == "b"
 
     def test_uninstall_unknown_raises(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": None,
-            "harnesses": {},
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": None,
+                    "harnesses": {},
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["uninstall", "ghost"])
         assert result.exit_code != 0
         assert "not found" in result.output
@@ -368,22 +394,30 @@ class TestUninstall:
 
 class TestUse:
     def test_use_sets_default(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": None,
-            "harnesses": {"a": {"endpoint": "http://a:1"}},
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": None,
+                    "harnesses": {"a": {"endpoint": "http://a:1"}},
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["use", "a"])
         assert result.exit_code == 0
         data = yaml.safe_load(cfg_path.read_text())
         assert data["default_harness"] == "a"
 
     def test_use_unknown_raises(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": None,
-            "harnesses": {"a": {"endpoint": "http://a:1"}},
-            "sessions": {},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": None,
+                    "harnesses": {"a": {"endpoint": "http://a:1"}},
+                    "sessions": {},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["use", "ghost"])
         assert result.exit_code != 0
         assert "not found" in result.output
@@ -399,14 +433,18 @@ class TestRoute:
         assert "no sessions configured" in result.output
 
     def test_route_lists_sessions(self, cfg_path, runner):
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": "native",
-            "harnesses": {},
-            "sessions": {
-                "telegram:-100:42": {"harness": "alpha"},
-                "discord:1": {"harness": "beta"},
-            },
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {
+                        "telegram:-100:42": {"harness": "alpha"},
+                        "discord:1": {"harness": "beta"},
+                    },
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["route"])
         assert result.exit_code == 0
         assert "telegram:-100:42" in result.output
@@ -415,11 +453,15 @@ class TestRoute:
 
     def test_route_string_form_session_entry(self, cfg_path, runner):
         # Sessions can be either dicts or bare strings (older config style).
-        cfg_path.write_text(yaml.safe_dump({
-            "default_harness": "native",
-            "harnesses": {},
-            "sessions": {"telegram:-100": "alpha"},
-        }))
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"telegram:-100": "alpha"},
+                }
+            )
+        )
         result = runner.invoke(hermes_h3, ["route"])
         assert result.exit_code == 0
         assert "alpha" in result.output
@@ -574,7 +616,9 @@ class TestVerifyCommand:
         instance = MagicMock()
         instance.health = AsyncMock(
             return_value=HealthResponse(
-                status=HealthStatus.OK, version="1.2.3", capabilities=["foo", "bar"],
+                status=HealthStatus.OK,
+                version="1.2.3",
+                capabilities=["foo", "bar"],
             ),
         )
         instance.close = AsyncMock()
@@ -592,9 +636,7 @@ class TestVerifyCommand:
         assert "version:  1.2.3" in result.output
         assert "foo" in result.output
 
-    def test_verify_with_endpoint_and_fallback_healthy(
-        self, runner, monkeypatch
-    ):
+    def test_verify_with_endpoint_and_fallback_healthy(self, runner, monkeypatch):
         """Healthy harness + --fallback flag → shows STANDBY fallback info."""
         from h3_shim.protocol import HealthResponse, HealthStatus
 
@@ -602,7 +644,9 @@ class TestVerifyCommand:
         instance = MagicMock()
         instance.health = AsyncMock(
             return_value=HealthResponse(
-                status=HealthStatus.OK, version="1.2.3", capabilities=["foo"],
+                status=HealthStatus.OK,
+                version="1.2.3",
+                capabilities=["foo"],
             ),
         )
         instance.close = AsyncMock()
@@ -619,9 +663,7 @@ class TestVerifyCommand:
         assert "STANDBY" in result.output
         assert "harness: <override>" in result.output
 
-    def test_verify_with_endpoint_and_fallback_unreachable(
-        self, runner, monkeypatch
-    ):
+    def test_verify_with_endpoint_and_fallback_unreachable(self, runner, monkeypatch):
         """Unreachable harness + --fallback flag → shows ENGAGED fallback."""
         fake_client = MagicMock(side_effect=ConnectionError("connection refused"))
         monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
@@ -652,6 +694,7 @@ class TestLegacyMain:
 
     def test_main_requires_endpoint(self, monkeypatch, capsys):
         import sys
+
         monkeypatch.setattr(sys, "argv", ["h3-test"])
         with pytest.raises(SystemExit) as exc_info:
             main()
@@ -669,8 +712,13 @@ class TestReportSchema:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
-            "results", "total", "passed", "failed",
-            "duration_ms", "timestamp", "all_passing",
+            "results",
+            "total",
+            "passed",
+            "failed",
+            "duration_ms",
+            "timestamp",
+            "all_passing",
         ],
         "properties": {
             "results": {
@@ -678,8 +726,11 @@ class TestReportSchema:
                 "items": {
                     "type": "object",
                     "required": [
-                        "name", "passed", "detail",
-                        "duration_ms", "category",
+                        "name",
+                        "passed",
+                        "detail",
+                        "duration_ms",
+                        "category",
                     ],
                     "properties": {
                         "name": {"type": "string"},
@@ -704,8 +755,13 @@ class TestReportSchema:
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
-            "results", "total", "passed", "failed",
-            "duration_ms", "timestamp", "all_passing",
+            "results",
+            "total",
+            "passed",
+            "failed",
+            "duration_ms",
+            "timestamp",
+            "all_passing",
         ],
         "properties": {
             "results": {"type": "array"},
@@ -721,6 +777,7 @@ class TestReportSchema:
     @staticmethod
     def _write_schema(tmp_path, schema):
         import json
+
         sp = tmp_path / "test-report.json"
         sp.write_text(json.dumps(schema))
         return str(sp)
