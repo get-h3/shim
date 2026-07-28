@@ -74,8 +74,7 @@ def field_signature(name: str, prop: dict[str, Any]) -> str:
     has_default = "default" in prop
     enum_vals = prop.get("enum")
     is_nullable = any(
-        t.get("type") == "null" for t in prop.get("anyOf", [])
-        if isinstance(t, dict)
+        t.get("type") == "null" for t in prop.get("anyOf", []) if isinstance(t, dict)
     )
 
     sig = f"{name}:{py_type}"
@@ -127,6 +126,7 @@ def load_current_model_fields(protocol_py_path: Path) -> set[str]:
 
 def main() -> int:
     import argparse
+
     parser = argparse.ArgumentParser(description="Sync protocol schemas with shim")
     parser.add_argument(
         "--schema-dir",
@@ -172,7 +172,7 @@ def main() -> int:
     current_fields = load_current_model_fields(protocol_py)
 
     if args.diff:
-        names = ', '.join(s.name for s in schema_files)
+        names = ", ".join(s.name for s in schema_files)
         print(f"Schema files: {len(schema_files)} ({names})")
         print(f"Schema fields extracted: {len(schema_fields)}")
         print(f"Current model fields: {len(current_fields)}")
@@ -189,20 +189,27 @@ def main() -> int:
     #          common, health-response, process-request, result-request,
     #          cancel-request, error-response, session-response
     expected_schemas = [
-        "decision", "tool-call", "llm-call", "text-response",
-        "wait", "delegate", "end", "common", "health-response",
-        "process-request", "result-request", "cancel-request",
-        "error-response", "session-response",
+        "decision",
+        "tool-call",
+        "llm-call",
+        "text-response",
+        "wait",
+        "delegate",
+        "end",
+        "common",
+        "health-response",
+        "process-request",
+        "result-request",
+        "cancel-request",
+        "error-response",
+        "session-response",
     ]
     existing = {sf.name for sf in schema_files}
     missing = [s for s in expected_schemas if f"{s}.json" not in existing]
     if missing:
         print(f"WARNING: Missing schemas: {missing}")
 
-    print(
-        f"OK: {len(schema_files)} schemas, "
-        f"{len(schema_fields)} fields extracted"
-    )
+    print(f"OK: {len(schema_files)} schemas, {len(schema_fields)} fields extracted")
     print(f"OK: {len(current_fields)} current model fields in {protocol_py}")
     print()
     print("Schema compatibility: PASS (structural check only)")
