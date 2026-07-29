@@ -7,7 +7,8 @@ HTTP verb, returning a fake ``Response`` whose ``.json()`` and
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -104,11 +105,24 @@ class TestConstruction:
         assert c.protocol_version == "1.1"
 
     def test_no_auth_headers_when_token_is_none(self):
-        """Backward compat: no auth when hermes_token not provided."""
-        c = H3Client(endpoint="http://localhost:9000")
-        assert c.hermes_token is None
-        assert c.hermes_identity is None
-        assert c.protocol_version == "1.0"
+        """Backward compat: no auth when hermes_token not provided, H3_API_KEY unset."""
+        with patch.dict(os.environ, {}, clear=True):
+            c = H3Client(endpoint="http://localhost:9000")
+            assert c.hermes_token is None
+            assert c.hermes_identity is None
+            assert c.protocol_version == "1.0"
+
+    def test_h3_api_key_env_var_fallback(self):
+        """H3_API_KEY env var used when hermes_token not explicitly provided."""
+        with patch.dict(os.environ, {"H3_API_KEY": "h3_testkey123"}):
+            c = H3Client(endpoint="http://localhost:9000")
+            assert c.hermes_token == "h3_testkey123"
+
+    def test_explicit_token_overrides_env_var(self):
+        """Explicit hermes_token takes priority over H3_API_KEY env var."""
+        with patch.dict(os.environ, {"H3_API_KEY": "h3_envkey"}):
+            c = H3Client(endpoint="http://localhost:9000", hermes_token="h3_explicit")
+            assert c.hermes_token == "h3_explicit"
 
     def test_token_only_sends_auth_and_protocol_version(self):
         """Token without identity still sends Authorization + Protocol-Version."""

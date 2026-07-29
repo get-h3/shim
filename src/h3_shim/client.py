@@ -5,6 +5,7 @@ Mirrors the methods specified in S06 §3 of the Hermes Core integration spec.
 """
 
 import logging
+import os
 from uuid import uuid4
 
 import httpx
@@ -58,6 +59,10 @@ class H3Client:
         self.endpoint = endpoint.rstrip("/")
         self.transport = transport
         self.timeout = timeout_ms / 1000
+
+        # Auth: explicit hermes_token takes priority, then H3_API_KEY env var
+        if hermes_token is None:
+            hermes_token = os.environ.get("H3_API_KEY")
         self.hermes_token = hermes_token
         self.hermes_identity = hermes_identity
         self.protocol_version = protocol_version
