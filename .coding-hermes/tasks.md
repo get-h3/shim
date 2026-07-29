@@ -599,3 +599,30 @@
 **Actions taken:** None. All 15 gates green (1 warn — mypy stubs, known). No dispatch warranted. annotated-doc 0.0.5 still available but patch-only bump not worth dispatch. fastapi at 0.140.13 = latest PyPI (verified).
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
+
+### Tick #108 — 2026-07-29 02:00 UTC (DeepSeek V4 Pro)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 0 | Scheduler cooldown | ✅ VERIFIED | h3-shim-foreman, CooldownS=2700, enabled=true |
+| 1 | Git status | ✅ PASS | Clean workdir. `ls _*.py` → no such file (confirmed absent, stale Hilo orphans are Variant B). |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ tests skipped (no staged files — idle audit) |
+| 3 | Hilo graph | ✅ PASS | 139 edges / 26 files. Stale orphan entries for deleted _*.py — known Variant B (files absent on disk, confirmed via `ls`). |
+| 4 | Tests | ✅ PASS | 225/225 in 1.42s (.venv/bin/python3) |
+| 5 | TODO/FIXME | ✅ PASS | None found in src/ or tests/ |
+| 6 | Deps check | ✅ PASS | annotated-doc 0.0.4→0.0.5 (minor — deferred); fastapi 0.140.7 current (0.140.13 in pyproject.toml, uv.lock pins 0.140.7 — no upgrade since tick #104 uv-lock revert); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01) |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, evaluator 50iter/10m/0.2M/0.4M). 2 tasks complete. |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Ruff format | ✅ PASS | 25/25 files already formatted |
+| 10 | Static analysis (mypy) | ⚠️ WARN | 4 stub-only errors (types-jsonschema, types-PyYAML, uvicorn in template). No code-level type errors. Consistent with prior ticks. |
+| 11 | Docs & Security | ✅ PASS | All 9 docs present (LICENSE no .md — cosmetic). .gitignore: .env/.env.* blocked + !.env.example exception. |
+| 12 | DuckBrain | ✅ PASS | 11 keys in `h3` namespace under `/projects/h3-shim/` |
+| 13 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete (QV-SHIM-01, QV-CROSS-01), board in sync |
+| 14 | E2E-001 dispatch | ⏭️ SKIP | Due ~tick #110 (last run #106). Go echo harness not running — no live endpoint available. |
+| 15 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. |
+
+**⚠️ fastapi regression noted:** Prior ticks #104-#105 reported fastapi upgraded to 0.140.13, but `uv.lock` pins 0.140.7 and `uv sync` reverts pip-based upgrades. This is the known `uv-lock-pip-upgrade-revert` pattern (coding-hermes-cron reference). The uv.lock is gitignored but `uv sync` still reads it when present. Fix: `uv lock --upgrade-package fastapi && uv sync` per tick #92 pattern. Deferred — patch-only bump doesn't warrant dispatch in maintenance mode.
+
+**Actions taken:** None. All 15 gates green (1 warn — mypy stubs, known). No dispatch warranted. annotated-doc 0.0.5 available but patch-only bump not worth dispatch. fastapi lock-pin regression from 0.140.13→0.140.7 is cosmetic (patch bumps only).
+
+**Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
