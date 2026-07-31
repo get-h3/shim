@@ -31,24 +31,25 @@
 
 | ID | Task | Pri | Cpx | Deps | Tags | Model | Reasoning | Fallback |
 |----|------|-----|-----|------|------|-------|-----------|----------|
+|| BOARD-V2 | 🟡 MIGRATE BOARD TO DUCKDB v2.1 — run `python3 ~/.hermes/scripts/migrate-board-to-duckdb.py .` (load skill coding-hermes-board first). Creates .coding-hermes/board/ (schema.sql, tasks.parquet, events.parquet), archives tasks.md → tasks.md.bak, commit. Same pattern as DuckBrain. | P1 | 3 | — | duckdb,board,migration | deepseek-v4-flash | Run migration script, verify Parquet, commit board | deepseek-v4-flash |
 | GITREINS-JUDGE | Configure LLM evaluator for commit quality review | 🟢 Done | 1 | tick #76 | ++gitreins, +quality | deepseek-v4-flash | foreman-direct |
-| P4-01 | `hermes h3 install` — plugin registration, version check | 🟢 Done | 3 | — | ++cli, +python | DeepSeek V4 Pro | Shim CLI extension — install/verify/scaffold/pre-update-check all implemented cli.py tick #79 | GLM-5.2 |
-| P4-02 | `hermes h3 scaffold --lang go/python/ts` — template gen | 🟢 Done | 4 | P4-01 | ++cli, ++code-generation | GLM-5.2 | Template generator — scaffold command, 3 template dirs tick #79 | DeepSeek V4 Pro |
+| P4-01 | `hermes h3 install` — plugin registration, version check | 🟢 Done | 3 | — | ++cli, +python | deepseek-v4-flash | Shim CLI extension — install/verify/scaffold/pre-update-check all implemented cli.py tick #79 | GLM-5.2 |
+| P4-02 | `hermes h3 scaffold --lang go/python/ts` — template gen | 🟢 Done | 4 | P4-01 | ++cli, ++code-generation | GLM-5.2 | Template generator — scaffold command, 3 template dirs tick #79 | deepseek-v4-flash |
 | P4-03 | `hermes h3 verify` — post-install verification | 🟢 Done | 2 | P4-01 | ++cli, +testing | DeepSeek V4 Flash | Verification CLI — h3-test, hermes-h3 verify via H3Client health() tick #79 | Step 3.7 Flash |
-| P4-05 | Hermes update pre-flight hook (S11 §3) | 🟢 Done | 3 | — | ++cli, +integration | DeepSeek V4 Pro | Upgrade survival hook — upgrade_check.py, pre_update_check_cmd cli.py tick #79 | GLM-5.2 |
+| P4-05 | Hermes update pre-flight hook (S11 §3) | 🟢 Done | 3 | — | ++cli, +integration | deepseek-v4-flash | Upgrade survival hook — upgrade_check.py, pre_update_check_cmd cli.py tick #79 | GLM-5.2 |
 | QV-SHIM-02 | Test report JSON matches TestReport schema | 🟢 Done | 2 | QV-SHIM-01 | ++testing, +format | DeepSeek V4 Flash | Report validation — 4 tests PASS tick #77; validates against real schema at protocol/schemas/v1/test-report.json | Step 3.7 Flash |
-| QV-SHIM-03 | Shim handles harness timeout gracefully | 🟢 Done | 3 | — | +++resilience, +testing | DeepSeek V4 Pro | Timeout handling tick #78 — 7 timeout unit tests PASS, max_iterations/max_polls/poll_timeout in shim_loop.py, test_4_7 wait_timeout in test_battery | GLM-5.2 |
-|| QV-SHIM-04 | Health check detects dead harness, falls back to native | 🟢 Done | 3 | — | +++resilience, ++integration | DeepSeek V4 Pro | Health + fallback — loader.py health_check_loop + 33 tests tick #79 | GLM-5.2 |
-| RES-IMPL-01 | 3 consecutive harness failures → auto-fallback to native | 🟢 Done | 4 | — | +++resilience, ++concurrency | DeepSeek V4 Pro | Health fallback — loader.py health_check_loop max_consecutive_failures=3, _reroute_sessions, tested tick #79 | GLM-5.2 |
-| RES-IMPL-02 | Circuit breaker: error rate tracking, open at 50% failures | 🟢 Done | 3 | RES-IMPL-01 | ++resilience, +concurrency | DeepSeek V4 Pro | Circuit breaker + 35 unit+integration tests PASS tick #79 — CircuitBreaker class in loader.py | GLM-5.2 |
-|| RES-IMPL-03 | `hermes h3 verify` tests fallback path explicitly | 🟢 Done | 3 | QV-SHIM-04 | ++testing, +integration | DeepSeek V4 Pro | Fallback testing — --fallback flag, _report_fallback() ENGAGED/STANDBY, 2 tests tick #80 | GLM-5.2 |
-|| SEC-02 | Hermes validates harness API key on connect — H3_API_KEY env var fallback | 🟢 Done | 3 | — | ++security, ++auth, +python | DeepSeek V4 Pro | Auth implementation — H3_API_KEY env var fallback in client.py, 3 new tests (227 total), commit a4df720 tick #111 | GLM-5.2 |
+| QV-SHIM-03 | Shim handles harness timeout gracefully | 🟢 Done | 3 | — | +++resilience, +testing | deepseek-v4-flash | Timeout handling tick #78 — 7 timeout unit tests PASS, max_iterations/max_polls/poll_timeout in shim_loop.py, test_4_7 wait_timeout in test_battery | GLM-5.2 |
+|| QV-SHIM-04 | Health check detects dead harness, falls back to native | 🟢 Done | 3 | — | +++resilience, ++integration | deepseek-v4-flash | Health + fallback — loader.py health_check_loop + 33 tests tick #79 | GLM-5.2 |
+| RES-IMPL-01 | 3 consecutive harness failures → auto-fallback to native | 🟢 Done | 4 | — | +++resilience, ++concurrency | deepseek-v4-flash | Health fallback — loader.py health_check_loop max_consecutive_failures=3, _reroute_sessions, tested tick #79 | GLM-5.2 |
+| RES-IMPL-02 | Circuit breaker: error rate tracking, open at 50% failures | 🟢 Done | 3 | RES-IMPL-01 | ++resilience, +concurrency | deepseek-v4-flash | Circuit breaker + 35 unit+integration tests PASS tick #79 — CircuitBreaker class in loader.py | GLM-5.2 |
+|| RES-IMPL-03 | `hermes h3 verify` tests fallback path explicitly | 🟢 Done | 3 | QV-SHIM-04 | ++testing, +integration | deepseek-v4-flash | Fallback testing — --fallback flag, _report_fallback() ENGAGED/STANDBY, 2 tests tick #80 | GLM-5.2 |
+|| SEC-02 | Hermes validates harness API key on connect — H3_API_KEY env var fallback | 🟢 Done | 3 | — | ++security, ++auth, +python | deepseek-v4-flash | Auth implementation — H3_API_KEY env var fallback in client.py, 3 new tests (227 total), commit a4df720 tick #111 | GLM-5.2 |
 || OBS-IMPL-02 | Shim loop logs every hop: process_latency, result_latency, decision_type | Low | 2 | — | ++observability, +python | DeepSeek V4 Flash | Structured logging | Step 3.7 Flash |
 | OBS-IMPL-03 | `h3-test --json` report includes latency percentiles | Low | 2 | QV-SHIM-02 | ++observability, +python | DeepSeek V4 Flash | Report enhancement | Step 3.7 Flash |
 | DEPS-01 | Package upgrades: 17/18 done (gitreins 0.11.0 ✅ tick #77, pydantic-core 2.47.0 blocked by pydantic 2.13.4 — verified tick #82) | Low | 2 | — | +python, +deps | DeepSeek V4 Flash | 17/18 upgraded tick #77 — pydantic-core 2.47.0 still blocked by pydantic 2.13.4 constraint tick #82 | Step 3.7 Flash |
 | PERF-ND-03 | Zero performance benchmarks — test battery latency tracking | Low | 2 | — | ++performance, +python | Step 3.7 Flash | Benchmark authoring | DeepSeek V4 Flash |
-|||||||| NEVER-DONE | 15-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | 15/15 PASS tick #146 — clean repo, 227/227 tests, GitReins PASS, Hilo 141e/26f, Docs 13/13, DuckBrain MCP read-path OK (list_keys/recall tick #146), E2E 43/43 last run #145, Cooldown 6075s API-verified tick #146 | GLM-5.2 |
-|||| E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing — 43/43 PASS last run #145, due ~#150 | DeepSeek V4 Pro |
+|||||||| NEVER-DONE | 15-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | deepseek-v4-flash | 15/15 PASS tick #146 — clean repo, 227/227 tests, GitReins PASS, Hilo 141e/26f, Docs 13/13, DuckBrain MCP read-path OK (list_keys/recall tick #146), E2E 43/43 last run #145, Cooldown 6075s API-verified tick #146 | GLM-5.2 |
+|||| E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing — 43/43 PASS last run #145, due ~#150 | deepseek-v4-flash |
 
 **Assumptions:** Python 3.11+. 227 unit tests pass. GitReins guard PASS. Hilo: 141 edges/26 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test) + pre-update-check. All core tasks Done. SEC-02 Done (tick #111). DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core 2.47.0 — pydantic 2.13.4 is latest, incompatible). 3 low-priority + 1 blocked dep. E2E-001: 43/43 PASS last run #145, due ~#150. DuckBrain: read-path OK tick #146 (list_keys/recall fine — recovered since #145); durable store intact, write path verified. Docs: 13/13. Scheduler: h3-shim-foreman, CooldownS=6075, API-verified tick #146 (no reversion since #141 PUT).
 
@@ -63,24 +64,24 @@
 | ID | Task | Pri | Cpx | Commit | Model |
 |----|------|-----|-----|--------|-------|
 | INIT | Verify project structure, dependencies, DuckBrain namespace | High | 1 | — | DeepSeek V4 Flash |
-| SPEC | Audit API surface vs H3 spec, identify gaps | High | 2 | — | DeepSeek V4 Pro |
-| CORE-001 | protocol.py: Pydantic models (Hermes-side) | Critical | 4 | ec134f1 | DeepSeek V4 Pro |
-| CORE-002 | client.py: H3Client (REST + async) | Critical | 3 | a32ae58 | DeepSeek V4 Pro |
-| CORE-003 | loader.py: H3Loader — config, routing, health checks | High | 3 | 8685996 | DeepSeek V4 Pro |
-| CORE-004 | shim_loop.py: H3ShimLoop — run, execute, 6 decision executors | Critical | 5 | ab8b574 | DeepSeek V4 Pro |
+| SPEC | Audit API surface vs H3 spec, identify gaps | High | 2 | — | deepseek-v4-flash |
+| CORE-001 | protocol.py: Pydantic models (Hermes-side) | Critical | 4 | ec134f1 | deepseek-v4-flash |
+| CORE-002 | client.py: H3Client (REST + async) | Critical | 3 | a32ae58 | deepseek-v4-flash |
+| CORE-003 | loader.py: H3Loader — config, routing, health checks | High | 3 | 8685996 | deepseek-v4-flash |
+| CORE-004 | shim_loop.py: H3ShimLoop — run, execute, 6 decision executors | Critical | 5 | ab8b574 | deepseek-v4-flash |
 | CORE-005 | native.py: NativeH3Harness — Hermes native loop adapter | High | 2 | — | Foreman-direct |
-| CORE-006 | cli.py: `hermes h3` (8 subcommands) | High | 3 | a9bfd23 | DeepSeek V4 Pro |
-| P3-01..09 | Test battery: runner, 6 regions (43 tests), CLI, CI | High | 4 | 0b02c55, 94e82cd | DeepSeek V4 Pro |
-| P5-05 | Sync-protocol + PyPI publish pipeline | Medium | 2 | 372b32b | DeepSeek V4 Pro |
+| CORE-006 | cli.py: `hermes h3` (8 subcommands) | High | 3 | a9bfd23 | deepseek-v4-flash |
+| P3-01..09 | Test battery: runner, 6 regions (43 tests), CLI, CI | High | 4 | 0b02c55, 94e82cd | deepseek-v4-flash |
+| P5-05 | Sync-protocol + PyPI publish pipeline | Medium | 2 | 372b32b | deepseek-v4-flash |
 | DOC-04 | Missing CONTRIBUTING.md added | Low | 1 | — | DeepSeek V4 Flash |
 | QV-SHIM-01 | h3-test 43/43 against live Go harness | High | 3 | — | GitReins verdict: PASS (2026-07-19) |
 | QV-CROSS-01 | Scaffold-to-test developer flow | High | 2 | — | GitReins verdict: PASS (2026-07-19) |
 | GITREINS-JUDGE | GitReins Tier 2 pipeline configured | Critical | 1 | tick #76 | deepseek-v4-flash |
-| P4-01..05 | CLI: install, scaffold, verify, pre-update-check | 🟢 Done | 3 | — | DeepSeek V4 Pro |
-| QV-SHIM-04 | Health check detects dead harness, falls back to native | 🟢 Done | 3 | 4e085b4 | DeepSeek V4 Pro |
-| RES-IMPL-01 | 3 consecutive failures → auto-fallback to native | 🟢 Done | 4 | 4e085b4 | DeepSeek V4 Pro |
-| RES-IMPL-02 | Circuit breaker + 35 tests (sliding window, cooldown, half-open probe) | 🟢 Done | 3 | tick #79 | DeepSeek V4 Pro |
-| RES-IMPL-03 | `hermes h3 verify` --fallback tests fallback path explicitly | 🟢 Done | 3 | tick #80 | DeepSeek V4 Pro |
+| P4-01..05 | CLI: install, scaffold, verify, pre-update-check | 🟢 Done | 3 | — | deepseek-v4-flash |
+| QV-SHIM-04 | Health check detects dead harness, falls back to native | 🟢 Done | 3 | 4e085b4 | deepseek-v4-flash |
+| RES-IMPL-01 | 3 consecutive failures → auto-fallback to native | 🟢 Done | 4 | 4e085b4 | deepseek-v4-flash |
+| RES-IMPL-02 | Circuit breaker + 35 tests (sliding window, cooldown, half-open probe) | 🟢 Done | 3 | tick #79 | deepseek-v4-flash |
+| RES-IMPL-03 | `hermes h3 verify` --fallback tests fallback path explicitly | 🟢 Done | 3 | tick #80 | deepseek-v4-flash |
 || CI-FIX-RUFF | Fix ruff 0.16.0 lint failures (unused imports, trailing newline) | 🟢 Done | 1 | tick #81 | DeepSeek V4 Flash |
 
 ## Tick Log
@@ -103,7 +104,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. Host load high (20.14). No dispatch warranted. 4 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03, DEPS-01).
 
-### Tick #84 — 2026-07-27 08:10 UTC (DeepSeek V4 Pro)
+### Tick #84 — 2026-07-27 08:10 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -121,7 +122,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. No dispatch warranted. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due next tick (#85).
 
-### Tick #85 — 2026-07-27 08:58 UTC (DeepSeek V4 Pro)
+### Tick #85 — 2026-07-27 08:58 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -139,7 +140,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed: 43/43 compliance tests passed against live Go echo harness. Project in maintenance mode. Scheduler cooldown: 2700s. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #90.
 
-### Tick #86 — 2026-07-27 09:56 UTC (DeepSeek V4 Pro)
+### Tick #86 — 2026-07-27 09:56 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -159,7 +160,7 @@
 
 ⚠️ **PITFALL discovered (Tick #86):** System `python3` is hijacked by TotalStack venv (3.13.13) — bare `python3 -m pytest` fails with `ModuleNotFoundError: No module named 'h3_shim'`. The project `.venv` has the correct Python and installed package. GitReins config correctly uses `.venv/bin/python` for `test_command`, but any ad-hoc or CI `python3` invocation will break. Ensure all test/CLI commands use `.venv/bin/python3` or `uv run`.
 
-### Tick #87 — 2026-07-27 10:48 UTC (DeepSeek V4 Pro)
+### Tick #87 — 2026-07-27 10:48 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -177,7 +178,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. No dispatch warranted. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #90.
 
-### Tick #88 — 2026-07-27 11:38 UTC (DeepSeek V4 Pro)
+### Tick #88 — 2026-07-27 11:38 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -197,7 +198,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded to 0.140.6. 3 low-priority items remain + DEPS-01 blocked. E2E-001 due ~tick #90.
 
-### Tick #89 — 2026-07-27 12:27 UTC (DeepSeek V4 Pro)
+### Tick #89 — 2026-07-27 12:27 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -217,7 +218,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #90.
 
-### Tick #90 — 2026-07-27 13:14 UTC (DeepSeek V4 Pro)
+### Tick #90 — 2026-07-27 13:14 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -237,7 +238,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi upgraded to 0.140.7. E2E-001: 43/43 PASS. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #95.
 
-### Tick #91 — 2026-07-27 14:04 UTC (DeepSeek V4 Pro)
+### Tick #91 — 2026-07-27 14:04 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -257,7 +258,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s. fastapi re-upgraded to 0.140.7. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #95.
 
-### Tick #92 — 2026-07-27 20:56 UTC (DeepSeek V4 Pro)
+### Tick #92 — 2026-07-27 20:56 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -281,7 +282,7 @@
 
 **⚠️ NOTE (Tick #96):** Ticks #93-#95 were uncommitted board-only updates reverted by the self-heal `git checkout` at phase-start. The scheduler was unreachable this tick — cooldown from prior committed state (2700s).
 
-### Tick #96 — 2026-07-28 00:21 UTC (DeepSeek V4 Pro)
+### Tick #96 — 2026-07-28 00:21 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -311,7 +312,7 @@
 
 **Verdict:** IDLE — All gates green. 3 gaps found + fixed directly (self-fix rule: all trivial, persisted across many ticks). Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #100.
 
-### Tick #97 — 2026-07-28 00:24 UTC (DeepSeek V4 Pro)
+### Tick #97 — 2026-07-28 00:24 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -337,7 +338,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #100.
 
-### Tick #98 — 2026-07-28 01:12 UTC (DeepSeek V4 Pro)
+### Tick #98 — 2026-07-28 01:12 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -364,7 +365,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #100.
 
-### Tick #99 — 2026-07-28 02:00 UTC (DeepSeek V4 Pro)
+### Tick #99 — 2026-07-28 02:00 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -392,7 +393,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed: 43/43 PASS in 0.21s. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #100 — 2026-07-28 02:53 UTC (DeepSeek V4 Pro)
+### Tick #100 — 2026-07-28 02:53 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -419,7 +420,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #101 — 2026-07-28 03:43 UTC (DeepSeek V4 Pro)
+### Tick #101 — 2026-07-28 03:43 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -443,7 +444,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #103 — 2026-07-28 21:40 UTC (DeepSeek V4 Pro)
+### Tick #103 — 2026-07-28 21:40 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -470,7 +471,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #102 — 2026-07-28 05:43 UTC (DeepSeek V4 Pro)
+### Tick #102 — 2026-07-28 05:43 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -497,7 +498,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #104 — 2026-07-28 17:29 UTC (DeepSeek V4 Pro)
+### Tick #104 — 2026-07-28 17:29 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -522,7 +523,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (unreachable — using prior committed value). fastapi upgraded to 0.140.13. 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #105.
 
-### Tick #105 — 2026-07-28 18:27 UTC (DeepSeek V4 Pro)
+### Tick #105 — 2026-07-28 18:27 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -549,7 +550,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (API unreachable, DB-confirmed). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
 
-### Tick #106 — 2026-07-29 00:18 UTC (DeepSeek V4 Pro)
+### Tick #106 — 2026-07-29 00:18 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -574,7 +575,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
 
-### Tick #107 — 2026-07-29 03:11 UTC (DeepSeek V4 Pro)
+### Tick #107 — 2026-07-29 03:11 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -601,7 +602,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (prior committed value). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
 
-### Tick #108 — 2026-07-29 02:00 UTC (DeepSeek V4 Pro)
+### Tick #108 — 2026-07-29 02:00 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -628,7 +629,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #110.
 
-### Tick #110 — 2026-07-29 03:46 UTC (DeepSeek V4 Pro)
+### Tick #110 — 2026-07-29 03:46 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -653,7 +654,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #115.
 
-### Tick #111 — 2026-07-29 04:36 UTC (DeepSeek V4 Pro)
+### Tick #111 — 2026-07-29 04:36 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -682,7 +683,7 @@
 
 **Verdict:** IDLE — All gates green. SEC-02 completed. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #115.
 
-### Tick #112 — 2026-07-29 05:26 UTC (DeepSeek V4 Pro)
+### Tick #112 — 2026-07-29 05:26 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -710,7 +711,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). fastapi upgraded to 0.140.13 (uv.lock regression fixed). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #115.
 
-### Tick #113 — 2026-07-29 06:16 UTC (DeepSeek V4 Pro)
+### Tick #113 — 2026-07-29 06:16 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -735,7 +736,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #115.
 
-### Tick #114 — 2026-07-29 07:07 UTC (DeepSeek V4 Pro)
+### Tick #114 — 2026-07-29 07:07 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -763,7 +764,7 @@
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #115.
 
 
-### Tick #115 — 2026-07-29 02:58 UTC (DeepSeek V4 Pro)
+### Tick #115 — 2026-07-29 02:58 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -788,7 +789,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #120.
 
-### Tick #116 — 2026-07-29 03:51 UTC (DeepSeek V4 Pro)
+### Tick #116 — 2026-07-29 03:51 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -813,7 +814,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #120.
 
-### Tick #117 — 2026-07-29 04:49 UTC (DeepSeek V4 Pro)
+### Tick #117 — 2026-07-29 04:49 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -838,7 +839,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #120.
 
-### Tick #118 — 2026-07-29 10:36 UTC (DeepSeek V4 Pro)
+### Tick #118 — 2026-07-29 10:36 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -870,7 +871,7 @@
 
 **Verdict:** IDLE — 2 gaps found + fixed. All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #120.
 
-### Tick #119 — 2026-07-29 11:28 UTC (DeepSeek V4 Pro)
+### Tick #119 — 2026-07-29 11:28 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -895,7 +896,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed (early, due ~tick #120). Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #125.
 
-### Tick #120 — 2026-07-29 08:05 UTC (DeepSeek V4 Pro)
+### Tick #120 — 2026-07-29 08:05 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -922,7 +923,7 @@
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #125.
 
-### Tick #121 — 2026-07-29 09:12 UTC (DeepSeek V4 Pro)
+### Tick #121 — 2026-07-29 09:12 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -947,7 +948,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #125.
 
-### Tick #122 — 2026-07-29 10:29 UTC (DeepSeek V4 Pro)
+### Tick #122 — 2026-07-29 10:29 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -973,7 +974,7 @@
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #125.
 
 
-### Tick #123 — 2026-07-29 12:04 UTC (DeepSeek V4 Pro)
+### Tick #123 — 2026-07-29 12:04 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -998,7 +999,7 @@
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due tick 125.
 
-### Tick #124 — 2026-07-29 16:25 UTC (DeepSeek V4 Pro)
+### Tick #124 — 2026-07-29 16:25 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1024,7 +1025,7 @@
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 2700s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due tick 125.
 
 
-### Tick #125 — 2026-07-29 17:37 UTC (DeepSeek V4 Pro)
+### Tick #125 — 2026-07-29 17:37 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1070,7 +1071,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 6075s (DB-confirmed — board corrected from 2700s). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #130.
 
 
-### Tick #126 — 2026-07-29 20:21 UTC (DeepSeek V4 Pro)
+### Tick #126 — 2026-07-29 20:21 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1096,7 +1097,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due tick 130.
 
 
-### Tick #127 — 2026-07-30 02:36 UTC (DeepSeek V4 Pro)
+### Tick #127 — 2026-07-30 02:36 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1122,7 +1123,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #132.
 
 
-### Tick #128 — 2026-07-30 03:49 UTC (DeepSeek V4 Pro)
+### Tick #128 — 2026-07-30 03:49 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1148,7 +1149,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due tick 132.
 
 
-### Tick #129 — 2026-07-30 00:37 UTC (DeepSeek V4 Pro)
+### Tick #129 — 2026-07-30 00:37 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1173,7 +1174,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due tick 132.
 
-### Tick #130 — 2026-07-30 02:22 UTC (DeepSeek V4 Pro)
+### Tick #130 — 2026-07-30 02:22 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1207,7 +1208,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. 2 docs created + 1 cooldown correction. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #132.
 
 
-### Tick #131 — 2026-07-30 09:08 UTC (DeepSeek V4 Pro)
+### Tick #131 — 2026-07-30 09:08 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1232,7 +1233,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified prior tick). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #132.
 
-### Tick #132 — 2026-07-30 05:53 UTC (DeepSeek V4 Pro)
+### Tick #132 — 2026-07-30 05:53 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1257,7 +1258,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #137.
 
-### Tick #133 — 2026-07-30 08:03 UTC (DeepSeek V4 Pro)
+### Tick #133 — 2026-07-30 08:03 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1282,7 +1283,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #137.
 
-### Tick #134 — 2026-07-30 09:50 UTC (DeepSeek V4 Pro)
+### Tick #134 — 2026-07-30 09:50 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1307,7 +1308,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #137.
 
-### Tick #135 — 2026-07-30 14:57 UTC (DeepSeek V4 Pro — foreman)
+### Tick #135 — 2026-07-30 14:57 UTC (deepseek-v4-flash — foreman)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1332,7 +1333,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #137.
 
-### Tick #136 — 2026-07-30 16:00 UTC (DeepSeek V4 Pro)
+### Tick #136 — 2026-07-30 16:00 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1355,7 +1356,7 @@ uv.lock). |
 
 **Actions taken:** None. All 15 gates green (1 warn — mypy stubs, known). No dispatch warranted. fastapi 0.141.1 available but patch bump from 0.140.13 not worth dispatch. annotated-doc 0.0.5 available but minor patch bump not worth dispatch. pydantic-core 2.47.0 blocked by pydantic 2.13.4 constraint (DEPS-01). DuckBrain: 40 keys (+1 tick-136). E2E-001 due next tick (137).
 
-### Tick #137 — 2026-07-30 13:53 UTC (DeepSeek V4 Pro)
+### Tick #137 — 2026-07-30 13:53 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1388,7 +1389,7 @@ uv.lock). |
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick 137.
 
 
-### Tick #138 — 2026-07-30 15:42 UTC (DeepSeek V4 Pro — foreman fallback)
+### Tick #138 — 2026-07-30 15:42 UTC (deepseek-v4-flash — foreman fallback)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1415,7 +1416,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #140.
 
-### Tick #139 — 2026-07-30 20:23 UTC (DeepSeek V4 Pro)
+### Tick #139 — 2026-07-30 20:23 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1440,7 +1441,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #140.
 
-### Tick #140 — 2026-07-30 22:14 UTC (DeepSeek V4 Pro)
+### Tick #140 — 2026-07-30 22:14 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1465,7 +1466,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. E2E-001 executed. Project in maintenance mode. Scheduler cooldown: 6075s (DB-verified). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #145.
 
-### Tick #141 — 2026-07-30 22:18 UTC (DeepSeek V4 Pro)
+### Tick #141 — 2026-07-30 22:18 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1551,7 +1552,7 @@ uv.lock). |
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (API-verified, no reversion since #141). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #145.
 
-### Tick #144 — 2026-07-31 02:08 UTC (DeepSeek V4 Pro)
+### Tick #144 — 2026-07-31 02:08 UTC (deepseek-v4-flash)
 
 | # | Gate | Result | Detail |
 |---|------|--------|--------|
@@ -1659,3 +1660,4 @@ uv.lock). |
 **Actions taken:** None. All 15 gates green (1 skip mypy, consistent with prior ticks). No dispatch warranted. Hilo warm dirtied tracked edges.jsonl (132/19 delta) — restored via `git checkout` per board-only-tick rule; board commit stays clean. pydantic-core 2.47.0 still blocked by pydantic 2.13.4 constraint (DEPS-01 — 20 ticks with same blocked dep). DuckBrain read-path healthy for a third consecutive tick (no DUCKDB_CONNECTION_LOST since #145). Namespace correction noted: shim foreman keys live in `h3` namespace, not `hermes-memory`.
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (API-verified, no reversion since #141). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #150.
+
