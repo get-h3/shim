@@ -10,6 +10,7 @@ sentinels.
 """
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -307,6 +308,95 @@ class TestRun:
         assert args[0] == "sess_test"
         assert args[1] == "d_xyz"
         assert isinstance(args[2], ExecutionResult)
+
+
+# ── run() per-hop logging ───────────────────────────────────────────────────
+
+
+class TestRunHopLogging:
+    """run() logs process / execute / result latencies for session tracing."""
+
+    @staticmethod
+    def _records(caplog, token: str) -> list[str]:
+        """Formatted shim-loop log lines containing *token*."""
+        return [
+            r.getMessage()
+            for r in caplog.records
+            if r.name == "h3_shim.shim_loop" and token in r.getMessage()
+        ]
+
+    def _tool_then_end_client(self):
+        client = _mock_client()
+        client.process.return_value = _decision(DecisionType.TOOL_CALL)
+        client.result.return_value = _decision(
+            DecisionType.END,
+            decision_id="d_002",
+            end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
+        )
+        return client
+
+    @pytest.mark.asyncio
+    async def test_logs_process_latency_and_decision_type(self, caplog):
+        client = self._tool_then_end_client()
+        loop = _make_loop(client=client)
+        loop.register_tool("test_tool", lambda **kw: "ok")
+        with caplog.at_level(logging.INFO, logger="h3_shim.shim_loop"):
+            await loop.run(_msg())
+        lines = self._records(caplog, "process_latency_ms")
+        assert lines, "expected a process_latency_ms INFO log line"
+        assert "session=sess_test" in lines[0]
+        assert "iteration=0" in lines[0]
+        assert "decision_type=tool_call" in lines[0]
+
+    @pytest.mark.asyncio
+    async def test_logs_result_latency_and_decision_type(self, caplog):
+        client = self._tool_then_end_client()
+        loop = _make_loop(client=client)
+        loop.register_tool("test_tool", lambda **kw: "ok")
+        with caplog.at_level(logging.INFO, logger="h3_shim.shim_loop"):
+            await loop.run(_msg())
+        lines = self._records(caplog, "result_latency_ms")
+        assert lines, "expected a result_latency_ms INFO log line"
+        assert "session=sess_test" in lines[0]
+        assert "decision_id=d_002" in lines[0]
+        assert "decision_type=end" in lines[0]
+
+    @pytest.mark.asyncio
+    async def test_logs_executed_hop_with_execution_ms(self, caplog):
+        client = self._tool_then_end_client()
+        loop = _make_loop(client=client)
+        loop.register_tool("test_tool", lambda **kw: "ok")
+        with caplog.at_level(logging.INFO, logger="h3_shim.shim_loop"):
+            await loop.run(_msg())
+        lines = self._records(caplog, "execution_ms")
+        assert lines, "expected an executed-hop INFO log line"
+        assert "hop 1" in lines[0]
+        assert "session=sess_test" in lines[0]
+        assert "decision_type=tool_call" in lines[0]
+
+    @pytest.mark.asyncio
+    async def test_logs_every_hop_in_session(self, caplog):
+        client = _mock_client()
+        client.process.return_value = _decision(DecisionType.TOOL_CALL)
+        client.result.side_effect = [
+            _decision(DecisionType.LLM_CALL, decision_id="d_002"),
+            _decision(
+                DecisionType.END,
+                decision_id="d_003",
+                end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
+            ),
+        ]
+        loop = _make_loop(client=client)
+        loop.register_tool("test_tool", lambda **kw: "ok")
+        with caplog.at_level(logging.INFO, logger="h3_shim.shim_loop"):
+            await loop.run(_msg())
+        hops = self._records(caplog, "execution_ms")
+        results = self._records(caplog, "result_latency_ms")
+        assert len(hops) == 2
+        assert len(results) == 2
+        assert "hop 1" in hops[0]
+        assert "hop 2" in hops[1]
+        assert all("session=sess_test" in line for line in hops + results)
 
 
 # ── _execute_tool ───────────────────────────────────────────────────────────

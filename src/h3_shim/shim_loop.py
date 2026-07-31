@@ -110,11 +110,21 @@ class H3ShimLoop:
         exceptions.
         """
         try:
+            process_start = time.monotonic()
             decision: Decision = await self.client.process(
                 self.session_id,
                 message,
                 self.identity,
                 self.context,
+            )
+            process_latency_ms = (time.monotonic() - process_start) * 1000
+            logger.info(
+                "H3ShimLoop: process session=%s iteration=%d "
+                "decision_type=%s process_latency_ms=%.2f",
+                self.session_id,
+                self.iteration,
+                decision.decision.value,
+                process_latency_ms,
             )
 
             while decision.decision != DecisionType.END:
@@ -128,10 +138,29 @@ class H3ShimLoop:
                     return "timeout"
 
                 result = await self._execute(decision)
+                logger.info(
+                    "H3ShimLoop: executed hop %d session=%s "
+                    "decision_type=%s execution_ms=%.2f",
+                    self.iteration,
+                    self.session_id,
+                    decision.decision.value,
+                    result.duration_ms,
+                )
+
+                result_start = time.monotonic()
                 decision = await self.client.result(
                     self.session_id,
                     decision.decision_id,
                     result,
+                )
+                result_latency_ms = (time.monotonic() - result_start) * 1000
+                logger.info(
+                    "H3ShimLoop: result session=%s decision_id=%s "
+                    "decision_type=%s result_latency_ms=%.2f",
+                    self.session_id,
+                    decision.decision_id,
+                    decision.decision.value,
+                    result_latency_ms,
                 )
 
             # decision.decision == DecisionType.END is guaranteed here
