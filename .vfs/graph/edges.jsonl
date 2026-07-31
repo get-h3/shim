@@ -140,3 +140,7 @@
 {"from":"_ci_lint.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"_check_scheduler.py","to":"pkg:urllib.request,","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"_check_scheduler.py","to":"pkg:sqlite3,","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/client.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:math","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_shim_loop.py","to":"pkg:logging","rel":"imports","provenance":"ast_exact","confidence":1.0}
