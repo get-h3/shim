@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import sys
 from collections import OrderedDict
 from dataclasses import asdict
@@ -34,7 +35,7 @@ from typing import Any
 import click
 import yaml
 
-from h3_shim.test_battery import H3TestBattery, TestReport
+from h3_shim.test_battery import H3TestBattery, TestReport, TestResult
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -250,6 +251,43 @@ def _format_run_instructions(lang: str, project_dir: Path) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _latency_stats(results: list[TestResult]) -> dict[str, float]:
+    """Compute per-test latency statistics (ms) over a battery report.
+
+    Returns ``min`` / ``p50`` / ``p90`` / ``p95`` / ``p99`` / ``max`` /
+    ``mean`` over every result's ``duration_ms``, each rounded to two
+    decimals.  An empty *results* list yields all zeros so callers never
+    have to special-case a battery that produced no tests.
+    """
+    durations = sorted(r.duration_ms for r in results)
+    if not durations:
+        return {
+            "min_ms": 0.0,
+            "p50_ms": 0.0,
+            "p90_ms": 0.0,
+            "p95_ms": 0.0,
+            "p99_ms": 0.0,
+            "max_ms": 0.0,
+            "mean_ms": 0.0,
+        }
+
+    def _percentile(pct: float) -> float:
+        # Nearest-rank method: index = ceil(pct/100 * n) - 1.
+        idx = max(0, math.ceil(pct / 100.0 * len(durations)) - 1)
+        return durations[idx]
+
+    mean_ms = sum(durations) / len(durations)
+    return {
+        "min_ms": round(durations[0], 2),
+        "p50_ms": round(_percentile(50.0), 2),
+        "p90_ms": round(_percentile(90.0), 2),
+        "p95_ms": round(_percentile(95.0), 2),
+        "p99_ms": round(_percentile(99.0), 2),
+        "max_ms": round(durations[-1], 2),
+        "mean_ms": round(mean_ms, 2),
+    }
+
+
 def _format_human(report: TestReport, endpoint: str) -> str:
     """Group results by category into a human-readable text report."""
     lines: list[str] = [
@@ -275,6 +313,12 @@ def _format_human(report: TestReport, endpoint: str) -> str:
     totals = "PASSED" if report.all_passing else "FAILED"
     lines.append(f"  {'TOTAL':35s} {report.passed}/{report.total}  {totals}")
     lines.append(f"  {'Duration':35s} {report.duration_ms / 1000.0:.2f}s")
+    if report.results:
+        stats = _latency_stats(report.results)
+        lines.append(
+            f"  {'Latency p50/p95':35s} "
+            f"{stats['p50_ms']:.2f}ms / {stats['p95_ms']:.2f}ms"
+        )
     return "\n".join(lines)
 
 
@@ -300,6 +344,7 @@ async def _run_battery(
     if as_json:
         payload = asdict(report)
         payload["all_passing"] = report.all_passing
+        payload["latency"] = _latency_stats(report.results)
         print(json.dumps(payload, indent=2))
     else:
         print(_format_human(report, endpoint))

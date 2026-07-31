@@ -11,6 +11,7 @@ real user configs are never touched, and stubs out ``asyncio.run`` /
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -23,6 +24,8 @@ from click.testing import CliRunner
 from h3_shim.cli import (
     _empty_config,
     _format_human,
+    _latency_stats,
+    _run_battery,
     hermes_h3,
     load_config,
     main,
@@ -583,6 +586,143 @@ class TestFormatHuman:
         # Duration is rendered as seconds with two decimals.
         assert "Duration" in text
         assert "s" in text
+
+    def test_format_includes_latency_p50_p95_line(self):
+        text = _format_human(_passing_report(), "http://x:1")
+        assert "Latency p50/p95" in text
+
+
+# ── latency stats ───────────────────────────────────────────────────────────
+
+
+class TestLatencyStats:
+    def test_known_duration_list(self):
+        results = [
+            FakeTestResult(
+                name=f"t{i}",
+                passed=True,
+                detail="ok",
+                duration_ms=float(d),
+                category="Health & Protocol",
+            )
+            for i, d in enumerate([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], start=1)
+        ]
+        stats = _latency_stats(results)
+        assert stats == {
+            "min_ms": 1.0,
+            "p50_ms": 5.0,
+            "p90_ms": 9.0,
+            "p95_ms": 10.0,
+            "p99_ms": 10.0,
+            "max_ms": 10.0,
+            "mean_ms": 5.5,
+        }
+
+    def test_empty_results_are_zeros(self):
+        assert _latency_stats([]) == {
+            "min_ms": 0.0,
+            "p50_ms": 0.0,
+            "p90_ms": 0.0,
+            "p95_ms": 0.0,
+            "p99_ms": 0.0,
+            "max_ms": 0.0,
+            "mean_ms": 0.0,
+        }
+
+    def test_single_result_all_equal(self):
+        results = [
+            FakeTestResult(
+                name="only",
+                passed=True,
+                detail="ok",
+                duration_ms=7.5,
+                category="Health & Protocol",
+            )
+        ]
+        stats = _latency_stats(results)
+        assert all(v == 7.5 for v in stats.values())
+
+    def test_mean_rounded_to_two_decimals(self):
+        results = [
+            FakeTestResult(
+                name="a", passed=True, detail="ok",
+                duration_ms=1.234, category="Health & Protocol",
+            ),
+            FakeTestResult(
+                name="b", passed=True, detail="ok",
+                duration_ms=2.345, category="Health & Protocol",
+            ),
+        ]
+        stats = _latency_stats(results)
+        assert stats["mean_ms"] == round((1.234 + 2.345) / 2, 2)
+
+
+# ── _run_battery JSON output ────────────────────────────────────────────────
+
+
+class TestRunBatteryJSON:
+    @staticmethod
+    def _stub_battery(monkeypatch, report):
+        fake = MagicMock()
+        fake.run_all = AsyncMock(return_value=report)
+        fake.close = AsyncMock()
+        monkeypatch.setattr("h3_shim.cli.H3TestBattery", lambda *a, **kw: fake)
+
+    @pytest.mark.asyncio
+    async def test_json_payload_includes_latency(self, monkeypatch, capsys):
+        self._stub_battery(monkeypatch, _passing_report())
+        code = await _run_battery("http://x:1", None, True)
+        assert code == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["latency"] == {
+            "min_ms": 12.0,
+            "p50_ms": 12.0,
+            "p90_ms": 20.0,
+            "p95_ms": 20.0,
+            "p99_ms": 20.0,
+            "max_ms": 20.0,
+            "mean_ms": 16.0,
+        }
+
+    @pytest.mark.asyncio
+    async def test_json_payload_preserves_schema_keys(self, monkeypatch, capsys):
+        self._stub_battery(monkeypatch, _passing_report())
+        await _run_battery("http://x:1", None, True)
+        payload = json.loads(capsys.readouterr().out)
+        for key in (
+            "total",
+            "passed",
+            "failed",
+            "duration_ms",
+            "timestamp",
+            "results",
+            "all_passing",
+            "latency",
+        ):
+            assert key in payload
+
+    @pytest.mark.asyncio
+    async def test_json_empty_results_yield_zero_latency(self, monkeypatch, capsys):
+        report = FakeTestReport(
+            results=[],
+            total=0,
+            passed=0,
+            failed=0,
+            duration_ms=0.0,
+            timestamp="2026-01-01T00:00:00Z",
+        )
+        self._stub_battery(monkeypatch, report)
+        await _run_battery("http://x:1", None, True)
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["latency"] == {
+            "min_ms": 0.0,
+            "p50_ms": 0.0,
+            "p90_ms": 0.0,
+            "p95_ms": 0.0,
+            "p99_ms": 0.0,
+            "max_ms": 0.0,
+            "mean_ms": 0.0,
+        }
 
 
 # ── test command (asyncio + battery stubbed) ───────────────────────────────
