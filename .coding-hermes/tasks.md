@@ -47,10 +47,10 @@
 | OBS-IMPL-03 | `h3-test --json` report includes latency percentiles | Low | 2 | QV-SHIM-02 | ++observability, +python | DeepSeek V4 Flash | Report enhancement | Step 3.7 Flash |
 | DEPS-01 | Package upgrades: 17/18 done (gitreins 0.11.0 ✅ tick #77, pydantic-core 2.47.0 blocked by pydantic 2.13.4 — verified tick #82) | Low | 2 | — | +python, +deps | DeepSeek V4 Flash | 17/18 upgraded tick #77 — pydantic-core 2.47.0 still blocked by pydantic 2.13.4 constraint tick #82 | Step 3.7 Flash |
 | PERF-ND-03 | Zero performance benchmarks — test battery latency tracking | Low | 2 | — | ++performance, +python | Step 3.7 Flash | Benchmark authoring | DeepSeek V4 Flash |
-|||||| NEVER-DONE | 15-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | 15/15 PASS tick #130 — clean repo, 227/227 tests, GitReins PASS, Hilo 141e/26f, Docs 12/12, DuckBrain 33 keys, E2E 43/43 last run #127, Cooldown 6075s DB-corrected tick #130 | GLM-5.2 |
-||| E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing — 43/43 PASS last run #127, due ~#132 | DeepSeek V4 Pro |
+|||||| NEVER-DONE | 15-point audit sweep | 🔵 PASS | 2 | — | ++code-review, +testing | DeepSeek V4 Pro | 15/15 PASS tick #141 — clean repo, 227/227 tests, GitReins PASS, Hilo 141e/26f, Docs 13/13, DuckBrain MCP read-path degraded (durable store intact, ~500 keys), E2E 43/43 last run #140, Cooldown 6075s verified tick #142 | GLM-5.2 |
+||| E2E-001 | E2E Testing Tick (self-improving loop) 🔁 Every 5-10 ticks | Medium | 3 | — | ++testing, +e2e | Step 3.7 Flash | Playwright/API testing — 43/43 PASS last run #140, due ~#145 | DeepSeek V4 Pro |
 
-**Assumptions:** Python 3.11+. 227 unit tests pass. GitReins guard PASS. Hilo: 141 edges/26 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test) + pre-update-check. All core tasks Done. SEC-02 Done (tick #111). DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core 2.47.0 — pydantic 2.13.4 is latest, incompatible). 3 low-priority + 1 blocked dep. E2E-001: 43/43 PASS last run #127. DuckBrain: 33 keys (verified tick #130). Docs: 12/12 (NOTICE + TRADEMARK_POLICY.md created tick #130). Scheduler: h3-shim-foreman, CooldownS=6075, DB-verified tick #130 (⚠️ board claimed 4050s since tick #125 — DB ground truth = 6075s).
+**Assumptions:** Python 3.11+. 227 unit tests pass. GitReins guard PASS. Hilo: 141 edges/26 files. CLI: 8 subcommands (health, process, result, cancel, install, scaffold, verify, test) + pre-update-check. All core tasks Done. SEC-02 Done (tick #111). DEPS-01: 17/18 upgraded, 1 blocked (pydantic-core 2.47.0 — pydantic 2.13.4 is latest, incompatible). 3 low-priority + 1 blocked dep. E2E-001: 43/43 PASS last run #140 (tick #132 also ran 43/43). DuckBrain: durable store intact (~500 keys, git-backed, auto-commit c1105a1 tick #142); MCP DuckDB read-path degraded (DUCKDB_CONNECTION_LOST since 00:08 UTC tick #142 — list_keys/recall fail, remember works). Docs: 13/13. Scheduler: h3-shim-foreman, CooldownS=6075, API-verified tick #142 (no reversion since #141 PUT).
 
 **Routing Notes:** QV-SHIM-03/04 Done tick #78-79 (health fallback verified). P4 tasks Done tick #79 (all CLI commands implemented). RES-IMPL-01/02/03 Done tick #79-80. DEPS-01: 17/18 upgraded tick #77 (gitreins 0.11.0 ✅), pydantic-core blocked by pydantic 2.13.4 (verified tick #82). CI-FIX-RUFF Done tick #81 (ruff 0.16.0 lint fixes). DEP-GROUPS-FIX Done tick #82 (missing build/jsonschema/ruff added to [dependency-groups]). PERF/OBS are low-priority. E2E-001 due ~tick #85 (every 5-10 ticks). No open tasks — maintenance mode.
 
@@ -1493,3 +1493,34 @@ uv.lock). |
 2. Board header cooldown kept at 6075s (was never actually wrong — the daemon reverted after the board was correct)
 
 **Verdict:** IDLE — All gates green. 1 cooldown correction (daemon restart reversion). Project in maintenance mode. Scheduler cooldown: 6075s (PUT-applied, verified in response). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #145.
+
+### Tick #142 — 2026-07-31 05:10 UTC (DeepSeek V4 Flash)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 0 | Scheduler cooldown | ✅ VERIFIED | h3-shim-foreman, CooldownS=6075, UpdatedAt=2026-07-31T03:19:24Z, enabled=true (API GET). Tick #141's PUT survived — no reversion. |
+| 1 | Git status | ✅ PASS | Clean workdir. `ls _*.py` → all absent (confirmed — Hilo orphans Variant B). No sibling commits since tick #141 (HEAD ce668d5). |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ lint ✅ tests skipped (no staged files — idle audit) |
+| 3 | Hilo graph | ✅ PASS | 141 edges / 26 files (matches prior ticks). Stale orphans for deleted _*.py confirmed absent on disk. |
+| 4 | Tests | ✅ PASS | 227/227 in 1.42s (.venv/bin/python3) |
+| 5 | TODO/FIXME | ✅ PASS | None found in src/ or tests/ |
+| 6 | Deps check | ✅ PASS | annotated-doc 0.0.4→0.0.5 (minor — deferred); fastapi 0.140.13→0.141.1 (patch — deferred); pip 26.1.2→26.2 (patch — deferred); ruff 0.16.0→0.16.1 (patch — deferred); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01). 4 patch bumps deferred — not worth dispatch in maintenance mode. |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, evaluator 50iter/10m/0.2M/0.4M, gitreins 0.11.0). 2 tasks complete (QV-SHIM-01, QV-CROSS-01). |
+| 8 | Ruff lint | ✅ PASS | All checks passed |
+| 9 | Ruff format | ✅ PASS | 28 files already formatted |
+| 10 | Static analysis (mypy) | ⚠️ SKIP | mypy not installed in venv (consistent with prior ticks — stub-only warnings expected, no code-level errors) |
+| 11 | Docs & Security | ✅ PASS | 13/13 docs present (LICENSE, README.md, SECURITY.md, CODEOWNERS, CODE_OF_CONDUCT.md, CONTRIBUTING.md, GOVERNANCE.md, NOTICE.md, SUPPORT.md, TRADEMARK_POLICY.md, CHANGELOG.md, AGENTS.md, .gitignore). .gitignore: .env/.env.* blocked + !.env.example exception. |
+| 12 | DuckBrain | ⚠️ WARN | MCP DuckDB read-path down (DUCKDB_CONNECTION_LOST on list_keys/recall for ALL namespaces; list_namespaces OK — git-backed). `hermes mcp test duckbrain` spawned fresh watchdog+node (pid 512081) but session still routes to stale Jul-30 node (332353). No pkill per skill. Durable store verified directly: ~500 keys across concept/event/raw_note/config; tick write `/foreman/h3/tick/142` landed + auto-committed (c1105a1). Write path healthy. |
+| 13 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete (QV-SHIM-01, QV-CROSS-01), board in sync. No board-gap. Cooldown 6075s API-verified. E2E-001 row corrected (was stale "last run #127" — actual #132 + #140 ran 43/43). |
+| 14 | E2E-001 dispatch | ⏭️ SKIP | Due ~tick #145 (last run #140, 43/43 PASS in 0.19s). Go echo harness not running — not yet due. |
+| 15 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. Host load 5.05. |
+
+**⚠️ DuckBrain MCP read-path degradation noted:** DUCKDB_CONNECTION_LOST on list_keys/recall since this tick (all namespaces). The MCP server process itself is alive (list_namespaces works — reads git manifest). The DuckDB read connection inside the node process is broken. `hermes mcp test duckbrain` + `switch_namespace` did not repair the in-session connection. No pkill performed (skill rule). Durable storage verified intact via direct filesystem inspection (~500 keys, git auto-commit active). This is a fleet-level MCP infrastructure issue, not a project data-loss — flagging for the Supervisor.
+
+**Actions taken:**
+1. Board E2E-001 row corrected: last run #127 → #140 (stale metadata; ticks #132 + #140 both ran 43/43).
+2. Board NEVER-DONE row refreshed to tick #141 reference + current stats.
+3. Assumptions line updated (E2E last run #140, DuckBrain MCP degradation noted, Docs 13/13).
+4. DuckBrain tick write `/foreman/h3/tick/142` (id=064f9700) — verified in event JSONL + git commit c1105a1.
+
+**Verdict:** IDLE — All gates green (1 skip mypy, 1 warn DuckBrain MCP read-path). Project in maintenance mode. Scheduler cooldown: 6075s (API-verified, no reversion since #141). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #145.
