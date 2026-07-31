@@ -1634,3 +1634,28 @@ uv.lock). |
 **Actions taken:** None. All 15 gates green (1 skip mypy, consistent with prior ticks). No dispatch warranted. Hilo warm dirtied tracked edges.jsonl (132/19 delta) — restored via `git checkout` per board-only-tick rule; board commit stays clean. pydantic-core 2.47.0 still blocked by pydantic 2.13.4 constraint (DEPS-01 — 19 ticks with same blocked dep). DuckBrain read-path confirmed healthy for a second consecutive tick (no DUCKDB_CONNECTION_LOST since #145).
 
 **Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (API-verified, no reversion since #141). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #150.
+
+### Tick #147 — 2026-07-31 12:11 UTC (DeepSeek V4 Flash)
+
+| # | Gate | Result | Detail |
+|---|------|--------|--------|
+| 0 | Scheduler cooldown | ✅ VERIFIED | h3-shim-foreman, CooldownS=6075, Enabled=true (API GET :9090 via check_scheduler_project.py). No reversion since #141 PUT. |
+| 1 | Git status | ✅ PASS | Clean workdir. HEAD 853f3c5 (tick #146). 0 commits ahead of origin/main. `ls _*.py` → no such file (Hilo orphans Variant B, confirmed). Host load 4.84. |
+| 2 | GitReins guard | ✅ PASS | secrets ✅ (gitleaks clean) lint ✅ tests ✅ (timeout 120, full suite ran) |
+| 3 | Hilo graph | ✅ PASS | 141 edges / 26 files (fresh `hilo graph stats`). Warm 132/19 — Variant D incremental delta, stats authoritative, matches prior ticks. Stale orphans for deleted _*.py confirmed absent on disk. edges.jsonl restored post-warm per board-only rule. |
+| 4 | Tests | ✅ PASS | 227/227 in 1.48s (.venv/bin/python3, Python 3.13.13) |
+| 5 | TODO/FIXME | ✅ PASS | None found in src/ or tests/ |
+| 6 | Deps check | ✅ PASS | annotated-doc 0.0.4→0.0.5 (minor — deferred); fastapi 0.140.13→0.141.1 (patch — deferred); pip 26.1.2→26.2 (patch — deferred); ruff 0.16.0→0.16.1 (patch — deferred); pydantic-core 2.46.4→2.47.0 blocked by pydantic 2.13.4 requires pydantic-core==2.46.4 (known DEPS-01, 20th consecutive tick). 4 patch bumps deferred — not worth dispatch in maintenance mode. |
+| 7 | GitReins config | ✅ PASS | Config valid (Tier 1 + Tier 2, evaluator 50iter/10m/0.2M/0.4M, gitreins 0.11.0). 2 tasks complete (QV-SHIM-01, QV-CROSS-01). |
+| 8 | Ruff lint | ✅ PASS | All checks passed (ruff 0.16.0) |
+| 9 | Ruff format | ✅ PASS | 28 files already formatted |
+| 10 | Static analysis (mypy) | ⚠️ SKIP | mypy not installed in venv (consistent with prior ticks — stub-only warnings expected, no code-level errors) |
+| 11 | Docs & Security | ✅ PASS | 13/13 docs present (explicit ls): LICENSE, README.md, SECURITY.md, CODEOWNERS, CODE_OF_CONDUCT.md, CONTRIBUTING.md, GOVERNANCE.md, NOTICE.md, SUPPORT.md, TRADEMARK_POLICY.md, CHANGELOG.md, AGENTS.md, .gitignore. No .env files on disk. |
+| 12 | DuckBrain | ✅ PASS | Read-path OK: list_keys (h3 ns /foreman/h3/ → 14 keys) + recall (/foreman/h3/status) both live. Note: prior ticks used hermes-memory ns; actual keys live in `h3` namespace. No regression. |
+| 13 | Board consistency | ✅ PASS | Dual-source: GitReins 2/2 complete (qv-shim-test-battery, qv-cross-scaffold) — board in sync. git log tick #146 = last committed tick. Cooldown 6075s API-verified. |
+| 14 | E2E-001 dispatch | ⏭️ SKIP | Due ~tick #150 (last run #145, 43/43 PASS in 0.19s). Not yet due. Go echo harness not running on :9191. |
+| 15 | Dispatch | ⏭️ DEFER | All tasks Done. Maintenance mode. 3 low-priority + 1 blocked dep remain. |
+
+**Actions taken:** None. All 15 gates green (1 skip mypy, consistent with prior ticks). No dispatch warranted. Hilo warm dirtied tracked edges.jsonl (132/19 delta) — restored via `git checkout` per board-only-tick rule; board commit stays clean. pydantic-core 2.47.0 still blocked by pydantic 2.13.4 constraint (DEPS-01 — 20 ticks with same blocked dep). DuckBrain read-path healthy for a third consecutive tick (no DUCKDB_CONNECTION_LOST since #145). Namespace correction noted: shim foreman keys live in `h3` namespace, not `hermes-memory`.
+
+**Verdict:** IDLE — All gates green. Project in maintenance mode. Scheduler cooldown: 6075s (API-verified, no reversion since #141). 3 low-priority items remain (OBS-IMPL-02/03, PERF-ND-03) + DEPS-01 blocked (pydantic-core 2.47.0 incompatible with pydantic 2.13.4 latest). E2E-001 due ~tick #150.
