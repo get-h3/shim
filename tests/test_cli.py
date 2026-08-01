@@ -645,12 +645,18 @@ class TestLatencyStats:
     def test_mean_rounded_to_two_decimals(self):
         results = [
             FakeTestResult(
-                name="a", passed=True, detail="ok",
-                duration_ms=1.234, category="Health & Protocol",
+                name="a",
+                passed=True,
+                detail="ok",
+                duration_ms=1.234,
+                category="Health & Protocol",
             ),
             FakeTestResult(
-                name="b", passed=True, detail="ok",
-                duration_ms=2.345, category="Health & Protocol",
+                name="b",
+                passed=True,
+                detail="ok",
+                duration_ms=2.345,
+                category="Health & Protocol",
             ),
         ]
         stats = _latency_stats(results)
