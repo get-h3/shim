@@ -144,3 +144,7 @@
 {"from":"tests/test_client.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"src/h3_shim/cli.py","to":"pkg:math","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_shim_loop.py","to":"pkg:logging","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_native.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_native.py","to":"pkg:h3_shim.native","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_native.py","to":"pkg:asyncio","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_native.py","to":"pkg:asyncio","rel":"imports","provenance":"ast_exact","confidence":1.0}
