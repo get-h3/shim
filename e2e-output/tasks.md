@@ -1,4 +1,4 @@
-# E2E-001 Task Matrix — tick #167 (2026-08-02)
+# E2E-001 Task Matrix — tick #172 (2026-08-02)
 
 | ID | Task | Pri | Cpx | Deps | Tags | Files |
 |----|------|-----|-----|------|------|-------|
