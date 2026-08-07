@@ -1,0 +1,47 @@
+{
+  "task_id": "gap-003",
+  "task_title": "GAP-003: h3-test wrong-server detection + named-harness gate",
+  "task_criteria": [
+    "h3-test --endpoint http://localhost:<free-port> against a real H3 echo harness exits 0 with 43/43 PASSED",
+    "h3-test --endpoint http://localhost:<port-of-non-H3-server> prints an explicit warning that the target does not look like an H3 endpoint (e.g. 401 SESSION_TOKEN_MISSING / non-H3 health shape) instead of silently running the battery against the wrong server",
+    "The warning fires before or instead of a confusing 9/43-style failure across all categories",
+    "Existing 242 tests still pass and new tests cover the wrong-server detection",
+    "gitreins guard passes (secrets, lint, tests)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": ""
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 h3-test --endpoint http://localhost:<free-port> against a real H3 echo harness exits 0 with 43/43 PASSED: Live run against real H3 harness on port 9191: exit 0, output 'TOTAL 43/43 PASSED' (verified via .venv/bin/h3-test --endpoint http://localhost:9191)\n  \u2713 h3-test --endpoint http://localhost:<port-of-non-H3-server> prints an explicit warning that the target does not look like an H3 endpoint (e.g. 401 SESSION_TOKEN_MISSING / non-H3 health shape) instead of silently running the battery against the wrong server: Live run against non-H3 server (port 35907, health shape {\"status\":\"healthy\"}) printed 'Warning: ... does not look like an H3 endpoint (status field is 'healthy' (expected 'ok'))' and exit 2; 401 SESSION_TOKEN_MISSING case (port 41675) printed warning with SESSION_TOKEN_MISSING, exit 2. Implemented in src/h3_shim/cli.py _run_battery catching NotH3EndpointError (prints to stderr, returns 2) and src/h3_shim/test_battery.py probe()\n  \u2713 The warning fires before or instead of a confusing 9/43-style failure across all categories: probe() is invoked first in run_all() (src/h3_shim/test_battery.py:251) before any category runs; live output shows only the warning + battery header, no per-category failures, distinct exit code 2\n  \u2713 Existing 242 tests still pass and new tests cover the wrong-server detection: Full suite: 248 passed (242 existing + 6 new in tests/test_battery_detection.py covering 401 SESSION_TOKEN_MISSING, foreign JSON health, connection error, healthy H3 shape, run_battery warning+exit2, JSON mode)\n  \u2713 gitreins guard passes (secrets, lint, tests): gitreins guard exit 0: 'Tier 1 Guards: PASS \u2014 secrets clean, lint ok, tests'\nAll 5 criteria verified with live runs: real H3 harness gives 43/43 exit 0, non-H3/401 servers trigger explicit pre-battery warning with exit 2, 248 tests pass (242+6 new), and gitreins guard passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 h3-test --endpoint http://localhost:<free-port> against a real H3 echo harness exits 0 with 43/43 PASSED: Live run against real H3 harness on port 9191: exit 0, output 'TOTAL 43/43 PASSED' (verified via .venv/bin/h3-test --endpoint http://localhost:9191)\n  \u2713 h3-test --endpoint http://localhost:<port-of-non-H3-server> prints an explicit warning that the target does not look like an H3 endpoint (e.g. 401 SESSION_TOKEN_MISSING / non-H3 health shape) instead of silently running the batt",
+          "error": ""
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-003\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 h3-test --endpoint http://localhost:<free-port> against a real H3 echo harness exits 0 with 43/43 PASSED: Live run against real H3 harness on port 9191: exit 0, output 'TOTAL 43/43 PASSED' (verified via .venv/bin/h3-test --endpoint http://localhost:9191)\n  \u2713 h3-test --endpoint http://localhost:<port-of-non-H3-server> prints an explicit warning that the target does not look like an H3 endpoint (e.g. 401 SESSION_TOKEN_MISSING / non-H3 health shape) instead of silently running the battery against the wrong server: Live run against non-H3 server (port 35907, health shape {\"status\":\"healthy\"}) printed 'Warning: ... does not look like an H3 endpoint (status field is 'healthy' (expected 'ok'))' and exit 2; 401 SESSION_TOKEN_MISSING case (port 41675) printed warning with SESSION_TOKEN_MISSING, exit 2. Implemented in src/h3_shim/cli.py _run_battery catching NotH3EndpointError (prints to stderr, returns 2) and src/h3_shim/test_battery.py probe()\n  \u2713 The warning fires before or instead of a confusing 9/43-style failure across all categories: probe() is invoked first in run_all() (src/h3_shim/test_battery.py:251) before any category runs; live output shows only the warning + battery header, no per-category failures, distinct exit code 2\n  \u2713 Existing 242 tests still pass and new tests cover the wrong-server detection: Full suite: 248 passed (242 existing + 6 new in tests/test_battery_detection.py covering 401 SESSION_TOKEN_MISSING, foreign JSON health, connection error, healthy H3 shape, run_battery warning+exit2, JSON mode)\n  \u2713 gitreins guard passes (secrets, lint, tests): gitreins guard exit 0: 'Tier 1 Guards: PASS \u2014 secrets clean, lint ok, tests'\nAll 5 criteria verified with live runs: real H3 harness gives 43/43 exit 0, non-H3/401 servers trigger explicit pre-battery warning with exit 2, 248 tests pass (242+6 new), and gitreins guard passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-07T04:42:34.485245"
+}
