@@ -280,9 +280,7 @@ class TestScaffold:
         """``scaffold --config <path>`` creates config at the custom path."""
         custom = tmp_path / "custom.yaml"
         assert not custom.exists()
-        result = runner.invoke(
-            hermes_h3, ["scaffold", "--config", str(custom)]
-        )
+        result = runner.invoke(hermes_h3, ["scaffold", "--config", str(custom)])
         assert result.exit_code == 0
         assert custom.exists()
         data = yaml.safe_load(custom.read_text())
