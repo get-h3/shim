@@ -1139,3 +1139,92 @@ class TestReportSchema:
         }
         errors = validate_test_report(data, schema_path=schema_path)
         assert len(errors) > 0
+
+
+# ── GAP-005 regression: __init__.py must be importable ──────────────────────
+
+
+class TestPackageIntegrity:
+    """GAP-005 regression — the installed wheel must ship __init__.py."""
+
+    def test_version_accessible(self):
+        """``h3_shim.__version__`` returns a non-empty string."""
+        import h3_shim
+
+        assert h3_shim.__version__ == "0.1.0"
+        assert isinstance(h3_shim.__version__, str)
+
+    def test_import_does_not_raise(self):
+        """``import h3_shim`` does not raise ImportError."""
+        import h3_shim  # noqa: F811 — re-import is harmless
+
+        assert h3_shim is not None
+
+
+# ── GAP-008 regression: all subcommand --help must work ─────────────────────
+
+
+class TestAllSubcommandHelp:
+    """GAP-008 regression — every documented subcommand must respond to --help."""
+
+    ALL_SUBCMDS = [
+        "install",
+        "list",
+        "pre-update-check",
+        "route",
+        "scaffold",
+        "test",
+        "uninstall",
+        "use",
+        "verify",
+    ]
+
+    def test_hermes_h3_top_level_help(self, runner):
+        """``hermes-h3 --help`` exits 0."""
+        result = runner.invoke(hermes_h3, ["--help"])
+        assert result.exit_code == 0
+        assert "Usage:" in result.output
+
+    @pytest.mark.parametrize("subcmd", ALL_SUBCMDS)
+    def test_every_subcommand_help(self, runner, subcmd):
+        """Each subcommand --help exits 0."""
+        result = runner.invoke(hermes_h3, [subcmd, "--help"])
+        assert result.exit_code == 0, (
+            f"hermes-h3 {subcmd} --help failed: {result.output}"
+        )
+
+    def test_h3_test_help_smoke(self, runner):
+        """``h3-test --help`` exit code is 0 (via argparse SystemExit)."""
+        import sys
+
+        try:
+            sys.argv = ["h3-test", "--help"]
+            main()
+        except SystemExit as e:
+            assert e.code == 0
+
+
+# ── GAP-008 regression: template files must exist in source ─────────────────
+
+
+class TestTemplatesExist:
+    """GAP-008 regression — all 8 template files must exist in the source tree."""
+
+    TEMPLATES = [
+        "go/main.go",
+        "go/go.mod",
+        "py/main.py",
+        "py/requirements.txt",
+        "py/pyproject.toml",
+        "ts/index.ts",
+        "ts/package.json",
+        "ts/tsconfig.json",
+    ]
+
+    def test_all_templates_present(self):
+        """All 8 template files exist under templates/."""
+        from h3_shim.cli import TEMPLATES_DIR
+
+        for rel in self.TEMPLATES:
+            full = TEMPLATES_DIR / rel
+            assert full.is_file(), f"template missing: {rel}"

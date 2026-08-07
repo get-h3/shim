@@ -40,4 +40,7 @@ build-dist:
 	$(PYTHON) -m pip install build
 	$(PYTHON) -m build
 
+smoke-test:
+	bash scripts/smoke_test.sh
+
 all: install lint build test
