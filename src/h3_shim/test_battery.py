@@ -65,6 +65,15 @@ class TestReport:
         return self.failed == 0
 
 
+class NotH3EndpointError(Exception):
+    """Raised when a battery target does not expose an H3-shaped health endpoint."""
+
+    def __init__(self, reason: str, response_text: str = "") -> None:
+        self.reason = reason
+        self.response_text = response_text
+        super().__init__(f"Target does not look like an H3 endpoint: {reason}")
+
+
 # ── battery ─────────────────────────────────────────────────────────────────
 
 
@@ -114,6 +123,57 @@ class H3TestBattery:
             base_url=self.endpoint, timeout=self.PER_TEST_TIMEOUT_S
         )
         self.results: list[TestResult] = []
+
+    async def probe(self) -> None:
+        """Pre-flight check that the target looks like an H3 harness.
+
+        Validates that ``GET /v1/health`` returns 200 OK with an H3-shaped
+        JSON payload. Raises :class:`NotH3EndpointError` on anything that is
+        clearly not an H3 endpoint (wrong status, non-JSON body, missing
+        required fields, connection refused, etc.).
+        """
+        try:
+            resp = await self.client.get("/v1/health")
+        except httpx.HTTPError as exc:
+            raise NotH3EndpointError(f"connection error: {exc}") from exc
+
+        if resp.status_code >= 400:
+            body_snippet = resp.text[:200] if resp.text else ""
+            reason = f"status {resp.status_code} {resp.reason_phrase}"
+            if body_snippet:
+                reason += f": {body_snippet}"
+            raise NotH3EndpointError(reason, resp.text)
+        if resp.status_code >= 300:
+            raise NotH3EndpointError(
+                f"unexpected redirect: {resp.status_code}",
+                resp.text,
+            )
+
+        try:
+            body = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            raise NotH3EndpointError(f"non-JSON body: {exc}", resp.text) from exc
+
+        if not isinstance(body, dict):
+            raise NotH3EndpointError(
+                f"JSON body is not an object: {type(body).__name__}",
+                resp.text,
+            )
+
+        if body.get("status") != "ok":
+            status = body.get("status")
+            raise NotH3EndpointError(
+                f"status field is {status!r} (expected 'ok')",
+                resp.text,
+            )
+
+        required = {"version", "protocol_version", "transport", "capabilities"}
+        missing = sorted(required - body.keys())
+        if missing:
+            raise NotH3EndpointError(
+                f"missing H3 health keys: {missing}",
+                resp.text,
+            )
 
     # ── request helpers ─────────────────────────────────────────────────
 
@@ -188,6 +248,7 @@ class H3TestBattery:
         from datetime import datetime, timezone
 
         started = time.monotonic()
+        await self.probe()
         results: list[TestResult] = []
         for category in (
             self.category_1_health,

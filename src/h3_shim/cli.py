@@ -35,7 +35,7 @@ from typing import Any
 import click
 import yaml
 
-from h3_shim.test_battery import H3TestBattery, TestReport, TestResult
+from h3_shim.test_battery import H3TestBattery, NotH3EndpointError, TestReport, TestResult
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -328,9 +328,41 @@ async def _run_battery(
     as_json: bool,
 ) -> int:
     """Drive the battery and emit results. Returns the process exit code."""
+    from datetime import datetime, timezone
+
     battery = H3TestBattery(endpoint)
     try:
         report = await battery.run_all()
+    except NotH3EndpointError as exc:
+        warning = (
+            f"Warning: {endpoint} does not look like an H3 endpoint "
+            f"({exc.reason})."
+        )
+        print(warning, file=sys.stderr)
+        if as_json:
+            payload = {
+                "warning": warning,
+                "endpoint": endpoint,
+                "not_h3_endpoint": True,
+                "reason": exc.reason,
+                "results": [],
+                "total": 0,
+                "passed": 0,
+                "failed": 0,
+                "duration_ms": 0.0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "all_passing": False,
+                "latency": _latency_stats([]),
+            }
+            print(json.dumps(payload, indent=2))
+        else:
+            print(
+                f"\nH3 Compliance Test Battery v1.0.0\n"
+                f"Target: {endpoint}\n"
+                f"Transport: REST\n\n"
+                f"{warning}"
+            )
+        return 2
     finally:
         await battery.close()
 
