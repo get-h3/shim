@@ -30,7 +30,7 @@ h3-test --endpoint http://localhost:9191
 - `shim_loop.py` — Main H3ShimLoop
 - `native.py` — Native Hermes loop wrapper
 - `test_battery.py` — 43 compliance tests (THE GATE)
-- `cli.py` — `hermes h3` subcommands
+- `cli.py` — the `hermes-h3` CLI (9 subcommands: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin in this repo exposes them as `hermes h3 <cmd>`
 
 ## Development
 
@@ -44,4 +44,5 @@ make fmt       # ruff format
 
 ## Reference
 
-Specs: `get-h3/h3` → `specs/05-Test-Battery.md`, `specs/06-Hermes-Core-Integration.md`
+- `docs/integration.md` — full install → register → route → verify guide
+- Specs: `get-h3/h3` → `specs/05-Test-Battery.md`, `specs/06-Hermes-Core-Integration.md`

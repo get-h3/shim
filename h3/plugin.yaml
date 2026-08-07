@@ -1,0 +1,8 @@
+name: h3
+version: "0.1.0"
+description: >-
+  Exposes the H3 shim CLI as a `hermes h3 <subcommand>` command group.
+  Delegates to the hermes-h3 console script from the hermes-h3-shim
+  package: harness management (install, list, pre-update-check, route,
+  scaffold, test, uninstall, use, verify) plus the h3-test battery.
+author: get-h3

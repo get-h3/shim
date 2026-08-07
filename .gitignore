@@ -16,6 +16,9 @@ _tick_check.py
 _audit.py
 _audit_checklist.sh
 _*.py
+# The h3/ Hermes plugin ships an __init__.py — the _*.py rule above would
+# ignore it, so negate it explicitly.
+!h3/__init__.py
 uv.lock
 .gitreins/tasks.yaml
 .coverage
