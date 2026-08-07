@@ -731,6 +731,146 @@ class TestRunBatteryJSON:
         }
 
 
+# ── _run_battery category filtering (GAP-006) ──────────────────────────────
+
+
+def _full_category_report() -> FakeTestReport:
+    """Return a report with all 43 tests across all 6 categories."""
+    cat_map: dict[str, int] = {
+        "Health & Protocol": 7,
+        "Process Basic Flows": 8,
+        "Decision Types": 6,
+        "Result Handling": 7,
+        "Error & Edge Cases": 10,
+        "Stress & Performance": 5,
+    }
+    results: list[FakeTestResult] = []
+    seq = 1
+    for cat, count in cat_map.items():
+        for i in range(count):
+            results.append(
+                FakeTestResult(
+                    name=f"test_{seq}",
+                    passed=True,
+                    detail="ok",
+                    duration_ms=1.0,
+                    category=cat,
+                )
+            )
+            seq += 1
+    return FakeTestReport(
+        results=results,
+        total=43,
+        passed=43,
+        failed=0,
+        duration_ms=43.0,
+        timestamp="2026-01-01T00:00:00Z",
+    )
+
+
+class TestRunBatteryCategories:
+    @staticmethod
+    def _stub_battery(monkeypatch, report):
+        fake = MagicMock()
+        fake.run_all = AsyncMock(return_value=report)
+        fake.close = AsyncMock()
+        monkeypatch.setattr("h3_shim.cli.H3TestBattery", lambda *a, **kw: fake)
+
+    @pytest.mark.asyncio
+    async def test_health_token_runs_seven_tests(self, monkeypatch, capsys):
+        """--categories health runs exactly the 7 Health & Protocol tests."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "health", False)
+        assert code == 0
+        out = capsys.readouterr().out
+        # 7/7 for Health & Protocol
+        assert "Health & Protocol" in out
+        assert "7/7" in out
+        # None of the other categories should appear
+        assert "Process Basic Flows" not in out
+        assert "Decision Types" not in out
+        assert "Result Handling" not in out
+        assert "Error & Edge Cases" not in out
+        assert "Stress & Performance" not in out
+        # TOTAL line shows 7 passed
+        assert "TOTAL" in out
+
+    @pytest.mark.asyncio
+    async def test_multiple_tokens_runs_both_subsets(self, monkeypatch, capsys):
+        """--categories health,errors runs Health (7) + Errors (10) = 17 tests."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "health,errors", False)
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Health & Protocol" in out
+        assert "7/7" in out
+        assert "Error & Edge Cases" in out
+        assert "10/10" in out
+        # None of the other categories
+        assert "Process Basic Flows" not in out
+        assert "Decision Types" not in out
+        assert "Result Handling" not in out
+        assert "Stress & Performance" not in out
+
+    @pytest.mark.asyncio
+    async def test_unknown_category_exits_nonzero(self, monkeypatch, capsys):
+        """An unknown category token exits non-zero with a clear error."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "bogus", False)
+        assert code != 0
+        err = capsys.readouterr().err
+        assert "unknown" in err.lower()
+        assert "bogus" in err
+        # It should list valid categories
+        for token in ("health", "process", "decisions", "results", "errors", "stress"):
+            assert token in err
+
+    @pytest.mark.asyncio
+    async def test_unknown_among_valid_tokens_exits_nonzero(self, monkeypatch, capsys):
+        """--categories health,bogus exits non-zero and reports bogus."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "health,bogus", False)
+        assert code != 0
+        err = capsys.readouterr().err
+        assert "unknown" in err.lower()
+        assert "bogus" in err
+
+    @pytest.mark.asyncio
+    async def test_all_tokens_runs_all_forty_three(self, monkeypatch, capsys):
+        """--categories health,process,decisions,results,errors,stress runs all 43."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery(
+            "http://x:1",
+            "health,process,decisions,results,errors,stress",
+            False,
+        )
+        assert code == 0
+        out = capsys.readouterr().out
+        # All six category labels appear
+        for label in (
+            "Health & Protocol",
+            "Process Basic Flows",
+            "Decision Types",
+            "Result Handling",
+            "Error & Edge Cases",
+            "Stress & Performance",
+        ):
+            assert label in out
+
+    @pytest.mark.asyncio
+    async def test_category_filter_preserves_json_output(self, monkeypatch, capsys):
+        """--categories health --json produces correct filtered JSON."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "health", True)
+        assert code == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["total"] == 7
+        assert payload["passed"] == 7
+        assert payload["failed"] == 0
+        categories = {r["category"] for r in payload["results"]}
+        assert categories == {"Health & Protocol"}
+
+
 # ── test command (asyncio + battery stubbed) ───────────────────────────────
 
 

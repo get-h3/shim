@@ -36,6 +36,7 @@ import click
 import yaml
 
 from h3_shim.test_battery import (
+    CATEGORIES,
     H3TestBattery,
     NotH3EndpointError,
     TestReport,
@@ -371,8 +372,22 @@ async def _run_battery(
         await battery.close()
 
     if categories:
-        wanted = {c.strip() for c in categories.split(",") if c.strip()}
-        report.results = [r for r in report.results if r.category in wanted]
+        wanted_tokens = {c.strip() for c in categories.split(",") if c.strip()}
+        # Validate all tokens are known.
+        unknown = wanted_tokens - set(CATEGORIES)
+        if unknown:
+            print(
+                f"Error: unknown categories: {', '.join(sorted(unknown))}",
+                file=sys.stderr,
+            )
+            print(
+                f"Valid categories: {', '.join(sorted(CATEGORIES))}",
+                file=sys.stderr,
+            )
+            return 2
+        # Map CLI tokens to their display labels (e.g. 'health' → 'Health & Protocol').
+        wanted_labels = {CATEGORIES[t] for t in wanted_tokens}
+        report.results = [r for r in report.results if r.category in wanted_labels]
         report.total = len(report.results)
         report.passed = sum(1 for r in report.results if r.passed)
         report.failed = report.total - report.passed
@@ -724,6 +739,13 @@ def _report_fallback(  # noqa: PLR0912
     help="Create an empty config file or scaffold a new harness project."
 )
 @click.option(
+    "--config",
+    "config_path",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help=f"Override config path (default: {CONFIG_PATH}).",
+)
+@click.option(
     "--force",
     is_flag=True,
     help="Overwrite an existing config file or project directory.",
@@ -750,6 +772,7 @@ def _report_fallback(  # noqa: PLR0912
 @click.pass_context
 def scaffold(
     ctx: click.Context,
+    config_path: Path | None,
     force: bool,
     lang: str | None,
     output_dir: Path,
@@ -767,6 +790,8 @@ def scaffold(
         instructions. Existing project directories are preserved unless
         ``--force`` is passed.
     """
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     if lang is None:
         # Backwards-compatible behaviour: empty config file at CONFIG_PATH.
         path = _config_path(ctx)
