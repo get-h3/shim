@@ -39,9 +39,7 @@ def fake_client(monkeypatch):
         fake.get = AsyncMock(return_value=get_return, side_effect=get_side_effect)
         fake.aclose = AsyncMock()
         # Stub post/cancel in case anything leaks through the probe.
-        fake.post = AsyncMock(
-            return_value=_fake_response(200, {}, reason_phrase="OK")
-        )
+        fake.post = AsyncMock(return_value=_fake_response(200, {}, reason_phrase="OK"))
         fake_client_cls = MagicMock(return_value=fake)
         monkeypatch.setattr("httpx.AsyncClient", fake_client_cls)
         return fake

@@ -340,8 +340,7 @@ async def _run_battery(
         report = await battery.run_all()
     except NotH3EndpointError as exc:
         warning = (
-            f"Warning: {endpoint} does not look like an H3 endpoint "
-            f"({exc.reason})."
+            f"Warning: {endpoint} does not look like an H3 endpoint ({exc.reason})."
         )
         print(warning, file=sys.stderr)
         if as_json:
