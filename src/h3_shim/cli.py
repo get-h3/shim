@@ -35,7 +35,12 @@ from typing import Any
 import click
 import yaml
 
-from h3_shim.test_battery import H3TestBattery, NotH3EndpointError, TestReport, TestResult
+from h3_shim.test_battery import (
+    H3TestBattery,
+    NotH3EndpointError,
+    TestReport,
+    TestResult,
+)
 
 # ---------------------------------------------------------------------------
 # Config helpers
