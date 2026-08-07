@@ -5,7 +5,9 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 ## Package
 
 - PyPI: `hermes-h3-shim`
-- Location in Hermes: `hermes_cli/agent/shims/h3/`
+- Location in Hermes: standalone pip package — **not** inside Hermes Core
+  (`hermes_cli/agent/shims/h3/` does not exist there). Optional `hermes h3`
+  plugin in `h3/` (copy to `~/.hermes/plugins/h3/`); see `docs/integration.md`.
 
 ## Components
 
@@ -15,7 +17,7 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 - `shim_loop.py` — Main H3ShimLoop: process → execute → result → loop
 - `native.py` — Native Hermes loop as H3 harness wrapper
 - `test_battery.py` — **43 compliance tests. THE GATE.**
-- `cli.py` — `hermes h3` subcommands
+- `cli.py` — `hermes-h3` subcommands (install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin exposes them as `hermes h3 <cmd>`
 
 ## The Test Battery
 
