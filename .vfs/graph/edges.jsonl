@@ -148,3 +148,10 @@
 {"from":"tests/test_native.py","to":"pkg:h3_shim.native","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_native.py","to":"pkg:asyncio","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_native.py","to":"pkg:asyncio","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:datetime","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:unittest.mock","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:httpx","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:h3_shim.cli","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_battery_detection.py","to":"pkg:h3_shim.test_battery","rel":"imports","provenance":"ast_exact","confidence":1.0}

@@ -23,9 +23,9 @@ pipeline:
       tools: [read_file, run_command, search_pattern, read_diff, detect_dead_code]
 
 evaluator:
-  max_iterations: 50
-  max_time: 10m
-  max_input_tokens: 0.2M
+  max_iterations: 200
+  max_time: 25m
+  max_input_tokens: 1M
   max_output_tokens: 0.4M
   tool_call_weight: 0.1
 
