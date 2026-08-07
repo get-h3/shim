@@ -4,9 +4,16 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side.
 
 ## Install
 
+The package is **not published to PyPI** — install from source:
+
 ```bash
-pip install hermes-h3-shim
+pip install git+https://github.com/get-h3/shim
 ```
+
+This installs two CLI entry points:
+
+- `h3-test` — the 43-test H3 compliance battery (`h3-test --endpoint <url>`)
+- `hermes-h3` — harness management (`install`, `list`, `test`, `verify`, `scaffold`, ...)
 
 ## Quickstart
 
