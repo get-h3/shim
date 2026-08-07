@@ -276,6 +276,20 @@ class TestScaffold:
         assert result.exit_code == 0
         assert (project / "main.go").is_file()
 
+    def test_scaffold_custom_config_path(self, tmp_path, runner):
+        """``scaffold --config <path>`` creates config at the custom path."""
+        custom = tmp_path / "custom.yaml"
+        assert not custom.exists()
+        result = runner.invoke(
+            hermes_h3, ["scaffold", "--config", str(custom)]
+        )
+        assert result.exit_code == 0
+        assert custom.exists()
+        data = yaml.safe_load(custom.read_text())
+        assert data["default_harness"] is None
+        assert data["harnesses"] == {}
+        assert data["sessions"] == {}
+
 
 # ── install ────────────────────────────────────────────────────────────────
 

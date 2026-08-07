@@ -203,7 +203,13 @@ implementations):
 | Python | `sdk-python/src/h3_harness/examples/echo.py` | `python echo.py` |
 | TypeScript | `sdk-typescript/src/examples/echo.ts` | `npm run build && npm start` |
 
-All listen on `http://localhost:9191`.
+Default listen ports (none of the echo examples read the ``PORT`` env var):
+
+| SDK | Echo example | Default port |
+|-----|--------------|--------------|
+| Go | `sdk-go/examples/echo` | **9191** |
+| Python | `sdk-python/src/h3_harness/examples/echo.py` | **8000** |
+| TypeScript | `sdk-typescript/src/examples/echo.ts` | **9191** |
 
 ### 4.2 Health-check it
 
