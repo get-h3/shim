@@ -1,4 +1,4 @@
-"""H3 compliance test battery — 43 tests across 6 categories.
+"""H3 compliance test battery — 44 tests across 6 categories.
 
 This module is the single most important piece of the shim. It defines the
 :cclass:`H3TestBattery`, a black-box HTTP probe that exercises every public
@@ -89,7 +89,7 @@ CATEGORIES: dict[str, str] = {
 }
 
 # Total expected count — kept here so we can sanity-check at runtime.
-EXPECTED_TEST_COUNT = 43
+EXPECTED_TEST_COUNT = 44
 
 
 class H3TestBattery:
@@ -1288,6 +1288,7 @@ class H3TestBattery:
             await self.test_5_7_no_tools_available(),
             await self.test_5_8_no_models_available(),
             await self.test_5_9_cancel_mid_processing(),
+            await self.test_5_9b_cancel_unknown_session(),
             await self.test_5_10_session_not_found(),
         ]
 
@@ -1471,11 +1472,20 @@ class H3TestBattery:
             return done(False, f"Exception: {exc}")
 
     async def test_5_9_cancel_mid_processing(self) -> TestResult:
-        """POST /v1/cancel returns 200."""
+        """POST /v1/cancel for an in-flight session returns 200."""
         cat = CATEGORIES["errors"]
         done = self._timed("cancel_mid_processing", cat)
         sid = self._sid("cancel")
         try:
+            # GAP-DOG-002: cancel must 404 on unknown sessions, so create
+            # the session via POST /v1/process BEFORE cancelling it.
+            process = self._process_body("cancel", content="running")
+            process["session_id"] = sid
+            presp, perr = await self._safe_call(
+                self.client.post("/v1/process", json=process)
+            )
+            if perr is not None or presp is None or presp.status_code != 200:
+                return done(False, f"Setup process failed: {perr}")
             resp, err = await self._safe_call(
                 self.client.post(
                     "/v1/cancel",
@@ -1487,6 +1497,28 @@ class H3TestBattery:
             if resp.status_code != 200:
                 return done(False, f"Expected 200, got {resp.status_code}")
             return done(True, "200 OK")
+        except Exception as exc:  # noqa: BLE001
+            return done(False, f"Exception: {exc}")
+
+    async def test_5_9b_cancel_unknown_session(self) -> TestResult:
+        """POST /v1/cancel for a nonexistent session returns 404."""
+        cat = CATEGORIES["errors"]
+        done = self._timed("cancel_unknown_session", cat)
+        nonexistent = f"nope-{uuid.uuid4().hex}"
+        try:
+            resp, err = await self._safe_call(
+                self.client.post(
+                    "/v1/cancel",
+                    json={"session_id": nonexistent, "reason": "user_interrupt"},
+                )
+            )
+            if err is not None or resp is None:
+                return done(False, f"Exception: {err}")
+            if resp.status_code == 404:
+                return done(True, "404")
+            if 400 <= resp.status_code < 500:
+                return done(True, f"{resp.status_code}")
+            return done(False, f"Expected 404, got {resp.status_code}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 
