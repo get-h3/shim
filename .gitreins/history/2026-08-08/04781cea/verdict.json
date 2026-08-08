@@ -1,0 +1,81 @@
+{
+  "task_id": "ci-flake-001",
+  "task_title": "battery: harden test_5_9 cancel-mid-processing against session-purge race",
+  "task_criteria": [
+    "src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running')",
+    "The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against the sdk-go echo example built from /home/kara/get-h3/sdk-go examples/echo at origin HEAD (the CI compliance job exact harness \u2014 go build ./examples/echo, listen on port 9191, h3-test --endpoint http://localhost:9191 --json exit 0 each run). Do NOT use the h3-harness package (it lacks the unknown-session 404)",
+    "pytest tests/ passes with 286 passed 0 failed",
+    "ruff check and ruff format --check are clean on src/h3_shim/test_battery.py",
+    "EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" (contains 'do not finish') in _process_body for POST /v1/process (line 1490), then POST /v1/cancel at line 1496. Commit 89df0ba changed content from 'running' to streaming-unfinished.\n  \u2713 The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against the sdk-go echo example built from /home/kara/get-h3/sdk-go examples/echo at origin HEAD (the CI compliance job exact harness \u2014 go build ./examples/echo, listen on port 9191, h3-test --endpoint http://localhost:9191 --json exit 0 each run). Do NOT use the h3-harness package (it lacks the unknown-session 404): 5 consecutive h3-test runs against sdk-go echo (origin HEAD 69b9e79, go build ./examples/echo, :9191) all reported 44/44 passed exit 0; cancel_mid_processing and cancel_unknown_session both True in all 5 runs. h3-harness not installed/used.\n  \u2713 pytest tests/ passes with 286 passed 0 failed: pytest tests/ collected 286 items, 286 passed in 1.57s, 0 failed.\n  \u2713 ruff check and ruff format --check are clean on src/h3_shim/test_battery.py: ruff check: 'All checks passed!' exit 0; ruff format --check: '1 file already formatted' exit 0.\n  \u2713 EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed): EXPECTED_TEST_COUNT = 44 at line 92; grep -c 'async def test_' returns 44; commit 89df0ba only changed content string (8 insertions, 1 deletion), no tests added/removed.\nAll 5 criteria verified: test_5_9 uses 'do not finish' streaming content, 5 consecutive battery runs report 44/44 against sdk-go echo, pytest 286 passed, ruff clean, EXPECTED_TEST_COUNT remains 44.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" (contains 'do not finish') in _process_body for POST /v1/process (line 1490), then POST /v1/cancel at line 1496. Commit 89df0ba changed content from 'runni",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running')",
+                "status": "PASS",
+                "detail": "test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" (contains 'do not finish') in _process_body for POST /v1/process (line 1490), then POST /v1/cancel at line 1496. Commit 89df0ba changed content from 'running' to streaming-unfinished."
+              },
+              {
+                "criterion": "The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against the sdk-go echo example built from /home/kara/get-h3/sdk-go examples/echo at origin HEAD (the CI compliance job exact harness \u2014 go build ./examples/echo, listen on port 9191, h3-test --endpoint http://localhost:9191 --json exit 0 each run). Do NOT use the h3-harness package (it lacks the unknown-session 404)",
+                "status": "PASS",
+                "detail": "5 consecutive h3-test runs against sdk-go echo (origin HEAD 69b9e79, go build ./examples/echo, :9191) all reported 44/44 passed exit 0; cancel_mid_processing and cancel_unknown_session both True in all 5 runs. h3-harness not installed/used."
+              },
+              {
+                "criterion": "pytest tests/ passes with 286 passed 0 failed",
+                "status": "PASS",
+                "detail": "pytest tests/ collected 286 items, 286 passed in 1.57s, 0 failed."
+              },
+              {
+                "criterion": "ruff check and ruff format --check are clean on src/h3_shim/test_battery.py",
+                "status": "PASS",
+                "detail": "ruff check: 'All checks passed!' exit 0; ruff format --check: '1 file already formatted' exit 0."
+              },
+              {
+                "criterion": "EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed)",
+                "status": "PASS",
+                "detail": "EXPECTED_TEST_COUNT = 44 at line 92; grep -c 'async def test_' returns 44; commit 89df0ba only changed content string (8 insertions, 1 deletion), no tests added/removed."
+              }
+            ],
+            "summary": "All 5 criteria verified: test_5_9 uses 'do not finish' streaming content, 5 consecutive battery runs report 44/44 against sdk-go echo, pytest 286 passed, ruff clean, EXPECTED_TEST_COUNT remains 44."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ci-flake-001\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" (contains 'do not finish') in _process_body for POST /v1/process (line 1490), then POST /v1/cancel at line 1496. Commit 89df0ba changed content from 'running' to streaming-unfinished.\n  \u2713 The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against the sdk-go echo example built from /home/kara/get-h3/sdk-go examples/echo at origin HEAD (the CI compliance job exact harness \u2014 go build ./examples/echo, listen on port 9191, h3-test --endpoint http://localhost:9191 --json exit 0 each run). Do NOT use the h3-harness package (it lacks the unknown-session 404): 5 consecutive h3-test runs against sdk-go echo (origin HEAD 69b9e79, go build ./examples/echo, :9191) all reported 44/44 passed exit 0; cancel_mid_processing and cancel_unknown_session both True in all 5 runs. h3-harness not installed/used.\n  \u2713 pytest tests/ passes with 286 passed 0 failed: pytest tests/ collected 286 items, 286 passed in 1.57s, 0 failed.\n  \u2713 ruff check and ruff format --check are clean on src/h3_shim/test_battery.py: ruff check: 'All checks passed!' exit 0; ruff format --check: '1 file already formatted' exit 0.\n  \u2713 EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed): EXPECTED_TEST_COUNT = 44 at line 92; grep -c 'async def test_' returns 44; commit 89df0ba only changed content string (8 insertions, 1 deletion), no tests added/removed.\nAll 5 criteria verified: test_5_9 uses 'do not finish' streaming content, 5 consecutive battery runs report 44/44 against sdk-go echo, pytest 286 passed, ruff clean, EXPECTED_TEST_COUNT remains 44.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-08T20:07:23.661259"
+}
