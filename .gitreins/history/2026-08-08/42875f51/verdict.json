@@ -1,0 +1,81 @@
+{
+  "task_id": "ci-flake-001",
+  "task_title": "battery: harden test_5_9 cancel-mid-processing against session-purge race",
+  "task_criteria": [
+    "src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running')",
+    "The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against a live Go echo harness (h3-test --endpoint http://localhost:9191 --json, exit 0 each run)",
+    "pytest tests/ passes with 286 passed 0 failed",
+    "ruff check and ruff format --check are clean on src/h3_shim/test_battery.py",
+    "EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed)"
+  ],
+  "passed": false,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": false,
+      "any_failed": true,
+      "summary": "INCOMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" in POST /v1/process setup for test_5_9_cancel_mid_processing (line 1474); comment at 1482-1486 explains streaming-unfinished keeps session in-flight; content no longer 'running'.\n  \u2717 The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against a live Go echo harness (h3-test --endpoint http://localhost:9191 --json, exit 0 each run): All 5 consecutive h3-test --endpoint http://localhost:9191 --json runs report 43/44 (not 44/44). test_5_9b_cancel_unknown_session fails consistently with 'Expected 404, got 200'. Exit code is 1, not 0.\n  \u2713 pytest tests/ passes with 286 passed 0 failed: pytest tests/ from /home/kara/get-h3/shim reports '286 passed in 1.60s', 0 failed.\n  \u2713 ruff check and ruff format --check are clean on src/h3_shim/test_battery.py: ruff check src/h3_shim/test_battery.py -> 'All checks passed!'; ruff format --check -> '1 file already formatted'.\n  \u2713 EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed): EXPECTED_TEST_COUNT = 44 at test_battery.py:92; exactly 44 async def test_ methods found.\nThe test_5_9 hardening change is present and correct, but the battery does not achieve 44/44: test_5_9b_cancel_unknown_session consistently fails (Expected 404, got 200) across all 5 runs with exit code 1, so criterion 2 fails.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": false,
+          "output": "INCOMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" in POST /v1/process setup for test_5_9_cancel_mid_processing (line 1474); comment at 1482-1486 explains streaming-unfinished keeps session in-flight; con",
+          "error": "",
+          "data": {
+            "verdict": "INCOMPLETE",
+            "items": [
+              {
+                "criterion": "src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running')",
+                "status": "PASS",
+                "detail": "test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" in POST /v1/process setup for test_5_9_cancel_mid_processing (line 1474); comment at 1482-1486 explains streaming-unfinished keeps session in-flight; content no longer 'running'."
+              },
+              {
+                "criterion": "The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against a live Go echo harness (h3-test --endpoint http://localhost:9191 --json, exit 0 each run)",
+                "status": "FAIL",
+                "detail": "All 5 consecutive h3-test --endpoint http://localhost:9191 --json runs report 43/44 (not 44/44). test_5_9b_cancel_unknown_session fails consistently with 'Expected 404, got 200'. Exit code is 1, not 0."
+              },
+              {
+                "criterion": "pytest tests/ passes with 286 passed 0 failed",
+                "status": "PASS",
+                "detail": "pytest tests/ from /home/kara/get-h3/shim reports '286 passed in 1.60s', 0 failed."
+              },
+              {
+                "criterion": "ruff check and ruff format --check are clean on src/h3_shim/test_battery.py",
+                "status": "PASS",
+                "detail": "ruff check src/h3_shim/test_battery.py -> 'All checks passed!'; ruff format --check -> '1 file already formatted'."
+              },
+              {
+                "criterion": "EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed)",
+                "status": "PASS",
+                "detail": "EXPECTED_TEST_COUNT = 44 at test_battery.py:92; exactly 44 async def test_ methods found."
+              }
+            ],
+            "summary": "The test_5_9 hardening change is present and correct, but the battery does not achieve 44/44: test_5_9b_cancel_unknown_session consistently fails (Expected 404, got 200) across all 5 runs with exit code 1, so criterion 2 fails."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: ci-flake-001\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: FAIL\n  INCOMPLETE\n  \u2713 src/h3_shim/test_battery.py test_5_9_cancel_mid_processing uses streaming-unfinished content containing the phrase 'do not finish' in its POST /v1/process setup so the session is in-flight when POST /v1/cancel arrives (content is no longer 'running'): test_battery.py:1488 uses content=\"Just start a thought, do not finish it yet.\" in POST /v1/process setup for test_5_9_cancel_mid_processing (line 1474); comment at 1482-1486 explains streaming-unfinished keeps session in-flight; content no longer 'running'.\n  \u2717 The full battery reports 44/44 PASSED including test_5_9_cancel_mid_processing and test_5_9b_cancel_unknown_session across 5 consecutive runs against a live Go echo harness (h3-test --endpoint http://localhost:9191 --json, exit 0 each run): All 5 consecutive h3-test --endpoint http://localhost:9191 --json runs report 43/44 (not 44/44). test_5_9b_cancel_unknown_session fails consistently with 'Expected 404, got 200'. Exit code is 1, not 0.\n  \u2713 pytest tests/ passes with 286 passed 0 failed: pytest tests/ from /home/kara/get-h3/shim reports '286 passed in 1.60s', 0 failed.\n  \u2713 ruff check and ruff format --check are clean on src/h3_shim/test_battery.py: ruff check src/h3_shim/test_battery.py -> 'All checks passed!'; ruff format --check -> '1 file already formatted'.\n  \u2713 EXPECTED_TEST_COUNT in src/h3_shim/test_battery.py remains 44 (no tests added or removed): EXPECTED_TEST_COUNT = 44 at test_battery.py:92; exactly 44 async def test_ methods found.\nThe test_5_9 hardening change is present and correct, but the battery does not achieve 44/44: test_5_9b_cancel_unknown_session consistently fails (Expected 404, got 200) across all 5 runs with exit code 1, so criterion 2 fails.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-08-08T20:03:13.053086"
+}
