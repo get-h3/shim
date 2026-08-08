@@ -155,3 +155,15 @@
 {"from":"tests/test_battery_detection.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_battery_detection.py","to":"pkg:h3_shim.cli","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_battery_detection.py","to":"pkg:h3_shim.test_battery","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:argparse","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:logging","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:shutil","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:subprocess","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:sys","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:typing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:click","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"h3/__init__.py","to":"pkg:h3_shim.cli","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_h3_plugin.py","to":"pkg:argparse","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_h3_plugin.py","to":"pkg:importlib.util","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_h3_plugin.py","to":"pkg:pathlib","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_h3_plugin.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
