@@ -94,8 +94,35 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
 }
 
 
+def _add_config_option(parser: argparse.ArgumentParser) -> None:
+    """Register ``--config`` (dest ``h3_config``) on a subparser.
+
+    The subparser copy uses ``default=argparse.SUPPRESS`` so that when
+    ``--config`` is given *before* the subcommand (parsed by the parent
+    parser), the subparser does not overwrite ``ns.h3_config`` with
+    ``None`` — argparse copies every subparser attribute back onto the
+    parent namespace, and an explicit ``default=None`` would clobber a
+    parent-set value.  With ``SUPPRESS``, the attribute is only written
+    when the user actually passes ``--config`` after the subcommand.
+    """
+    parser.add_argument(
+        "--config",
+        dest="h3_config",
+        default=argparse.SUPPRESS,
+        metavar="PATH",
+        help="Override config path (default: ~/.hermes/h3/config.yaml).",
+    )
+
+
 def _setup(parser: argparse.ArgumentParser) -> None:
-    """Build the ``hermes h3`` argparse tree (mirrors ``hermes-h3``)."""
+    """Build the ``hermes h3`` argparse tree (mirrors ``hermes-h3``).
+
+    ``--config`` is accepted both *before* the subcommand (parent parser)
+    and *after* it (every subparser).  This matches the standalone
+    ``hermes-h3`` click CLI, which accepts ``--config`` in either
+    position, and lets ``hermes h3 list --config X`` work just like
+    ``hermes h3 --config X list``.
+    """
     parser.add_argument(
         "--config",
         dest="h3_config",
@@ -106,6 +133,7 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     sub = parser.add_subparsers(dest="h3_command", metavar="COMMAND")
 
     p = sub.add_parser("test", help="Run the H3 compliance test battery.")
+    _add_config_option(p)
     p.add_argument(
         "--harness",
         "-H",
@@ -116,9 +144,11 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     p.add_argument("--json", dest="as_json", action="store_true", help="Emit JSON report.")
     p.add_argument("--categories", default=None, help="Comma-separated categories to run.")
 
-    sub.add_parser("list", help="List harnesses known to the config.")
+    p = sub.add_parser("list", help="List harnesses known to the config.")
+    _add_config_option(p)
 
     p = sub.add_parser("install", help="Register a harness in the config.")
+    _add_config_option(p)
     p.add_argument("name", help="Harness name.")
     p.add_argument("--endpoint", required=True, help="Harness endpoint URL.")
     p.add_argument("--transport", default="rest", help="Transport protocol (rest, grpc, ...).")
@@ -143,9 +173,11 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     )
 
     p = sub.add_parser("uninstall", help="Remove a harness from the config.")
+    _add_config_option(p)
     p.add_argument("name", help="Harness name.")
 
     p = sub.add_parser("verify", help="Health-check a harness via the H3 REST client.")
+    _add_config_option(p)
     p.add_argument(
         "--harness",
         "-H",
@@ -159,6 +191,7 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         "scaffold",
         help="Create an empty config file or scaffold a new harness project.",
     )
+    _add_config_option(p)
     p.add_argument("--force", action="store_true", help="Overwrite an existing config file or project directory.")
     p.add_argument(
         "--lang",
@@ -173,12 +206,14 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         help="Parent directory under which the new project is created (default: current directory).",
     )
 
-    sub.add_parser("route", help="Show the session → harness routing table.")
+    p = sub.add_parser("route", help="Show the session → harness routing table.")
+    _add_config_option(p)
 
     p = sub.add_parser(
         "pre-update-check",
         help="Run pre-flight compatibility checks before hermes update.",
     )
+    _add_config_option(p)
     p.add_argument("target_version", help="Hermes version you plan to upgrade to (e.g. 0.19.0).")
     p.add_argument(
         "--versions-yaml",
@@ -188,6 +223,7 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     )
 
     p = sub.add_parser("use", help="Set the default harness.")
+    _add_config_option(p)
     p.add_argument("name", help="Harness name.")
 
 

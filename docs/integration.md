@@ -233,8 +233,23 @@ h3-test --endpoint http://localhost:9191 --categories health,process
 ```
 
 The battery is 43 tests across 6 categories (health, process, decisions,
-results, errors, stress).  Exit code 0 = compliant; non-zero = the
-harness fails the protocol.
+results, errors, stress).  See [Exit codes](#exit-codes) below for the
+meaning of each h3-test exit code.
+
+### Exit codes
+
+`h3-test` (and `hermes h3 test` / `hermes-h3 test`) uses three distinct
+exit codes so CI can tell a genuine compliance failure apart from a
+connection/typing mistake:
+
+| Code | Meaning | What it means in CI |
+|------|---------|---------------------|
+| `0`  | **Compliant** — the target is an H3 endpoint and every check passed. | Green: ship it. |
+| `1`  | **Compliance failure** — the target is a real H3 endpoint (it answered `/v1/health` with an H3-shaped payload), but one or more protocol checks failed. | Red: the harness has a protocol bug. Inspect the per-test detail (or `--json`) and fix the harness. |
+| `2`  | **Not an H3 endpoint** — the target did not look like an H3 harness: connection refused, non-JSON body, HTTP >= 400 (incl. 401 unauthorized), JSON with `status != "ok"`, or missing `version`/`protocol_version`/`transport`/`capabilities` fields. | Amber: this is NOT a compliance failure. The URL is wrong, the harness is down, or you pointed h3-test at the wrong server. A stderr warning (`... does not look like an H3 endpoint (reason)`) is printed; in `--json` mode the report carries `"not_h3_endpoint": true`. |
+
+Do not treat exit 2 as a protocol regression — a dead or wrong-port
+server will exit 2, not 1.
 
 ### 4.4 Verify routing
 
@@ -250,9 +265,10 @@ unreachable.
 ## Troubleshooting
 
 | Symptom | Cause / fix |
-|---------|-------------|
+|---------|------------|
 | `hermes h3 --help` → `error: argument command: invalid choice: 'h3'` | Plugin not installed or not enabled — see §3.4 (`cp -r h3 ~/.hermes/plugins/h3/` + `hermes plugins enable h3`). |
 | `Error: no harness specified and no default_harness set` | No harness registered — `hermes-h3 install <name> --endpoint <url> --set-default`. |
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
 | `verify failed for 'x': ...` | Harness not running or wrong endpoint — check it is up on the port you registered. |
-| Battery exits non-zero | The harness fails H3 protocol tests — run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference. |
+| Battery exits non-zero | Check the exit code: **0** = compliant, **1** = real compliance failure (run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference), **2** = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) — NOT a protocol regression. See [Exit codes](#exit-codes). |
+| `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — re-copy `h3/` from this repo to `~/.hermes/plugins/h3/`. |
