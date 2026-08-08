@@ -1479,7 +1479,14 @@ class H3TestBattery:
         try:
             # GAP-DOG-002: cancel must 404 on unknown sessions, so create
             # the session via POST /v1/process BEFORE cancelling it.
-            process = self._process_body("cancel", content="running")
+            # Use streaming-unfinished content ("do not finish") so the
+            # harness returns finished=false and keeps the session
+            # in-flight — a non-streaming session completes in <1ms and
+            # can be purged before the cancel lands, causing an
+            # intermittent 404 race.
+            process = self._process_body(
+                "cancel", content="Just start a thought, do not finish it yet."
+            )
             process["session_id"] = sid
             presp, perr = await self._safe_call(
                 self.client.post("/v1/process", json=process)
