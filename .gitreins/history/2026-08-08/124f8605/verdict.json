@@ -1,0 +1,75 @@
+{
+  "task_id": "gap-010",
+  "task_title": "h3-test exit codes 0/1/2 documented",
+  "task_criteria": [
+    "README.md contains an Exit codes section distinguishing 0 (compliant), 1 (compliance failure), 2 (not an H3 endpoint)",
+    "docs/integration.md troubleshooting updated: exit 2 means wrong URL/harness down/connection refused, NOT a protocol regression",
+    "Documentation matches actual code: cli.py returns 0 when report.all_passing else 1 (line ~403), returns 2 on NotH3EndpointError / unknown categories (lines ~370/387), test_battery.py raises NotH3EndpointError for connection errors, HTTP >= 400, non-JSON bodies, and missing H3 fields",
+    "Live check: h3-test --endpoint http://localhost:9999 exits 2 with the does-not-look-like-an-H3-endpoint warning (stderr) and --json mode emits not_h3_endpoint true"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README.md contains an Exit codes section distinguishing 0 (compliant), 1 (compliance failure), 2 (not an H3 endpoint): README.md lines 24-35 contain '### Exit codes' section with a table distinguishing 0 (Compliant), 1 (Compliance failure), 2 (Not an H3 endpoint).\n  \u2713 docs/integration.md troubleshooting updated: exit 2 means wrong URL/harness down/connection refused, NOT a protocol regression: docs/integration.md lines 239-253 have Exit codes section and line 273 troubleshooting row states exit 2 = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) NOT a protocol regression.\n  \u2713 Documentation matches actual code: cli.py returns 0 when report.all_passing else 1 (line ~403), returns 2 on NotH3EndpointError / unknown categories (lines ~370/387), test_battery.py raises NotH3EndpointError for connection errors, HTTP >= 400, non-JSON bodies, and missing H3 fields: cli.py line 403 `return 0 if report.all_passing else 1`; line 370 `return 2` on NotH3EndpointError; line 387 `return 2` on unknown categories. test_battery.py raises NotH3EndpointError for connection errors (line 138), HTTP >= 400 (line 140-145), non-JSON bodies (line 155), missing H3 fields (line 173).\n  \u2713 Live check: h3-test --endpoint http://localhost:9999 exits 2 with the does-not-look-like-an-H3-endpoint warning (stderr) and --json mode emits not_h3_endpoint true: Live run of `.venv/bin/h3-test --endpoint http://localhost:9999` exits 2 with 'does not look like an H3 endpoint' warning on stderr; `--json` mode emits \"not_h3_endpoint\": true in the JSON payload.\nAll four criteria verified: README and docs/integration.md document exit codes 0/1/2 correctly, the code matches the documentation, and the live check confirms exit 2 with the not_h3_endpoint warning and JSON flag.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README.md contains an Exit codes section distinguishing 0 (compliant), 1 (compliance failure), 2 (not an H3 endpoint): README.md lines 24-35 contain '### Exit codes' section with a table distinguishing 0 (Compliant), 1 (Compliance failure), 2 (Not an H3 endpoint).\n  \u2713 docs/integration.md troubleshooting updated: exit 2 means wrong URL/harness down/connection refused, NOT a protocol regression: docs/integration.md lines 239-253 have Exit codes section and line 273 troubleshooting row",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README.md contains an Exit codes section distinguishing 0 (compliant), 1 (compliance failure), 2 (not an H3 endpoint)",
+                "status": "PASS",
+                "detail": "README.md lines 24-35 contain '### Exit codes' section with a table distinguishing 0 (Compliant), 1 (Compliance failure), 2 (Not an H3 endpoint)."
+              },
+              {
+                "criterion": "docs/integration.md troubleshooting updated: exit 2 means wrong URL/harness down/connection refused, NOT a protocol regression",
+                "status": "PASS",
+                "detail": "docs/integration.md lines 239-253 have Exit codes section and line 273 troubleshooting row states exit 2 = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) NOT a protocol regression."
+              },
+              {
+                "criterion": "Documentation matches actual code: cli.py returns 0 when report.all_passing else 1 (line ~403), returns 2 on NotH3EndpointError / unknown categories (lines ~370/387), test_battery.py raises NotH3EndpointError for connection errors, HTTP >= 400, non-JSON bodies, and missing H3 fields",
+                "status": "PASS",
+                "detail": "cli.py line 403 `return 0 if report.all_passing else 1`; line 370 `return 2` on NotH3EndpointError; line 387 `return 2` on unknown categories. test_battery.py raises NotH3EndpointError for connection errors (line 138), HTTP >= 400 (line 140-145), non-JSON bodies (line 155), missing H3 fields (line 173)."
+              },
+              {
+                "criterion": "Live check: h3-test --endpoint http://localhost:9999 exits 2 with the does-not-look-like-an-H3-endpoint warning (stderr) and --json mode emits not_h3_endpoint true",
+                "status": "PASS",
+                "detail": "Live run of `.venv/bin/h3-test --endpoint http://localhost:9999` exits 2 with 'does not look like an H3 endpoint' warning on stderr; `--json` mode emits \"not_h3_endpoint\": true in the JSON payload."
+              }
+            ],
+            "summary": "All four criteria verified: README and docs/integration.md document exit codes 0/1/2 correctly, the code matches the documentation, and the live check confirms exit 2 with the not_h3_endpoint warning and JSON flag."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-010\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README.md contains an Exit codes section distinguishing 0 (compliant), 1 (compliance failure), 2 (not an H3 endpoint): README.md lines 24-35 contain '### Exit codes' section with a table distinguishing 0 (Compliant), 1 (Compliance failure), 2 (Not an H3 endpoint).\n  \u2713 docs/integration.md troubleshooting updated: exit 2 means wrong URL/harness down/connection refused, NOT a protocol regression: docs/integration.md lines 239-253 have Exit codes section and line 273 troubleshooting row states exit 2 = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) NOT a protocol regression.\n  \u2713 Documentation matches actual code: cli.py returns 0 when report.all_passing else 1 (line ~403), returns 2 on NotH3EndpointError / unknown categories (lines ~370/387), test_battery.py raises NotH3EndpointError for connection errors, HTTP >= 400, non-JSON bodies, and missing H3 fields: cli.py line 403 `return 0 if report.all_passing else 1`; line 370 `return 2` on NotH3EndpointError; line 387 `return 2` on unknown categories. test_battery.py raises NotH3EndpointError for connection errors (line 138), HTTP >= 400 (line 140-145), non-JSON bodies (line 155), missing H3 fields (line 173).\n  \u2713 Live check: h3-test --endpoint http://localhost:9999 exits 2 with the does-not-look-like-an-H3-endpoint warning (stderr) and --json mode emits not_h3_endpoint true: Live run of `.venv/bin/h3-test --endpoint http://localhost:9999` exits 2 with 'does not look like an H3 endpoint' warning on stderr; `--json` mode emits \"not_h3_endpoint\": true in the JSON payload.\nAll four criteria verified: README and docs/integration.md document exit codes 0/1/2 correctly, the code matches the documentation, and the live check confirms exit 2 with the not_h3_endpoint warning and JSON flag.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-08T02:55:23.833886"
+}
