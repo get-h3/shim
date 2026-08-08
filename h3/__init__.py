@@ -38,7 +38,9 @@ except ImportError:  # pragma: no cover - host-dependent
     click = None  # type: ignore[assignment]
 
 try:  # pragma: no cover - host-dependent
-    from h3_shim.cli import hermes_h3 as _CLICK_GROUP
+    from h3_shim.cli import (
+        hermes_h3 as _CLICK_GROUP,  # noqa: N812 - module alias, intentional
+    )
 except Exception:  # pragma: no cover - host-dependent
     _CLICK_GROUP = None
 
@@ -87,7 +89,12 @@ _OPTIONS: dict[str, tuple[str, ...]] = {
 # omitted from the reconstructed argv (click applies the same default).
 _DEFAULTS: dict[str, dict[str, Any]] = {
     "test": {"harness": None, "endpoint": None, "as_json": False, "categories": None},
-    "install": {"endpoint": None, "transport": "rest", "timeout_ms": 30000, "set_default": False},
+    "install": {
+        "endpoint": None,
+        "transport": "rest",
+        "timeout_ms": 30000,
+        "set_default": False,
+    },
     "verify": {"harness": None, "endpoint": None, "fallback": False},
     "scaffold": {"force": False, "lang": None, "output_dir": None},
     "pre-update-check": {"versions_yaml_path": None},
@@ -140,9 +147,15 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Named harness from config (defaults to default_harness).",
     )
-    p.add_argument("--endpoint", default=None, help="Override endpoint URL (skip config lookup).")
-    p.add_argument("--json", dest="as_json", action="store_true", help="Emit JSON report.")
-    p.add_argument("--categories", default=None, help="Comma-separated categories to run.")
+    p.add_argument(
+        "--endpoint", default=None, help="Override endpoint URL (skip config lookup)."
+    )
+    p.add_argument(
+        "--json", dest="as_json", action="store_true", help="Emit JSON report."
+    )
+    p.add_argument(
+        "--categories", default=None, help="Comma-separated categories to run."
+    )
 
     p = sub.add_parser("list", help="List harnesses known to the config.")
     _add_config_option(p)
@@ -151,7 +164,9 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     _add_config_option(p)
     p.add_argument("name", help="Harness name.")
     p.add_argument("--endpoint", required=True, help="Harness endpoint URL.")
-    p.add_argument("--transport", default="rest", help="Transport protocol (rest, grpc, ...).")
+    p.add_argument(
+        "--transport", default="rest", help="Transport protocol (rest, grpc, ...)."
+    )
     p.add_argument(
         "--timeout-ms",
         dest="timeout_ms",
@@ -184,15 +199,23 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Named harness from config (defaults to default_harness).",
     )
-    p.add_argument("--endpoint", default=None, help="Override endpoint URL (skip config lookup).")
-    p.add_argument("--fallback", action="store_true", help="Also test the native fallback path.")
+    p.add_argument(
+        "--endpoint", default=None, help="Override endpoint URL (skip config lookup)."
+    )
+    p.add_argument(
+        "--fallback", action="store_true", help="Also test the native fallback path."
+    )
 
     p = sub.add_parser(
         "scaffold",
         help="Create an empty config file or scaffold a new harness project.",
     )
     _add_config_option(p)
-    p.add_argument("--force", action="store_true", help="Overwrite an existing config file or project directory.")
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing config file or project directory.",
+    )
     p.add_argument(
         "--lang",
         choices=("go", "py", "ts"),
@@ -203,7 +226,10 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         "--output-dir",
         dest="output_dir",
         default=None,
-        help="Parent directory under which the new project is created (default: current directory).",
+        help=(
+            "Parent directory under which the new project is created "
+            "(default: current directory)."
+        ),
     )
 
     p = sub.add_parser("route", help="Show the session → harness routing table.")
@@ -214,7 +240,9 @@ def _setup(parser: argparse.ArgumentParser) -> None:
         help="Run pre-flight compatibility checks before hermes update.",
     )
     _add_config_option(p)
-    p.add_argument("target_version", help="Hermes version you plan to upgrade to (e.g. 0.19.0).")
+    p.add_argument(
+        "target_version", help="Hermes version you plan to upgrade to (e.g. 0.19.0)."
+    )
     p.add_argument(
         "--versions-yaml",
         dest="versions_yaml_path",
