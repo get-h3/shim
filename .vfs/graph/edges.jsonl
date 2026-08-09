@@ -167,3 +167,5 @@
 {"from":"tests/test_h3_plugin.py","to":"pkg:importlib.util","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_h3_plugin.py","to":"pkg:pathlib","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_h3_plugin.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_cli.py","to":"pkg:h3_shim","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_cli.py","to":"pkg:h3_shim","rel":"imports","provenance":"ast_exact","confidence":1.0}
