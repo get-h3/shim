@@ -1,0 +1,87 @@
+{
+  "task_id": "gap-011",
+  "task_title": "GAP-011: bundle protocol/versions.yaml as package data",
+  "task_criteria": [
+    "src/h3_shim/data/versions.yaml exists and is byte-identical to /home/kara/get-h3/protocol/versions.yaml",
+    "h3_shim.upgrade_check._default_versions_yaml_path() returns the bundled data file when it exists (no dev-tree dependency)",
+    "A wheel built from the repo contains h3_shim/data/versions.yaml (zipfile namelist check)",
+    "pip install of the built wheel into a fresh venv -> hermes-h3 pre-update-check 0.18.0 returns the version-specific 'too old' result (matrix loaded), NOT the blanket 'no compatibility data' empty-matrix message",
+    "scripts/smoke_test.sh step 8 asserts the version-specific check result post-install (fails on 'no compatibility data')",
+    "Full pytest suite passes (291 tests)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 src/h3_shim/data/versions.yaml exists and is byte-identical to /home/kara/get-h3/protocol/versions.yaml: src/h3_shim/data/versions.yaml exists (1362 bytes) and `cmp` confirms BYTE-IDENTICAL to /home/kara/get-h3/protocol/versions.yaml\n  \u2713 h3_shim.upgrade_check._default_versions_yaml_path() returns the bundled data file when it exists (no dev-tree dependency): upgrade_check.py:50-55: _default_versions_yaml_path() checks _bundled_versions_yaml_path() (src/h3_shim/data/versions.yaml) first and returns it since it exists. Verified via import: default=/home/kara/get-h3/shim/src/h3_shim/data/versions.yaml, exists=True\n  \u2713 A wheel built from the repo contains h3_shim/data/versions.yaml (zipfile namelist check): Built dist/hermes_h3_shim-0.1.0-py3-none-any.whl; zipfile namelist contains h3_shim/data/versions.yaml, byte-identical to source (sha256 0fad4831a242d370871ab919f12d1e10f0d617ec61f5d65266e2ea894ca795a0)\n  \u2713 pip install of the built wheel into a fresh venv -> hermes-h3 pre-update-check 0.18.0 returns the version-specific 'too old' result (matrix loaded), NOT the blanket 'no compatibility data' empty-matrix message: Fresh venv install of wheel + `hermes-h3 pre-update-check 0.18.0` from /tmp returns 'H3 shim v0.1.0 is too old for Hermes 0.18.0 (requires H3 \u2265 1.0.0)' \u2014 version-specific result, not 'no compatibility data'. Installed module resolves to site-packages/h3_shim/data/versions.yaml\n  \u2713 scripts/smoke_test.sh step 8 asserts the version-specific check result post-install (fails on 'no compatibility data'): scripts/smoke_test.sh lines ~104-118: step 8 runs pre-update-check 0.18.0, FAILS on 'no compatibility data', PASSES only on 'too old'. Smoke test ran 19/19 PASS with step 8 confirming 'bundled matrix loaded: version-specific check'\n  \u2713 Full pytest suite passes (291 tests): `pytest -q` reports '291 passed in 1.89s'. ruff check clean, LSP diagnostics empty\nAll 6 GAP-011 criteria verified: versions.yaml bundled as package data, resolution prefers bundled file, wheel contains it, fresh-venv install returns version-specific 'too old' result, smoke test step 8 asserts it, and all 291 tests pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 src/h3_shim/data/versions.yaml exists and is byte-identical to /home/kara/get-h3/protocol/versions.yaml: src/h3_shim/data/versions.yaml exists (1362 bytes) and `cmp` confirms BYTE-IDENTICAL to /home/kara/get-h3/protocol/versions.yaml\n  \u2713 h3_shim.upgrade_check._default_versions_yaml_path() returns the bundled data file when it exists (no dev-tree dependency): upgrade_check.py:50-55: _default_versions_yaml_path() checks _bundled_versions_yaml_path() (src/h3_shim/data/versions.yaml) fi",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "src/h3_shim/data/versions.yaml exists and is byte-identical to /home/kara/get-h3/protocol/versions.yaml",
+                "status": "PASS",
+                "detail": "src/h3_shim/data/versions.yaml exists (1362 bytes) and `cmp` confirms BYTE-IDENTICAL to /home/kara/get-h3/protocol/versions.yaml"
+              },
+              {
+                "criterion": "h3_shim.upgrade_check._default_versions_yaml_path() returns the bundled data file when it exists (no dev-tree dependency)",
+                "status": "PASS",
+                "detail": "upgrade_check.py:50-55: _default_versions_yaml_path() checks _bundled_versions_yaml_path() (src/h3_shim/data/versions.yaml) first and returns it since it exists. Verified via import: default=/home/kara/get-h3/shim/src/h3_shim/data/versions.yaml, exists=True"
+              },
+              {
+                "criterion": "A wheel built from the repo contains h3_shim/data/versions.yaml (zipfile namelist check)",
+                "status": "PASS",
+                "detail": "Built dist/hermes_h3_shim-0.1.0-py3-none-any.whl; zipfile namelist contains h3_shim/data/versions.yaml, byte-identical to source (sha256 0fad4831a242d370871ab919f12d1e10f0d617ec61f5d65266e2ea894ca795a0)"
+              },
+              {
+                "criterion": "pip install of the built wheel into a fresh venv -> hermes-h3 pre-update-check 0.18.0 returns the version-specific 'too old' result (matrix loaded), NOT the blanket 'no compatibility data' empty-matrix message",
+                "status": "PASS",
+                "detail": "Fresh venv install of wheel + `hermes-h3 pre-update-check 0.18.0` from /tmp returns 'H3 shim v0.1.0 is too old for Hermes 0.18.0 (requires H3 \u2265 1.0.0)' \u2014 version-specific result, not 'no compatibility data'. Installed module resolves to site-packages/h3_shim/data/versions.yaml"
+              },
+              {
+                "criterion": "scripts/smoke_test.sh step 8 asserts the version-specific check result post-install (fails on 'no compatibility data')",
+                "status": "PASS",
+                "detail": "scripts/smoke_test.sh lines ~104-118: step 8 runs pre-update-check 0.18.0, FAILS on 'no compatibility data', PASSES only on 'too old'. Smoke test ran 19/19 PASS with step 8 confirming 'bundled matrix loaded: version-specific check'"
+              },
+              {
+                "criterion": "Full pytest suite passes (291 tests)",
+                "status": "PASS",
+                "detail": "`pytest -q` reports '291 passed in 1.89s'. ruff check clean, LSP diagnostics empty"
+              }
+            ],
+            "summary": "All 6 GAP-011 criteria verified: versions.yaml bundled as package data, resolution prefers bundled file, wheel contains it, fresh-venv install returns version-specific 'too old' result, smoke test step 8 asserts it, and all 291 tests pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-011\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 src/h3_shim/data/versions.yaml exists and is byte-identical to /home/kara/get-h3/protocol/versions.yaml: src/h3_shim/data/versions.yaml exists (1362 bytes) and `cmp` confirms BYTE-IDENTICAL to /home/kara/get-h3/protocol/versions.yaml\n  \u2713 h3_shim.upgrade_check._default_versions_yaml_path() returns the bundled data file when it exists (no dev-tree dependency): upgrade_check.py:50-55: _default_versions_yaml_path() checks _bundled_versions_yaml_path() (src/h3_shim/data/versions.yaml) first and returns it since it exists. Verified via import: default=/home/kara/get-h3/shim/src/h3_shim/data/versions.yaml, exists=True\n  \u2713 A wheel built from the repo contains h3_shim/data/versions.yaml (zipfile namelist check): Built dist/hermes_h3_shim-0.1.0-py3-none-any.whl; zipfile namelist contains h3_shim/data/versions.yaml, byte-identical to source (sha256 0fad4831a242d370871ab919f12d1e10f0d617ec61f5d65266e2ea894ca795a0)\n  \u2713 pip install of the built wheel into a fresh venv -> hermes-h3 pre-update-check 0.18.0 returns the version-specific 'too old' result (matrix loaded), NOT the blanket 'no compatibility data' empty-matrix message: Fresh venv install of wheel + `hermes-h3 pre-update-check 0.18.0` from /tmp returns 'H3 shim v0.1.0 is too old for Hermes 0.18.0 (requires H3 \u2265 1.0.0)' \u2014 version-specific result, not 'no compatibility data'. Installed module resolves to site-packages/h3_shim/data/versions.yaml\n  \u2713 scripts/smoke_test.sh step 8 asserts the version-specific check result post-install (fails on 'no compatibility data'): scripts/smoke_test.sh lines ~104-118: step 8 runs pre-update-check 0.18.0, FAILS on 'no compatibility data', PASSES only on 'too old'. Smoke test ran 19/19 PASS with step 8 confirming 'bundled matrix loaded: version-specific check'\n  \u2713 Full pytest suite passes (291 tests): `pytest -q` reports '291 passed in 1.89s'. ruff check clean, LSP diagnostics empty\nAll 6 GAP-011 criteria verified: versions.yaml bundled as package data, resolution prefers bundled file, wheel contains it, fresh-venv install returns version-specific 'too old' result, smoke test step 8 asserts it, and all 291 tests pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-09T01:29:43.180827"
+}
