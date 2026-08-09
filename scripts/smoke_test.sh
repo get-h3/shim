@@ -100,13 +100,20 @@ for cmd in "${SUBCMDS[@]}"; do
 done
 
 # ── pre-update-check (functional invocation) ────────────────────────────────
-echo "── 8. hermes-h3 pre-update-check 1.0"
-# This exits non-zero when versions.yaml is missing, but must NOT be an ImportError.
-OUT="$("$VENV_DIR/bin/hermes-h3" pre-update-check 1.0 2>&1)" || true
+echo "── 8. hermes-h3 pre-update-check (bundled matrix loaded)"
+# GAP-011: the bundled versions.yaml must be found post-install. With the
+# matrix loaded, a matrix version (0.18.0) yields the version-specific
+# "too old" check result — NOT the blanket empty-matrix "no compatibility
+# data" message. Exit may be 1 (BLOCK) either way; the MESSAGE distinguishes.
+OUT="$(set +e; "$VENV_DIR/bin/hermes-h3" pre-update-check 0.18.0 2>&1)" || true
 if echo "$OUT" | grep -qi "traceback\|importerror\|modulenotfound"; then
-    fail "pre-update-check 1.0 (ImportError traceback detected)"
+    fail "pre-update-check 0.18.0 (ImportError traceback detected)"
+elif echo "$OUT" | grep -qi "no compatibility data"; then
+    fail "pre-update-check 0.18.0 (empty matrix — bundled versions.yaml not found)"
+elif echo "$OUT" | grep -qi "too old"; then
+    pass "pre-update-check 0.18.0 (bundled matrix loaded: version-specific check)"
 else
-    pass "hermes-h3 pre-update-check 1.0 (no ImportError)"
+    fail "pre-update-check 0.18.0 (unexpected output: $OUT)"
 fi
 
 # ── Scaffold (exercises template rendering) ─────────────────────────────────

@@ -232,7 +232,7 @@ h3-test --endpoint http://localhost:9191 --json     # machine-readable report
 h3-test --endpoint http://localhost:9191 --categories health,process
 ```
 
-The battery is 43 tests across 6 categories (health, process, decisions,
+The battery is 44 tests across 6 categories (health, process, decisions,
 results, errors, stress).  See [Exit codes](#exit-codes) below for the
 meaning of each h3-test exit code.
 

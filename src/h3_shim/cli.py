@@ -841,7 +841,8 @@ def route(ctx: click.Context) -> None:
     "versions_yaml_path",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
-    help="Path to versions.yaml (default: auto-detect in protocol repo).",
+    help="Path to versions.yaml (default: bundled package data, "
+    "falls back to protocol repo in a monorepo checkout).",
 )
 @click.pass_context
 def pre_update_check_cmd(

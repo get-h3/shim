@@ -747,13 +747,13 @@ class TestRunBatteryJSON:
 
 
 def _full_category_report() -> FakeTestReport:
-    """Return a report with all 43 tests across all 6 categories."""
+    """Return a report with all 44 tests across all 6 categories."""
     cat_map: dict[str, int] = {
         "Health & Protocol": 7,
         "Process Basic Flows": 8,
         "Decision Types": 6,
         "Result Handling": 7,
-        "Error & Edge Cases": 10,
+        "Error & Edge Cases": 11,
         "Stress & Performance": 5,
     }
     results: list[FakeTestResult] = []
@@ -772,10 +772,10 @@ def _full_category_report() -> FakeTestReport:
             seq += 1
     return FakeTestReport(
         results=results,
-        total=43,
-        passed=43,
+        total=44,
+        passed=44,
         failed=0,
-        duration_ms=43.0,
+        duration_ms=44.0,
         timestamp="2026-01-01T00:00:00Z",
     )
 
@@ -809,7 +809,7 @@ class TestRunBatteryCategories:
 
     @pytest.mark.asyncio
     async def test_multiple_tokens_runs_both_subsets(self, monkeypatch, capsys):
-        """--categories health,errors runs Health (7) + Errors (10) = 17 tests."""
+        """--categories health,errors runs Health (7) + Errors (11) = 18 tests."""
         self._stub_battery(monkeypatch, _full_category_report())
         code = await _run_battery("http://x:1", "health,errors", False)
         assert code == 0
@@ -817,7 +817,7 @@ class TestRunBatteryCategories:
         assert "Health & Protocol" in out
         assert "7/7" in out
         assert "Error & Edge Cases" in out
-        assert "10/10" in out
+        assert "11/11" in out
         # None of the other categories
         assert "Process Basic Flows" not in out
         assert "Decision Types" not in out

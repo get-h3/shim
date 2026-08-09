@@ -5,7 +5,7 @@
 ### Added
 - Core H3 protocol implementation: Pydantic models, REST client, shim loop
 - CLI with 8 subcommands: `hermes h3 {health,process,result,cancel,install,scaffold,verify,test}`
-- Test battery: 43 compliance tests across 6 regions (E2E region-style)
+- Test battery: 44 compliance tests across 6 regions (E2E region-style)
 - Go, Python, and TypeScript scaffold templates
 - Native Hermes loop adapter
 - Pre-flight upgrade check hook

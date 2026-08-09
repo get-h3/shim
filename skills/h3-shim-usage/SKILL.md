@@ -35,7 +35,7 @@ pip install git+https://github.com/get-h3/shim    # or: pip install /path/to/shi
 # Zero-to-verified in ~6 minutes:
 hermes-h3 scaffold --lang py            # generates ./h3-harness-py (self-contained)
 cd h3-harness-py && pip install -e . && python main.py &   # :9191
-h3-test --endpoint http://localhost:9191        # expect TOTAL 43/43 PASSED, exit 0
+h3-test --endpoint http://localhost:9191        # expect TOTAL 44/44 PASSED, exit 0
 hermes-h3 install my-harness --endpoint http://localhost:9191 --set-default
 hermes-h3 verify && hermes-h3 test && hermes-h3 route
 ```

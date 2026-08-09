@@ -6,7 +6,7 @@ Two modes:
                     compatible, exit 1 if breaking changes detected.
   diff   (--diff):  Print a human-readable diff of schema changes vs current models.
 
-The actual gate is the test battery — 43 compliance tests. If schemas change
+The actual gate is the test battery — 44 compliance tests. If schemas change
 and the test battery still passes, the shim is compatible and can auto-publish.
 
 Usage:

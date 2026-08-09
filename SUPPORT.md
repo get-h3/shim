@@ -23,4 +23,4 @@ pip install hermes-h3-shim
 h3-test --endpoint http://localhost:9191
 ```
 
-43 compliance tests. Exit 0 = compliant.
+44 compliance tests. Exit 0 = compliant.

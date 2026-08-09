@@ -40,12 +40,12 @@ cd h3-harness-py && pip install -e . && python main.py &   # listens :9191
 hermes-h3 verify --endpoint http://localhost:9191
 #   status: HealthStatus.OK  version: 1.0.0  caps: text   (exit 0)
 
-# 3. THE gate — 43 tests, ~0.3s
+# 3. THE gate — 44 tests, ~0.3s
 h3-test --endpoint http://localhost:9191
 #   Health & Protocol   7/7  ✅   Process Basic Flows   8/8  ✅
 #   Decision Types      6/6  ✅   Result Handling       7/7  ✅
 #   Error & Edge Cases  10/10 ✅   Stress & Performance  5/5  ✅
-#   TOTAL 43/43 PASSED  (exit 0)
+#   TOTAL 44/44 PASSED  (exit 0)
 
 # 4. Register + manage
 hermes-h3 install my-harness --endpoint http://localhost:9191 --set-default
@@ -61,7 +61,7 @@ hermes h3 verify          # same commands, delegated to the real CLI
 ```
 
 Scaffolded harness honours `PORT` env (`PORT=9192 python main.py`).
-The battery also passes 43/43 against the SDK reference examples
+The battery also passes 44/44 against the SDK reference examples
 (sdk-python `examples/echo.py` — note: it hardcodes port **8000**, not 9191).
 
 ## Errors hit and their fixes
@@ -77,7 +77,7 @@ The battery also passes 43/43 against the SDK reference examples
 ## Verdict
 
 🟡 **PROMISING-BUT-ROUGH.** The promise holds: ~6 minutes from a fresh venv
-to a 43/43-verified harness, and the battery is genuinely excellent (fast,
+to a 44/44-verified harness, and the battery is genuinely excellent (fast,
 black-box, wrong-server-proof, machine-readable `--json`). The blockers are
 shipment quality (broken wheel → broken subcommand) and two silent
 false-green paths — exactly the gaps green test suites can't see.

@@ -11,6 +11,9 @@ import yaml
 from h3_shim.upgrade_check import (
     CURRENT_CONFIG_SCHEMA,
     UpgradeCheckResult,
+    _bundled_versions_yaml_path,
+    _default_versions_yaml_path,
+    _devtree_versions_yaml_path,
     _find_compat_entry,
     _load_version_matrix,
     _parse_version,
@@ -148,6 +151,52 @@ def test_find_compat_entry_not_found(sample_versions_yaml: Path) -> None:
     matrix = _load_version_matrix(sample_versions_yaml)
     entry = _find_compat_entry("0.99.0", matrix)
     assert entry is None
+
+
+# ---------------------------------------------------------------------------
+# versions.yaml resolution (GAP-011 — bundled package data)
+# ---------------------------------------------------------------------------
+
+
+def test_bundled_versions_yaml_exists() -> None:
+    """The bundled matrix ships inside the package (wheel package data)."""
+    p = _bundled_versions_yaml_path()
+    assert p.exists(), f"bundled versions.yaml missing at {p}"
+
+
+def test_bundled_versions_yaml_loads_matrix() -> None:
+    """The bundled matrix parses to the same 3-entry hermes_versions list."""
+    matrix = _load_version_matrix(_bundled_versions_yaml_path())
+    assert len(matrix) == 3
+    assert matrix[0]["hermes"] == "0.18.0"
+
+
+def test_default_path_prefers_bundled() -> None:
+    """In the dev tree the bundled copy exists, so it wins over dev-tree."""
+    assert _default_versions_yaml_path() == _bundled_versions_yaml_path()
+
+
+def test_devtree_fallback_path() -> None:
+    """The dev-tree fallback points at the sibling protocol repo."""
+    p = _devtree_versions_yaml_path()
+    assert str(p).endswith("protocol/versions.yaml")
+
+
+def test_pre_update_check_default_matrix(
+    sample_config: Path,
+) -> None:
+    """pre_update_check resolves versions.yaml from the bundled data file
+    when no explicit path is given (the post-install code path)."""
+    with (
+        patch("h3_shim.upgrade_check.h3_shim_version", "1.2.0"),
+        patch(
+            "h3_shim.upgrade_check._load_config",
+            return_value={"_schema": 1, "harnesses": {}, "sessions": {}},
+        ),
+    ):
+        result = pre_update_check("0.18.0", config_path=sample_config)
+    assert result.severity == "OK"
+    assert result.ok
 
 
 # ---------------------------------------------------------------------------

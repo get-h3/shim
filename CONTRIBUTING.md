@@ -22,7 +22,7 @@ shim/
 │   ├── shim_loop.py      # H3ShimLoop: process → execute → result → loop
 │   ├── native.py         # Native Hermes loop as H3 harness wrapper
 │   ├── cli.py            # `hermes h3` subcommands (8 commands)
-│   ├── test_battery.py   # 43 compliance tests — THE GATE
+│   ├── test_battery.py   # 44 compliance tests — THE GATE
 │   └── upgrade_check.py  # Hermes update pre-flight hook
 ├── tests/
 │   ├── test_protocol.py
@@ -49,7 +49,7 @@ python -m pytest tests/ -v
 ```bash
 # Against the Go echo harness
 h3-test --endpoint http://localhost:9191
-# 43 compliance tests, 6 regions
+# 44 compliance tests, 6 regions
 ```
 
 ### Sync Protocol Types
@@ -104,7 +104,7 @@ GitHub Actions runs on every PR:
 1. Lint (ruff)
 2. Type check (mypy)
 3. Unit tests (pytest, 151 tests)
-4. Test battery against Go echo harness (43 compliance tests)
+4. Test battery against Go echo harness (44 compliance tests)
 5. Test battery against Python echo harness
 6. Test battery against TypeScript echo harness
 

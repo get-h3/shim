@@ -18,7 +18,7 @@ dumps — read this to understand the system, not to replay a session.
   console scripts (`h3-test`, `hermes-h3`). NOT on PyPI yet — install from
   git/source. The `h3/` directory is an optional Hermes Core plugin that
   registers an `h3` command group delegating to the same CLI.
-- **The battery:** 43 tests / 6 categories, E2E region-style. Runs a
+- **The battery:** 44 tests / 6 categories, E2E region-style. Runs a
   pre-flight `probe()` that raises `NotH3EndpointError` (non-JSON, foreign
   shape, 401, or connection error) → CLI prints a warning to stderr and
   exits 2. Each category is a coroutine on `H3TestBattery`; results carry
@@ -76,7 +76,7 @@ dumps — read this to understand the system, not to replay a session.
 
 ### 4. What works (the right way to use it)
 
-- `h3-test` full battery: 43/43 in ~0.3s, exit 0; JSON mode
+- `h3-test` full battery: 44/44 in ~0.3s, exit 0; JSON mode
   (`--json`) gives `total/passed/failed/latency/results`; wrong-server
   detection exits 2 with a clear stderr warning (GAP-003 fix — verified
   against both a plain http.server 404 and an unreachable port).

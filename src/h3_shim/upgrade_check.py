@@ -34,7 +34,27 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 CURRENT_CONFIG_SCHEMA = 1  # Current H3 config _schema version
-VERSIONS_YAML_PATH = Path(__file__).resolve().parents[3] / "protocol" / "versions.yaml"
+
+
+# Resolution order for versions.yaml (GAP-011):
+# 1. Bundled package data (ships inside the wheel — works after pip install)
+# 2. Dev-tree sibling protocol repo (monorepo checkout)
+def _bundled_versions_yaml_path() -> Path:
+    return Path(__file__).resolve().parent / "data" / "versions.yaml"
+
+
+def _devtree_versions_yaml_path() -> Path:
+    return Path(__file__).resolve().parents[3] / "protocol" / "versions.yaml"
+
+
+def _default_versions_yaml_path() -> Path:
+    bundled = _bundled_versions_yaml_path()
+    if bundled.exists():
+        return bundled
+    return _devtree_versions_yaml_path()
+
+
+VERSIONS_YAML_PATH = _default_versions_yaml_path()
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +179,8 @@ def pre_update_check(
         e.g. ``"0.19.0"``.
     versions_yaml_path:
         Optional override path to ``versions.yaml``. Defaults to the
-        protocol repo copy shipped alongside the shim.
+        bundled copy shipped inside the package (``h3_shim/data/``),
+        falling back to the protocol repo copy in a monorepo checkout.
     config_path:
         Optional override path to the H3 config file. Defaults to
         ``~/.hermes/h3/config.yaml``.
