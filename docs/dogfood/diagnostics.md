@@ -12,7 +12,7 @@ dumps — read this to understand the system, not to replay a session.
   `/v1/sessions/{id}`), `loader.py` (config discovery, 30s health-check loop,
   circuit breaker, most-specific-first session routing), `shim_loop.py`
   (process → execute decision → result → loop, hard cap 50 iterations),
-  `test_battery.py` (the 43-test gate), `cli.py` (both CLIs), and
+  `test_battery.py` (the 44-test gate), `cli.py` (both CLIs), and
   `templates/{go,py,ts}/` for scaffolding.
 - **Packaging:** hatchling wheel from `packages = ["src/h3_shim"]`, two
   console scripts (`h3-test`, `hermes-h3`). NOT on PyPI yet — install from

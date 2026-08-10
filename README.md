@@ -12,7 +12,7 @@ pip install git+https://github.com/get-h3/shim
 
 This installs two CLI entry points:
 
-- `h3-test` — the 43-test H3 compliance battery (`h3-test --endpoint <url>`)
+- `h3-test` — the 44-test H3 compliance battery (`h3-test --endpoint <url>`)
 - `hermes-h3` — harness management (`install`, `list`, `test`, `verify`, `scaffold`, ...)
 
 ## Quickstart

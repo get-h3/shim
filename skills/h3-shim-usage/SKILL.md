@@ -2,7 +2,7 @@
 name: h3-shim-usage
 description: >-
   How to USE the H3 shim (get-h3/shim) for real: install, scaffold a
-  harness, run the 43-test compliance battery, manage harnesses and
+  harness, run the 44-test compliance battery, manage harnesses and
   routing, and use the hermes h3 plugin. Includes known pitfalls from the
   2026-08-07 dogfood run. Load this before touching the shim, its tests,
   or any get-h3 harness verification task.
@@ -18,7 +18,7 @@ the thinking brain of Hermes. This skill teaches how to actually run it.
 
 ## What it does / entry points
 
-- `h3-test` — the 43-test H3 compliance battery (black-box, ~0.3s).
+- `h3-test` — the 44-test H3 compliance battery (black-box, ~0.3s).
 - `hermes-h3` — harness management CLI: `install`, `list`,
   `pre-update-check`, `route`, `scaffold`, `test`, `uninstall`, `use`,
   `verify`.
