@@ -177,6 +177,56 @@ class TestList:
         lines = result.output.splitlines()
         assert any(line.startswith("*") and "alpha" in line for line in lines)
 
+    def test_list_accepts_config_after_subcommand(self, tmp_path, runner):
+        """--config after the subcommand works (GAP-014)."""
+        custom = tmp_path / "custom.yaml"
+        custom.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "zeta",
+                    "harnesses": {
+                        "zeta": {
+                            "endpoint": "http://z:9",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["list", "--config", str(custom)])
+        assert result.exit_code == 0
+        assert "zeta" in result.output
+        assert "http://z:9" in result.output
+
+    def test_config_after_subcommand_beats_group_option(self, tmp_path, runner):
+        """Subcommand --config overrides the group-level --config (GAP-014)."""
+        group_cfg = tmp_path / "group.yaml"
+        group_cfg.write_text(yaml.safe_dump({"harnesses": {}, "sessions": {}}))
+        sub_cfg = tmp_path / "sub.yaml"
+        sub_cfg.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "omega",
+                    "harnesses": {
+                        "omega": {
+                            "endpoint": "http://o:7",
+                            "transport": "rest",
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
+        result = runner.invoke(
+            hermes_h3,
+            ["--config", str(group_cfg), "list", "--config", str(sub_cfg)],
+        )
+        assert result.exit_code == 0
+        assert "omega" in result.output
+        assert "http://o:7" in result.output
+
 
 # ── scaffold ────────────────────────────────────────────────────────────────
 
@@ -848,8 +898,8 @@ class TestRunBatteryCategories:
         assert "bogus" in err
 
     @pytest.mark.asyncio
-    async def test_all_tokens_runs_all_forty_three(self, monkeypatch, capsys):
-        """--categories health,process,decisions,results,errors,stress runs all 43."""
+    async def test_all_tokens_runs_all_forty_four(self, monkeypatch, capsys):
+        """--categories health,process,decisions,results,errors,stress runs all 44."""
         self._stub_battery(monkeypatch, _full_category_report())
         code = await _run_battery(
             "http://x:1",

@@ -470,7 +470,23 @@ def _config_path(ctx: click.Context) -> Path:
     return ctx.obj.get("config_path") or CONFIG_PATH
 
 
+def _config_option(func):
+    """Add a per-command ``--config`` option (mirrors the group-level one).
+
+    Enables ``hermes-h3 <command> --config <path>`` in addition to
+    ``hermes-h3 --config <path> <command>``.
+    """
+    return click.option(
+        "--config",
+        "config_path",
+        type=click.Path(dir_okay=False, path_type=Path),
+        default=None,
+        help=f"Override config path (default: {CONFIG_PATH}).",
+    )(func)
+
+
 @hermes_h3.command(help="Run the H3 compliance test battery.")
+@_config_option
 @click.option(
     "--harness",
     "-h",
@@ -492,12 +508,15 @@ def _config_path(ctx: click.Context) -> Path:
 @click.pass_context
 def test(
     ctx: click.Context,
+    config_path: Path | None,
     harness: str | None,
     endpoint: str | None,
     as_json: bool,
     categories: str | None,
 ) -> None:
     """Run the compliance battery against a harness."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     if endpoint is None:
         config = load_config(_config_path(ctx))
         _name, spec = resolve_harness(harness, config)
@@ -515,9 +534,12 @@ def test(
 
 
 @hermes_h3.command(name="list", help="List harnesses known to the config.")
+@_config_option
 @click.pass_context
-def list_cmd(ctx: click.Context) -> None:
+def list_cmd(ctx: click.Context, config_path: Path | None) -> None:
     """Print a table of harnesses."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     harnesses: dict[str, dict[str, Any]] = config.get("harnesses", {}) or {}
     default = config.get("default_harness")
@@ -540,6 +562,7 @@ def list_cmd(ctx: click.Context) -> None:
 
 
 @hermes_h3.command(help="Register a harness in the config.")
+@_config_option
 @click.argument("name")
 @click.option("--endpoint", required=True, help="Harness endpoint URL.")
 @click.option(
@@ -563,6 +586,7 @@ def list_cmd(ctx: click.Context) -> None:
 @click.pass_context
 def install(
     ctx: click.Context,
+    config_path: Path | None,
     name: str,
     endpoint: str,
     transport: str,
@@ -570,6 +594,8 @@ def install(
     set_default: bool,
 ) -> None:
     """Add or update a harness entry."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
     harnesses[name] = {
@@ -585,10 +611,13 @@ def install(
 
 
 @hermes_h3.command(help="Remove a harness from the config.")
+@_config_option
 @click.argument("name")
 @click.pass_context
-def uninstall(ctx: click.Context, name: str) -> None:
+def uninstall(ctx: click.Context, config_path: Path | None, name: str) -> None:
     """Delete a harness entry."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
     if name not in harnesses:
@@ -601,6 +630,7 @@ def uninstall(ctx: click.Context, name: str) -> None:
 
 
 @hermes_h3.command(help="Health-check a harness via the H3 REST client.")
+@_config_option
 @click.option(
     "--harness",
     "-h",
@@ -623,6 +653,7 @@ def uninstall(ctx: click.Context, name: str) -> None:
 @click.pass_context
 def verify(
     ctx: click.Context,
+    config_path: Path | None,
     harness: str | None,
     endpoint: str | None,
     fallback: bool,
@@ -634,6 +665,8 @@ def verify(
     be rerouted to the native harness.  Native availability is always
     checked when **--fallback** is used.
     """
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     if endpoint is None:
         config = load_config(_config_path(ctx))
         name, spec = resolve_harness(harness, config)
@@ -813,9 +846,12 @@ def scaffold(
 
 
 @hermes_h3.command(help="Show the session → harness routing table.")
+@_config_option
 @click.pass_context
-def route(ctx: click.Context) -> None:
+def route(ctx: click.Context, config_path: Path | None) -> None:
     """Pretty-print the ``sessions`` map from the config."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
     if not sessions:
@@ -835,6 +871,7 @@ def route(ctx: click.Context) -> None:
     name="pre-update-check",
     help="Run pre-flight compatibility checks before hermes update.",
 )
+@_config_option
 @click.argument("target_version")
 @click.option(
     "--versions-yaml",
@@ -847,6 +884,7 @@ def route(ctx: click.Context) -> None:
 @click.pass_context
 def pre_update_check_cmd(
     ctx: click.Context,
+    config_path: Path | None,
     target_version: str,
     versions_yaml_path: Path | None,
 ) -> None:
@@ -855,6 +893,8 @@ def pre_update_check_cmd(
     TARGET_VERSION is the Hermes version you plan to upgrade to
     (e.g. 0.19.0).
     """
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     from h3_shim.upgrade_check import pre_update_check
 
     result = pre_update_check(
@@ -878,10 +918,13 @@ def pre_update_check_cmd(
 
 
 @hermes_h3.command(help="Set the default harness.")
+@_config_option
 @click.argument("name")
 @click.pass_context
-def use(ctx: click.Context, name: str) -> None:
+def use(ctx: click.Context, config_path: Path | None, name: str) -> None:
     """Promote ``name`` to default_harness (and create config if needed)."""
+    if config_path is not None:
+        ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
     if name not in harnesses:
