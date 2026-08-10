@@ -27,7 +27,14 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 h3-test --endpoint http://localhost:9191
 ```
 
-Exit code 0 = compliant. Exit code non-zero = fix your harness.
+`h3-test` (and `hermes h3 test` / `hermes-h3 test`) uses three exit codes
+so CI can distinguish a real compliance failure from a wrong server:
+
+| Code | Meaning |
+|------|---------|
+| `0`  | **Compliant** — the target is an H3 endpoint and all checks passed. |
+| `1`  | **Compliance failure** — the target is a real H3 endpoint, but some protocol checks failed. Fix the harness. |
+| `2`  | **Not an H3 endpoint** — connection refused, non-JSON body, HTTP >= 400, or the `/v1/health` payload is missing required H3 fields. This is NOT a compliance failure: check the URL and that the harness is actually running. |
 
 ## Development
 
