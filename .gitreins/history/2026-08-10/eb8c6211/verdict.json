@@ -1,0 +1,74 @@
+{
+  "task_id": "gap-014",
+  "task_title": "GAP-014: hermes-h3 accepts --config after the subcommand",
+  "task_criteria": [
+    "--config after subcommand exits 0 and uses the config",
+    "subcommand --config overrides group-level --config",
+    "all 9 hermes-h3 subcommands accept --config"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 --config after subcommand exits 0 and uses the config: tests/test_cli.py::TestList::test_list_accepts_config_after_subcommand passes: runner.invoke(hermes_h3, ['list','--config',custom]) returns exit_code 0 and output contains 'zeta'/'http://z:9' from the custom config. Full test_cli.py suite: 80 passed.\n  \u2713 subcommand --config overrides group-level --config: tests/test_cli.py::TestList::test_config_after_subcommand_beats_group_option passes: group config (empty harnesses) + subcommand --config (omega) yields output with 'omega'/'http://o:7'. Code: each command does `if config_path is not None: ctx.obj['config_path'] = config_path` (cli.py lines 512, 542, 597, 620, 668, 854, 896, 927), overriding group-level value set in hermes_h3 callback.\n  \u2713 all 9 hermes-h3 subcommands accept --config: All 9 subcommands (test, list, install, uninstall, verify, scaffold, route, pre-update-check, use) show '--config FILE' in `hermes-h3 <cmd> --help`. 8 use the _config_option decorator (cli.py lines 489,537,565,614,633,849,874,921); scaffold uses an inline --config option (cli.py line 774).\n  \u2713 : \nGAP-014 fully implemented: all 9 hermes-h3 subcommands accept --config after the subcommand, subcommand value overrides group-level option, and both new tests pass (80/80 test_cli.py).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 --config after subcommand exits 0 and uses the config: tests/test_cli.py::TestList::test_list_accepts_config_after_subcommand passes: runner.invoke(hermes_h3, ['list','--config',custom]) returns exit_code 0 and output contains 'zeta'/'http://z:9' from the custom config. Full test_cli.py suite: 80 passed.\n  \u2713 subcommand --config overrides group-level --config: tests/test_cli.py::TestList::test_config_after_subcommand_beats_group_option passes: group config (empty harnesses) + subcomm",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "--config after subcommand exits 0 and uses the config",
+                "status": "PASS",
+                "detail": "tests/test_cli.py::TestList::test_list_accepts_config_after_subcommand passes: runner.invoke(hermes_h3, ['list','--config',custom]) returns exit_code 0 and output contains 'zeta'/'http://z:9' from the custom config. Full test_cli.py suite: 80 passed."
+              },
+              {
+                "criterion": "subcommand --config overrides group-level --config",
+                "status": "PASS",
+                "detail": "tests/test_cli.py::TestList::test_config_after_subcommand_beats_group_option passes: group config (empty harnesses) + subcommand --config (omega) yields output with 'omega'/'http://o:7'. Code: each command does `if config_path is not None: ctx.obj['config_path'] = config_path` (cli.py lines 512, 542, 597, 620, 668, 854, 896, 927), overriding group-level value set in hermes_h3 callback."
+              },
+              {
+                "criterion": "all 9 hermes-h3 subcommands accept --config",
+                "status": "PASS",
+                "detail": "All 9 subcommands (test, list, install, uninstall, verify, scaffold, route, pre-update-check, use) show '--config FILE' in `hermes-h3 <cmd> --help`. 8 use the _config_option decorator (cli.py lines 489,537,565,614,633,849,874,921); scaffold uses an inline --config option (cli.py line 774)."
+              },
+              {
+                "criterion": "",
+                "status": "PASS",
+                "detail": ""
+              }
+            ],
+            "summary": "GAP-014 fully implemented: all 9 hermes-h3 subcommands accept --config after the subcommand, subcommand value overrides group-level option, and both new tests pass (80/80 test_cli.py)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-014\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 --config after subcommand exits 0 and uses the config: tests/test_cli.py::TestList::test_list_accepts_config_after_subcommand passes: runner.invoke(hermes_h3, ['list','--config',custom]) returns exit_code 0 and output contains 'zeta'/'http://z:9' from the custom config. Full test_cli.py suite: 80 passed.\n  \u2713 subcommand --config overrides group-level --config: tests/test_cli.py::TestList::test_config_after_subcommand_beats_group_option passes: group config (empty harnesses) + subcommand --config (omega) yields output with 'omega'/'http://o:7'. Code: each command does `if config_path is not None: ctx.obj['config_path'] = config_path` (cli.py lines 512, 542, 597, 620, 668, 854, 896, 927), overriding group-level value set in hermes_h3 callback.\n  \u2713 all 9 hermes-h3 subcommands accept --config: All 9 subcommands (test, list, install, uninstall, verify, scaffold, route, pre-update-check, use) show '--config FILE' in `hermes-h3 <cmd> --help`. 8 use the _config_option decorator (cli.py lines 489,537,565,614,633,849,874,921); scaffold uses an inline --config option (cli.py line 774).\n  \u2713 : \nGAP-014 fully implemented: all 9 hermes-h3 subcommands accept --config after the subcommand, subcommand value overrides group-level option, and both new tests pass (80/80 test_cli.py).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-10T12:55:38.493534"
+}
