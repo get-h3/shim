@@ -76,7 +76,7 @@ Close the underlying HTTP client. Always call this when done.
 from h3_shim.client import H3Client
 
 client = H3Client(endpoint="http://localhost:9191", timeout_ms=10000)
-health = await client.health()          # discover the harness's protocol state
+health = await client.health()  # discover the harness's protocol state
 print(health.version, health.uptime_seconds)
 await client.close()
 ```
@@ -134,7 +134,7 @@ Stop health checks and close all harness clients.
 ```python
 from h3_shim.loader import H3Loader
 
-loader = H3Loader(config)               # config = {"harnesses": {...}, "sessions": {...}}
+loader = H3Loader(config)  # config = {"harnesses": {...}, "sessions": {...}}
 await loader.start_health_checks()
 
 harness = loader.resolve("telegram", "-100", "84802")
