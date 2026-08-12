@@ -1,4 +1,4 @@
-.PHONY: install build test lint fmt clean
+.PHONY: install build test lint typecheck fmt clean
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -21,6 +21,9 @@ test-full:
 
 lint:
 	$(PYTHON) -m ruff check src/ tests/
+
+typecheck:
+	uv run --with mypy mypy src/ --ignore-missing-imports
 
 fmt:
 	$(PYTHON) -m ruff format src/ tests/

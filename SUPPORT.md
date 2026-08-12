@@ -19,7 +19,7 @@ The shim works with any harness implementing the H3 protocol. Pre-built SDKs:
 ## Running the Test Battery
 
 ```
-pip install hermes-h3-shim
+pip install git+https://github.com/get-h3/shim
 h3-test --endpoint http://localhost:9191
 ```
 
