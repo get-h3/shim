@@ -16,12 +16,12 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 - `loader.py` — Harness discovery, health check loop, session routing
 - `shim_loop.py` — Main H3ShimLoop: process → execute → result → loop
 - `native.py` — Native Hermes loop as H3 harness wrapper
-- `test_battery.py` — **44 compliance tests. THE GATE.**
+- `src/h3_shim/test_battery.py` — **44 compliance tests. THE GATE.**
 - `cli.py` — `hermes-h3` subcommands (install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin exposes them as `hermes h3 <cmd>`
 
 ## The Test Battery
 
-`test_battery.py` is the single most important file. It verifies ANY harness against the H3 protocol. 44 tests, 6 categories (E2E region-style). Anyone can run:
+`src/h3_shim/test_battery.py` is the single most important file. It verifies ANY harness against the H3 protocol. 44 tests, 6 categories (E2E region-style). Anyone can run:
 
 ```bash
 h3-test --endpoint http://localhost:9191
