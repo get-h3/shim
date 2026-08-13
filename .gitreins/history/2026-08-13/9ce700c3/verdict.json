@@ -1,0 +1,81 @@
+{
+  "task_id": "gap-024",
+  "task_title": "GAP-024: h3-test --version prints version + install path; shadowed /tmp install removed",
+  "task_criteria": [
+    "h3-test --version prints 'h3-test <version> (h3_shim: <path>)' with <path> under /home/kara/get-h3/shim",
+    "Repo venv (.venv) import h3_shim resolves under /home/kara/get-h3/shim/src",
+    "Board venv (~/.hermes/venvs/board) import h3_shim resolves under /home/kara/get-h3/shim/src",
+    "/tmp/quickstart-test does not exist",
+    "Full pytest suite passes (294 tests)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 h3-test --version prints 'h3-test <version> (h3_shim: <path>)' with <path> under /home/kara/get-h3/shim: .venv/bin/h3-test --version outputs 'h3-test 0.1.0 (h3_shim: /home/kara/get-h3/shim/src/h3_shim/__init__.py)' \u2014 path under /home/kara/get-h3/shim. Implemented in src/h3_shim/cli.py:419-430 (_version_string) and wired to --version at cli.py:446-450.\n  \u2713 Repo venv (.venv) import h3_shim resolves under /home/kara/get-h3/shim/src: .venv/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py\n  \u2713 Board venv (~/.hermes/venvs/board) import h3_shim resolves under /home/kara/get-h3/shim/src: ~/.hermes/venvs/board/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py\n  \u2713 /tmp/quickstart-test does not exist: ls /tmp/quickstart-test returns exit 2 'No such file or directory' \u2014 shadowed install removed\n  \u2713 Full pytest suite passes (294 tests): .venv/bin/python -m pytest -q \u2192 '294 passed in 2.04s'\nAll 5 criteria verified: --version prints correct path under /home/kara/get-h3/shim, both venvs resolve h3_shim to src, /tmp/quickstart-test is gone, and all 294 tests pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 h3-test --version prints 'h3-test <version> (h3_shim: <path>)' with <path> under /home/kara/get-h3/shim: .venv/bin/h3-test --version outputs 'h3-test 0.1.0 (h3_shim: /home/kara/get-h3/shim/src/h3_shim/__init__.py)' \u2014 path under /home/kara/get-h3/shim. Implemented in src/h3_shim/cli.py:419-430 (_version_string) and wired to --version at cli.py:446-450.\n  \u2713 Repo venv (.venv) import h3_shim resolves under /home/kara/get-h3/shim/src: .venv/bin/python -c 'import h3_shim; print(h3_shim.__",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "h3-test --version prints 'h3-test <version> (h3_shim: <path>)' with <path> under /home/kara/get-h3/shim",
+                "status": "PASS",
+                "detail": ".venv/bin/h3-test --version outputs 'h3-test 0.1.0 (h3_shim: /home/kara/get-h3/shim/src/h3_shim/__init__.py)' \u2014 path under /home/kara/get-h3/shim. Implemented in src/h3_shim/cli.py:419-430 (_version_string) and wired to --version at cli.py:446-450."
+              },
+              {
+                "criterion": "Repo venv (.venv) import h3_shim resolves under /home/kara/get-h3/shim/src",
+                "status": "PASS",
+                "detail": ".venv/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py"
+              },
+              {
+                "criterion": "Board venv (~/.hermes/venvs/board) import h3_shim resolves under /home/kara/get-h3/shim/src",
+                "status": "PASS",
+                "detail": "~/.hermes/venvs/board/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py"
+              },
+              {
+                "criterion": "/tmp/quickstart-test does not exist",
+                "status": "PASS",
+                "detail": "ls /tmp/quickstart-test returns exit 2 'No such file or directory' \u2014 shadowed install removed"
+              },
+              {
+                "criterion": "Full pytest suite passes (294 tests)",
+                "status": "PASS",
+                "detail": ".venv/bin/python -m pytest -q \u2192 '294 passed in 2.04s'"
+              }
+            ],
+            "summary": "All 5 criteria verified: --version prints correct path under /home/kara/get-h3/shim, both venvs resolve h3_shim to src, /tmp/quickstart-test is gone, and all 294 tests pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-024\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 h3-test --version prints 'h3-test <version> (h3_shim: <path>)' with <path> under /home/kara/get-h3/shim: .venv/bin/h3-test --version outputs 'h3-test 0.1.0 (h3_shim: /home/kara/get-h3/shim/src/h3_shim/__init__.py)' \u2014 path under /home/kara/get-h3/shim. Implemented in src/h3_shim/cli.py:419-430 (_version_string) and wired to --version at cli.py:446-450.\n  \u2713 Repo venv (.venv) import h3_shim resolves under /home/kara/get-h3/shim/src: .venv/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py\n  \u2713 Board venv (~/.hermes/venvs/board) import h3_shim resolves under /home/kara/get-h3/shim/src: ~/.hermes/venvs/board/bin/python -c 'import h3_shim; print(h3_shim.__file__)' \u2192 /home/kara/get-h3/shim/src/h3_shim/__init__.py\n  \u2713 /tmp/quickstart-test does not exist: ls /tmp/quickstart-test returns exit 2 'No such file or directory' \u2014 shadowed install removed\n  \u2713 Full pytest suite passes (294 tests): .venv/bin/python -m pytest -q \u2192 '294 passed in 2.04s'\nAll 5 criteria verified: --version prints correct path under /home/kara/get-h3/shim, both venvs resolve h3_shim to src, /tmp/quickstart-test is gone, and all 294 tests pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-13T08:58:24.683504"
+}
