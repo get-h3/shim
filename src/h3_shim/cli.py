@@ -418,7 +418,18 @@ async def _run(args: argparse.Namespace) -> int:
 
 def main() -> None:
     """Console-script entry point for ``h3-test``."""
-    parser = argparse.ArgumentParser(prog="h3-test")
+    parser = argparse.ArgumentParser(
+        prog="h3-test",
+        epilog=(
+            "exit codes:\n"
+            "  0  compliant - target is an H3 endpoint and all checks passed\n"
+            "  1  compliance failure - target is an H3 endpoint but some "
+            "protocol checks failed\n"
+            "  2  not an H3 endpoint - connection refused, non-JSON body, "
+            "HTTP >= 400, or /v1/health missing required H3 fields\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "--endpoint",
         required=True,

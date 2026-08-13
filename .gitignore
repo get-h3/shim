@@ -16,6 +16,9 @@ _tick_check.py
 _audit.py
 _audit_checklist.sh
 _*.py
+
+# Internal foreman scratch dir (generated during E2E ticks — never shipped)
+e2e-output/
 # Don't ignore __init__.py files — they are real Python packages
 !**/__init__.py
 uv.lock
