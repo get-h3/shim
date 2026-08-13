@@ -1,0 +1,75 @@
+{
+  "task_id": "gap-022",
+  "task_title": "GAP-022: h3-test --help documents the 3-value exit-code contract",
+  "task_criteria": [
+    "h3-test --help output contains the 0/1/2 exit-code meanings (0=compliant, 1=compliance failure, 2=not an H3 endpoint)",
+    "h3-test --help still exposes exactly the --endpoint/--json/--categories flags",
+    "full test suite passes (293/293)",
+    "ruff check + format clean on src/h3_shim/cli.py"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 h3-test --help output contains the 0/1/2 exit-code meanings (0=compliant, 1=compliance failure, 2=not an H3 endpoint): src/h3_shim/cli.py main() epilog (lines ~421-430) documents 'exit codes: 0 compliant... 1 compliance failure... 2 not an H3 endpoint...'. Verified via `uv run h3-test --help` actual output.\n  \u2713 h3-test --help still exposes exactly the --endpoint/--json/--categories flags: `uv run h3-test --help` usage line shows exactly `[-h] --endpoint ENDPOINT [--json] [--categories CATEGORIES]` \u2014 only the 3 flags plus standard -h/--help. Verified via actual command output.\n  \u2713 full test suite passes (293/293): `uv run pytest` -> '293 passed in 1.49s' (collected 293 items, all passed).\n  \u2713 ruff check + format clean on src/h3_shim/cli.py: `uv run ruff check src/h3_shim/cli.py` -> 'All checks passed!' EXIT:0; `uv run ruff format --check src/h3_shim/cli.py` -> '1 file already formatted' EXIT:0.\nAll 4 criteria verified: --help documents the 0/1/2 exit-code contract, exposes exactly the three flags, full 293-test suite passes, and ruff check+format are clean on cli.py.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 h3-test --help output contains the 0/1/2 exit-code meanings (0=compliant, 1=compliance failure, 2=not an H3 endpoint): src/h3_shim/cli.py main() epilog (lines ~421-430) documents 'exit codes: 0 compliant... 1 compliance failure... 2 not an H3 endpoint...'. Verified via `uv run h3-test --help` actual output.\n  \u2713 h3-test --help still exposes exactly the --endpoint/--json/--categories flags: `uv run h3-test --help` usage line shows exactly `[-h] --endpoint ENDPOINT [--json] [--categori",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "h3-test --help output contains the 0/1/2 exit-code meanings (0=compliant, 1=compliance failure, 2=not an H3 endpoint)",
+                "status": "PASS",
+                "detail": "src/h3_shim/cli.py main() epilog (lines ~421-430) documents 'exit codes: 0 compliant... 1 compliance failure... 2 not an H3 endpoint...'. Verified via `uv run h3-test --help` actual output."
+              },
+              {
+                "criterion": "h3-test --help still exposes exactly the --endpoint/--json/--categories flags",
+                "status": "PASS",
+                "detail": "`uv run h3-test --help` usage line shows exactly `[-h] --endpoint ENDPOINT [--json] [--categories CATEGORIES]` \u2014 only the 3 flags plus standard -h/--help. Verified via actual command output."
+              },
+              {
+                "criterion": "full test suite passes (293/293)",
+                "status": "PASS",
+                "detail": "`uv run pytest` -> '293 passed in 1.49s' (collected 293 items, all passed)."
+              },
+              {
+                "criterion": "ruff check + format clean on src/h3_shim/cli.py",
+                "status": "PASS",
+                "detail": "`uv run ruff check src/h3_shim/cli.py` -> 'All checks passed!' EXIT:0; `uv run ruff format --check src/h3_shim/cli.py` -> '1 file already formatted' EXIT:0."
+              }
+            ],
+            "summary": "All 4 criteria verified: --help documents the 0/1/2 exit-code contract, exposes exactly the three flags, full 293-test suite passes, and ruff check+format are clean on cli.py."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-022\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 h3-test --help output contains the 0/1/2 exit-code meanings (0=compliant, 1=compliance failure, 2=not an H3 endpoint): src/h3_shim/cli.py main() epilog (lines ~421-430) documents 'exit codes: 0 compliant... 1 compliance failure... 2 not an H3 endpoint...'. Verified via `uv run h3-test --help` actual output.\n  \u2713 h3-test --help still exposes exactly the --endpoint/--json/--categories flags: `uv run h3-test --help` usage line shows exactly `[-h] --endpoint ENDPOINT [--json] [--categories CATEGORIES]` \u2014 only the 3 flags plus standard -h/--help. Verified via actual command output.\n  \u2713 full test suite passes (293/293): `uv run pytest` -> '293 passed in 1.49s' (collected 293 items, all passed).\n  \u2713 ruff check + format clean on src/h3_shim/cli.py: `uv run ruff check src/h3_shim/cli.py` -> 'All checks passed!' EXIT:0; `uv run ruff format --check src/h3_shim/cli.py` -> '1 file already formatted' EXIT:0.\nAll 4 criteria verified: --help documents the 0/1/2 exit-code contract, exposes exactly the three flags, full 293-test suite passes, and ruff check+format are clean on cli.py.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-13T03:37:27.659848"
+}
