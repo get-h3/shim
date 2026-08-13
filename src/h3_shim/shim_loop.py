@@ -268,28 +268,31 @@ class H3ShimLoop:
         return result
 
     async def _execute_llm(self, llm: LLMCall) -> ExecutionResult:
-        """Stub the LLM-call executor.
+        """Execute an ``LLMCall`` decision.
 
-        In a real shim this would forward to whichever LLM provider
-        Hermes is configured to use.  For now the placeholder lets the
-        loop remain end-to-end testable without dragging in a model
-        client.
+        Forwarding to Hermes' configured LLM provider is not wired yet, so
+        this refuses with a structured error instead of fabricating model
+        output: a harness issuing an ``LLMCall`` must never receive fake
+        content presented as a successful answer. The refusal path keeps
+        the loop end-to-end testable without dragging in a model client.
         """
         start = time.monotonic()
-        try:
-            logger.info("LLM call: model=%s messages=%d", llm.model, len(llm.messages))
-            result = ExecutionResult(
-                type="llm_response",
-                data={"content": "[LLM response placeholder]", "model": llm.model},
-                success=True,
-            )
-        except Exception as e:
-            logger.error("LLM call failed: %s", e, exc_info=True)
-            result = ExecutionResult(
-                type="error",
-                data={"error": str(e), "phase": "llm_call"},
-                success=False,
-            )
+        logger.warning(
+            "LLM call refused: model=%s messages=%d (no LLM provider configured)",
+            llm.model,
+            len(llm.messages),
+        )
+        result = ExecutionResult(
+            type="error",
+            data={
+                "error": (
+                    "LLM not configured: no LLM provider wired in this shim; "
+                    "refusing to fabricate a response"
+                ),
+                "phase": "llm_call",
+            },
+            success=False,
+        )
         result.duration_ms = (time.monotonic() - start) * 1000
         return result
 

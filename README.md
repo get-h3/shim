@@ -18,9 +18,18 @@ This installs two CLI entry points:
 ## Quickstart
 
 ```bash
-# Run the test battery against any H3 harness
+# 1. Stand up a demo harness first (scaffolds h3-harness-py/ + run instructions):
+hermes-h3 scaffold --lang py
+cd h3-harness-py && pip install -e . && python main.py   # listens on :9191
+
+# 2. In another terminal, run the test battery against it:
 h3-test --endpoint http://localhost:9191
 ```
+
+The scaffolded harness is a minimal H3 echo server — see `hermes-h3 scaffold --help`
+for `--lang go|py|ts`. Ready-made echo examples also live in the sibling SDK repos
+(`get-h3/sdk-go/examples/echo`, `get-h3/sdk-python/src/h3_harness/examples/echo.py`,
+`get-h3/sdk-typescript/src/examples/echo.ts`).
 
 ### Exit codes
 

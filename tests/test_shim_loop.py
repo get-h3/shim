@@ -458,18 +458,30 @@ class TestExecuteTool:
 
 class TestExecuteLLM:
     @pytest.mark.asyncio
-    async def test_returns_placeholder_response(self):
+    async def test_llm_call_refused_without_provider(self):
+        """An LLMCall must never return fake content marked successful."""
         loop = _make_loop()
         llm = LLMCall(
             model="claude-opus-4",
             messages=[Message(role="user", content="hi")],
         )
         result = await loop._execute_llm(llm)
-        assert result.type == "llm_response"
-        assert result.success is True
-        assert result.data.get("model") == "claude-opus-4"
-        assert "content" in result.data
+        assert result.type == "error"
+        assert result.success is False
+        assert "LLM not configured" in result.data.get("error", "")
+        assert result.data.get("phase") == "llm_call"
+        assert "placeholder" not in result.data.get("error", "")
         assert result.duration_ms >= 0.0
+
+    @pytest.mark.asyncio
+    async def test_llm_call_decision_never_fabricates(self):
+        """A process decision carrying an LLMCall surfaces the refusal."""
+        loop = _make_loop()
+        llm = LLMCall(model="gpt-4", messages=[Message(role="user", content="hi")])
+        result = await loop._execute(_decision(DecisionType.LLM_CALL, llm_call=llm))
+        assert result.type == "error"
+        assert result.success is False
+        assert "LLM not configured" in result.data.get("error", "")
 
 
 # ── _execute_text ───────────────────────────────────────────────────────────

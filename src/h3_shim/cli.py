@@ -416,6 +416,19 @@ async def _run(args: argparse.Namespace) -> int:
     )
 
 
+def _version_string() -> str:
+    """Version plus package install path — makes shadowed installs visible."""
+    import importlib.metadata
+
+    import h3_shim
+
+    try:
+        version = importlib.metadata.version("hermes-h3-shim")
+    except importlib.metadata.PackageNotFoundError:  # pragma: no cover
+        version = "unknown"
+    return f"h3-test {version} (h3_shim: {Path(h3_shim.__file__).resolve()})"
+
+
 def main() -> None:
     """Console-script entry point for ``h3-test``."""
     parser = argparse.ArgumentParser(
@@ -429,6 +442,12 @@ def main() -> None:
             "HTTP >= 400, or /v1/health missing required H3 fields\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=_version_string(),
+        help="Show version and package install path, then exit",
     )
     parser.add_argument(
         "--endpoint",
