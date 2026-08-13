@@ -1,0 +1,81 @@
+{
+  "task_id": "gap-023",
+  "task_title": "GAP-023: H3ShimLoop._execute_llm refuses LLMCall instead of fabricating placeholder content",
+  "task_criteria": [
+    "H3ShimLoop._execute_llm returns an ExecutionResult with type='error' and success=False when no LLM provider is wired",
+    "The error message contains 'LLM not configured'",
+    "No '[LLM response placeholder]' string remains anywhere in src/ (grep -r src returns nothing)",
+    "tests/test_shim_loop.py covers the refusal at executor level and dispatch level",
+    "Full pytest suite passes (294 tests)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 H3ShimLoop._execute_llm returns an ExecutionResult with type='error' and success=False when no LLM provider is wired: src/h3_shim/shim_loop.py:286-294 \u2014 _execute_llm returns ExecutionResult(type=\"error\", data={...}, success=False) when no LLM provider is wired\n  \u2713 The error message contains 'LLM not configured': src/h3_shim/shim_loop.py:289 \u2014 error message: \"LLM not configured: no LLM provider wired in this shim; refusing to fabricate a response\"\n  \u2713 No '[LLM response placeholder]' string remains anywhere in src/ (grep -r src returns nothing): grep -r 'LLM response placeholder' src/ --include='*.py' returns nothing (exit 1). Only stale gitignored .pyc bytecode caches contain it; no source file does.\n  \u2713 tests/test_shim_loop.py covers the refusal at executor level and dispatch level: tests/test_shim_loop.py:461 test_llm_call_refused_without_provider calls _execute_llm directly (executor level); :477 test_llm_call_decision_never_fabricates calls _execute with DecisionType.LLM_CALL (dispatch level). Both assert type=='error', success is False, and 'LLM not configured' in error.\n  \u2713 Full pytest suite passes (294 tests): .venv/bin/python -m pytest tests/ -q \u2192 '294 passed in 1.82s'\nAll 5 criteria verified: _execute_llm refuses LLMCall with type='error'/success=False and 'LLM not configured' message, placeholder string removed from source, tests cover both executor and dispatch levels, and full suite passes 294 tests.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 H3ShimLoop._execute_llm returns an ExecutionResult with type='error' and success=False when no LLM provider is wired: src/h3_shim/shim_loop.py:286-294 \u2014 _execute_llm returns ExecutionResult(type=\"error\", data={...}, success=False) when no LLM provider is wired\n  \u2713 The error message contains 'LLM not configured': src/h3_shim/shim_loop.py:289 \u2014 error message: \"LLM not configured: no LLM provider wired in this shim; refusing to fabricate a response\"\n  \u2713 No '[LLM response placeholder]' ",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "H3ShimLoop._execute_llm returns an ExecutionResult with type='error' and success=False when no LLM provider is wired",
+                "status": "PASS",
+                "detail": "src/h3_shim/shim_loop.py:286-294 \u2014 _execute_llm returns ExecutionResult(type=\"error\", data={...}, success=False) when no LLM provider is wired"
+              },
+              {
+                "criterion": "The error message contains 'LLM not configured'",
+                "status": "PASS",
+                "detail": "src/h3_shim/shim_loop.py:289 \u2014 error message: \"LLM not configured: no LLM provider wired in this shim; refusing to fabricate a response\""
+              },
+              {
+                "criterion": "No '[LLM response placeholder]' string remains anywhere in src/ (grep -r src returns nothing)",
+                "status": "PASS",
+                "detail": "grep -r 'LLM response placeholder' src/ --include='*.py' returns nothing (exit 1). Only stale gitignored .pyc bytecode caches contain it; no source file does."
+              },
+              {
+                "criterion": "tests/test_shim_loop.py covers the refusal at executor level and dispatch level",
+                "status": "PASS",
+                "detail": "tests/test_shim_loop.py:461 test_llm_call_refused_without_provider calls _execute_llm directly (executor level); :477 test_llm_call_decision_never_fabricates calls _execute with DecisionType.LLM_CALL (dispatch level). Both assert type=='error', success is False, and 'LLM not configured' in error."
+              },
+              {
+                "criterion": "Full pytest suite passes (294 tests)",
+                "status": "PASS",
+                "detail": ".venv/bin/python -m pytest tests/ -q \u2192 '294 passed in 1.82s'"
+              }
+            ],
+            "summary": "All 5 criteria verified: _execute_llm refuses LLMCall with type='error'/success=False and 'LLM not configured' message, placeholder string removed from source, tests cover both executor and dispatch levels, and full suite passes 294 tests."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-023\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 H3ShimLoop._execute_llm returns an ExecutionResult with type='error' and success=False when no LLM provider is wired: src/h3_shim/shim_loop.py:286-294 \u2014 _execute_llm returns ExecutionResult(type=\"error\", data={...}, success=False) when no LLM provider is wired\n  \u2713 The error message contains 'LLM not configured': src/h3_shim/shim_loop.py:289 \u2014 error message: \"LLM not configured: no LLM provider wired in this shim; refusing to fabricate a response\"\n  \u2713 No '[LLM response placeholder]' string remains anywhere in src/ (grep -r src returns nothing): grep -r 'LLM response placeholder' src/ --include='*.py' returns nothing (exit 1). Only stale gitignored .pyc bytecode caches contain it; no source file does.\n  \u2713 tests/test_shim_loop.py covers the refusal at executor level and dispatch level: tests/test_shim_loop.py:461 test_llm_call_refused_without_provider calls _execute_llm directly (executor level); :477 test_llm_call_decision_never_fabricates calls _execute with DecisionType.LLM_CALL (dispatch level). Both assert type=='error', success is False, and 'LLM not configured' in error.\n  \u2713 Full pytest suite passes (294 tests): .venv/bin/python -m pytest tests/ -q \u2192 '294 passed in 1.82s'\nAll 5 criteria verified: _execute_llm refuses LLMCall with type='error'/success=False and 'LLM not configured' message, placeholder string removed from source, tests cover both executor and dispatch levels, and full suite passes 294 tests.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-13T08:58:37.794941"
+}
