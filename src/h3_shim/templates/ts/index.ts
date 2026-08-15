@@ -25,6 +25,7 @@
  */
 
 import { serve } from '@hono/node-server';
+import { randomUUID } from 'node:crypto';
 import { Hono } from 'hono';
 import {
   createH3Router,
@@ -82,7 +83,7 @@ class EchoHarness implements Harness {
 
     return {
       decision: DECISION_TEXT,
-      decision_id: 'echo-process',
+      decision_id: randomUUID(),
       history,
       text: {
         content: `Echo: ${req.message.content}`,
@@ -98,7 +99,8 @@ class EchoHarness implements Harness {
     if (!st.streamingMode && st.resultCount >= 2) {
       return {
         decision: DECISION_END,
-        decision_id: 'echo-end',
+        decision_id: randomUUID(),
+        history: [],
         end: {
           reason: END_REASON_TASK_COMPLETE,
           summary: 'Echo conversation complete',
@@ -108,7 +110,8 @@ class EchoHarness implements Harness {
 
     return {
       decision: DECISION_TEXT,
-      decision_id: 'echo-result',
+      decision_id: randomUUID(),
+      history: [],
       text: {
         content: `Result received: ${req.decision_id}`,
         finished: !st.streamingMode,
