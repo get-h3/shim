@@ -263,6 +263,12 @@ class EchoHarness:
         )
 
     def on_cancel(self, req: CancelRequest) -> CancelResponse:
+        # Battery (test_5_9b cancel_unknown_session): cancelling a
+        # nonexistent session must 404 when the harness tracks sessions.
+        # Check the dict directly — _state() would auto-create the session.
+        with self._lock:
+            if req.session_id not in self._sessions:
+                raise HTTPException(status_code=404, detail="Session not found")
         return CancelResponse(cancelled=True, cancelled_decision_id=None)
 
     def on_session_terminate(self, session_id: str) -> None:
