@@ -547,6 +547,7 @@ class TestHelp:
     def test_verify_help(self, runner):
         result = runner.invoke(hermes_h3, ["verify", "--help"])
         assert result.exit_code == 0
+        assert "[NAME]" in result.output
         assert "--harness" in result.output
         assert "--endpoint" in result.output
 
@@ -1025,6 +1026,94 @@ class TestVerifyCommand:
         assert "Fallback path" in result.output
         assert "ENGAGED" in result.output
         assert "connection refused" in result.output
+
+    # ── positional NAME (DOGFOOD-11) ────────────────────────────────────────
+
+    @staticmethod
+    def _write_two_harness_config(cfg_path: Path) -> None:
+        """Config with default alpha + second harness beta."""
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "alpha",
+                    "harnesses": {
+                        "alpha": {
+                            "endpoint": "http://a:1",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                        "beta": {
+                            "endpoint": "http://b:2",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
+
+    @staticmethod
+    def _stub_healthy_client(monkeypatch) -> None:
+        """Patch H3Client (lazy-imported inside verify) with a healthy stub."""
+        from h3_shim.protocol import HealthResponse, HealthStatus
+
+        fake_client = MagicMock()
+        instance = MagicMock()
+        instance.health = AsyncMock(
+            return_value=HealthResponse(
+                status=HealthStatus.OK,
+                version="1.2.3",
+                capabilities=["foo", "bar"],
+            ),
+        )
+        instance.close = AsyncMock()
+        fake_client.return_value = instance
+        monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
+
+    def test_verify_positional_name(self, runner, monkeypatch, cfg_path):
+        """`verify NAME` resolves the positional like --harness (DOGFOOD-11)."""
+        self._write_two_harness_config(cfg_path)
+        self._stub_healthy_client(monkeypatch)
+
+        result = runner.invoke(hermes_h3, ["verify", "beta"])
+        assert result.exit_code == 0
+        assert "harness: beta" in result.output
+        assert "endpoint: http://b:2" in result.output
+        assert "status:   HealthStatus.OK" in result.output
+
+    def test_verify_no_args_falls_back_to_default(self, runner, monkeypatch, cfg_path):
+        """`verify` with no NAME/--harness still uses default_harness."""
+        self._write_two_harness_config(cfg_path)
+        self._stub_healthy_client(monkeypatch)
+
+        result = runner.invoke(hermes_h3, ["verify"])
+        assert result.exit_code == 0
+        assert "harness: alpha" in result.output
+        assert "endpoint: http://a:1" in result.output
+
+    def test_verify_harness_flag_still_works(self, runner, monkeypatch, cfg_path):
+        """`verify --harness NAME` keeps working (backwards compat)."""
+        self._write_two_harness_config(cfg_path)
+        self._stub_healthy_client(monkeypatch)
+
+        result = runner.invoke(hermes_h3, ["verify", "--harness", "beta"])
+        assert result.exit_code == 0
+        assert "harness: beta" in result.output
+        assert "endpoint: http://b:2" in result.output
+
+    def test_verify_positional_wins_over_flag(self, runner, monkeypatch, cfg_path):
+        """Both NAME and --harness given → positional NAME wins."""
+        self._write_two_harness_config(cfg_path)
+        self._stub_healthy_client(monkeypatch)
+
+        result = runner.invoke(
+            hermes_h3,
+            ["verify", "alpha", "--harness", "beta"],
+        )
+        assert result.exit_code == 0
+        assert "harness: alpha" in result.output
+        assert "endpoint: http://a:1" in result.output
 
 
 # ── legacy main() ──────────────────────────────────────────────────────────

@@ -661,12 +661,16 @@ def uninstall(ctx: click.Context, config_path: Path | None, name: str) -> None:
 
 @hermes_h3.command(help="Health-check a harness via the H3 REST client.")
 @_config_option
+@click.argument("name", required=False)
 @click.option(
     "--harness",
     "-h",
     "harness",
     default=None,
-    help="Named harness from config (defaults to default_harness).",
+    help=(
+        "Named harness from config (defaults to default_harness). "
+        "Ignored when NAME is given."
+    ),
 )
 @click.option(
     "--endpoint",
@@ -684,11 +688,19 @@ def uninstall(ctx: click.Context, config_path: Path | None, name: str) -> None:
 def verify(
     ctx: click.Context,
     config_path: Path | None,
+    name: str | None,
     harness: str | None,
     endpoint: str | None,
     fallback: bool,
 ) -> None:
     """Hit ``GET /health`` and report status.
+
+    NAME is an optional positional alias for ``--harness``::
+
+        hermes-h3 verify [NAME] [--harness NAME] [--endpoint URL] [--fallback]
+
+    With neither NAME nor **--harness** the configured
+    ``default_harness`` is used.  When both are given, NAME wins.
 
     When **--fallback** is passed, also simulates the fallback path:
     if the harness is unreachable, the output shows that sessions would
@@ -697,14 +709,19 @@ def verify(
     """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
+    # Positional NAME wins over the --harness flag; either falls back
+    # to default_harness inside resolve_harness().
+    harness_name = name if name is not None else harness
     if endpoint is None:
         config = load_config(_config_path(ctx))
-        name, spec = resolve_harness(harness, config)
+        harness_name, spec = resolve_harness(harness_name, config)
         endpoint = spec.get("endpoint")
         if not endpoint:
-            raise click.ClickException(f"harness {name!r} has no endpoint configured")
+            raise click.ClickException(
+                f"harness {harness_name!r} has no endpoint configured"
+            )
     else:
-        name = harness or "<override>"
+        harness_name = harness_name or "<override>"
 
     try:
         from h3_shim.client import H3Client  # local import: optional dep
@@ -726,12 +743,14 @@ def verify(
     except Exception as exc:
         # Harness unreachable — fallback path
         if fallback:
-            _report_fallback(name, endpoint, exc)
+            _report_fallback(harness_name, endpoint, exc)
             return
-        raise click.ClickException(f"verify failed for {name!r}: {exc}") from exc
+        raise click.ClickException(
+            f"verify failed for {harness_name!r}: {exc}"
+        ) from exc
 
     payload = result.model_dump()
-    click.echo(f"harness: {name}")
+    click.echo(f"harness: {harness_name}")
     click.echo(f"endpoint: {endpoint}")
     click.echo(f"status:   {payload.get('status', 'unknown')}")
     if "version" in payload:
@@ -742,7 +761,7 @@ def verify(
     # Fallback report when harness is reachable
     if fallback:
         click.echo("")
-        _report_fallback(name, endpoint, None)
+        _report_fallback(harness_name, endpoint, None)
 
 
 def _report_fallback(  # noqa: PLR0912
