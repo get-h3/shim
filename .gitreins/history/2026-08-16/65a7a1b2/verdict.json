@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-028",
+  "task_title": "GAP-028: h3-test battery banner version drift",
+  "task_criteria": [
+    "h3-test --endpoint <live-harness> banner shows a version matching importlib.metadata.version('hermes-h3-shim')"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n  \u001b[33mUpdate available: v0.12.0 \u2192 https://pypi.org/project/gitreins/\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 h3-test --endpoint <live-harness> banner shows a version matching importlib.metadata.version('hermes-h3-shim'): src/h3_shim/cli.py:432-438 defines _battery_version() which returns importlib.metadata.version('hermes-h3-shim') (fallback 'unknown'). Both banner sites use it: line 301 (_format_human) renders 'H3 Compliance Test Battery v{_battery_version()}' and line 365 (exit-2 non-H3 warning) renders the same. Runtime verified: _battery_version() returns '0.1.0' matching importlib.metadata.version('hermes-h3-shim')='0.1.0'; banner output confirmed as 'H3 Compliance Test Battery v0.1.0' in both the human report and the exit-2 path. Test suite: 298 passed (exit 0), ruff lint clean, no LSP diagnostics.\nThe battery banner version is now single-sourced from importlib.metadata.version('hermes-h3-shim') in both banner sites, verified at runtime to show v0.1.0 matching the installed package version.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 h3-test --endpoint <live-harness> banner shows a version matching importlib.metadata.version('hermes-h3-shim'): src/h3_shim/cli.py:432-438 defines _battery_version() which returns importlib.metadata.version('hermes-h3-shim') (fallback 'unknown'). Both banner sites use it: line 301 (_format_human) renders 'H3 Compliance Test Battery v{_battery_version()}' and line 365 (exit-2 non-H3 warning) renders the same. Runtime verified: _battery_version() returns '0.1.0' matching importlib.met",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "h3-test --endpoint <live-harness> banner shows a version matching importlib.metadata.version('hermes-h3-shim')",
+                "status": "PASS",
+                "detail": "src/h3_shim/cli.py:432-438 defines _battery_version() which returns importlib.metadata.version('hermes-h3-shim') (fallback 'unknown'). Both banner sites use it: line 301 (_format_human) renders 'H3 Compliance Test Battery v{_battery_version()}' and line 365 (exit-2 non-H3 warning) renders the same. Runtime verified: _battery_version() returns '0.1.0' matching importlib.metadata.version('hermes-h3-shim')='0.1.0'; banner output confirmed as 'H3 Compliance Test Battery v0.1.0' in both the human report and the exit-2 path. Test suite: 298 passed (exit 0), ruff lint clean, no LSP diagnostics."
+              }
+            ],
+            "summary": "The battery banner version is now single-sourced from importlib.metadata.version('hermes-h3-shim') in both banner sites, verified at runtime to show v0.1.0 matching the installed package version."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-028\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 h3-test --endpoint <live-harness> banner shows a version matching importlib.metadata.version('hermes-h3-shim'): src/h3_shim/cli.py:432-438 defines _battery_version() which returns importlib.metadata.version('hermes-h3-shim') (fallback 'unknown'). Both banner sites use it: line 301 (_format_human) renders 'H3 Compliance Test Battery v{_battery_version()}' and line 365 (exit-2 non-H3 warning) renders the same. Runtime verified: _battery_version() returns '0.1.0' matching importlib.metadata.version('hermes-h3-shim')='0.1.0'; banner output confirmed as 'H3 Compliance Test Battery v0.1.0' in both the human report and the exit-2 path. Test suite: 298 passed (exit 0), ruff lint clean, no LSP diagnostics.\nThe battery banner version is now single-sourced from importlib.metadata.version('hermes-h3-shim') in both banner sites, verified at runtime to show v0.1.0 matching the installed package version.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-16T18:08:00.552827"
+}
