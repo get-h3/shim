@@ -79,3 +79,49 @@ jobs:
         if: always()
         run: |
           kill $(cat /tmp/echo-server.pid) 2>/dev/null || true
+
+  scaffold-compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install shim
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e '.[dev]'
+
+      - name: Scaffold fresh Go harness
+        run: .venv/bin/hermes-h3 scaffold --lang go --output-dir scaffold-check
+
+      - name: Build scaffolded harness
+        run: |
+          cd scaffold-check/h3-harness-go
+          go mod tidy
+          go build .
+
+      - name: Start scaffolded harness
+        run: |
+          nohup ./scaffold-check/h3-harness-go/h3-harness-go > /tmp/h3-harness-go.log 2>&1 &
+          echo $! > /tmp/h3-harness-go.pid
+
+      - name: Wait for harness
+        run: sleep 2 && curl --retry 5 --retry-delay 1 --fail http://localhost:9191/v1/health
+
+      - name: Run scaffold compliance gate
+        run: .venv/bin/h3-test --endpoint http://localhost:9191
+
+      - name: Kill scaffolded harness
+        if: always()
+        run: |
+          kill $(cat /tmp/h3-harness-go.pid) 2>/dev/null || true
