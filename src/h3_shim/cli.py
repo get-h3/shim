@@ -298,7 +298,7 @@ def _format_human(report: TestReport, endpoint: str) -> str:
     """Group results by category into a human-readable text report."""
     lines: list[str] = [
         "",
-        "H3 Compliance Test Battery v1.0.0",
+        f"H3 Compliance Test Battery v{_battery_version()}",
         f"Target: {endpoint}",
         "Transport: REST",
         "",
@@ -362,7 +362,7 @@ async def _run_battery(
             print(json.dumps(payload, indent=2))
         else:
             print(
-                f"\nH3 Compliance Test Battery v1.0.0\n"
+                f"\nH3 Compliance Test Battery v{_battery_version()}\n"
                 f"Target: {endpoint}\n"
                 f"Transport: REST\n\n"
                 f"{warning}"
@@ -427,6 +427,16 @@ def _version_string() -> str:
     except importlib.metadata.PackageNotFoundError:  # pragma: no cover
         version = "unknown"
     return f"h3-test {version} (h3_shim: {Path(h3_shim.__file__).resolve()})"
+
+
+def _battery_version() -> str:
+    """Single-source the battery banner version from the installed package."""
+    import importlib.metadata
+
+    try:
+        return importlib.metadata.version("hermes-h3-shim")
+    except importlib.metadata.PackageNotFoundError:  # pragma: no cover
+        return "unknown"
 
 
 def main() -> None:
