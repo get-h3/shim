@@ -56,6 +56,16 @@ TEMPLATES_DIR = Path(__file__).parent / "templates"
 # Languages supported by ``hermes-h3 scaffold --lang``.
 SUPPORTED_LANGS = ("go", "py", "ts")
 
+# User-facing aliases accepted by ``hermes-h3 scaffold --lang`` (normalized
+# to the canonical short codes above). The h3 README/guide advertises
+# ``--lang go|python|ts``, so both spellings must work.
+LANG_ALIASES = {"python": "py", "typescript": "ts"}
+
+
+def _normalize_lang(value: str) -> str:
+    """Map a user-supplied ``--lang`` value to its canonical short code."""
+    return LANG_ALIASES.get(value.lower(), value)
+
 
 def _empty_config() -> dict[str, Any]:
     """Return a fresh empty config skeleton."""
@@ -845,11 +855,15 @@ def _report_fallback(  # noqa: PLR0912
 @click.option(
     "--lang",
     "lang",
-    type=click.Choice(SUPPORTED_LANGS, case_sensitive=False),
+    type=click.Choice((*SUPPORTED_LANGS, *LANG_ALIASES), case_sensitive=False),
+    callback=lambda ctx, param, value: (
+        _normalize_lang(value) if value is not None else None
+    ),
     default=None,
     help=(
         "Generate a complete harness project for the given language "
-        "(go, py, ts) in a new 'h3-harness-<lang>/' subdirectory. "
+        "(go, py, ts; python/typescript aliases accepted) in a new "
+        "'h3-harness-<lang>/' subdirectory. "
         "Without --lang, an empty config skeleton is written instead."
     ),
 )

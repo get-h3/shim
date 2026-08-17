@@ -307,6 +307,16 @@ class TestScaffold:
         output = result.output.lower()
         assert "unsupported" in output or "invalid" in output
 
+    def test_scaffold_lang_aliases_accepted(self, tmp_path, runner):
+        """``--lang python``/``typescript`` map to py/ts (README surface)."""
+        for alias, short in (("python", "py"), ("typescript", "ts")):
+            result = runner.invoke(
+                hermes_h3,
+                ["scaffold", "--lang", alias, "--output-dir", str(tmp_path)],
+            )
+            assert result.exit_code == 0, result.output
+            assert (tmp_path / f"h3-harness-{short}").is_dir()
+
     def test_scaffold_lang_project_exists_without_force(self, tmp_path, runner):
         project = tmp_path / "h3-harness-go"
         project.mkdir()
