@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-029",
+  "task_title": "scaffold --lang accepts python/typescript aliases",
+  "task_criteria": [
+    "PASS: hermes-h3 scaffold --lang python exits 0 (and --lang typescript likewise), or the error for those values is a helpful alias message rather than 'invalid choice'"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 PASS: hermes-h3 scaffold --lang python exits 0 (and --lang typescript likewise), or the error for those values is a helpful alias message rather than 'invalid choice': src/h3_shim/cli.py:59-66 defines LANG_ALIASES={'python':'py','typescript':'ts'} and _normalize_lang(); the --lang option (cli.py:855-865) uses click.Choice((*SUPPORTED_LANGS,*LANG_ALIASES), case_sensitive=False) with a callback normalizing aliases to canonical codes. Direct CLI runs: 'scaffold --lang python' EXIT=0 generating h3-harness-py, and 'scaffold --lang typescript' EXIT=0 generating h3-harness-ts. Test test_scaffold_lang_aliases_accepted (tests/test_cli.py:310-320) passes; full suite 299 passed; ruff clean; no LSP diagnostics.\nhermes-h3 scaffold --lang now accepts python/typescript aliases, mapping them to py/ts, with both direct CLI runs exiting 0 and the full test suite (299 passed) green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 PASS: hermes-h3 scaffold --lang python exits 0 (and --lang typescript likewise), or the error for those values is a helpful alias message rather than 'invalid choice': src/h3_shim/cli.py:59-66 defines LANG_ALIASES={'python':'py','typescript':'ts'} and _normalize_lang(); the --lang option (cli.py:855-865) uses click.Choice((*SUPPORTED_LANGS,*LANG_ALIASES), case_sensitive=False) with a callback normalizing aliases to canonical codes. Direct CLI runs: 'scaffold --lang python' EXIT=0 ge",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "PASS: hermes-h3 scaffold --lang python exits 0 (and --lang typescript likewise), or the error for those values is a helpful alias message rather than 'invalid choice'",
+                "status": "PASS",
+                "detail": "src/h3_shim/cli.py:59-66 defines LANG_ALIASES={'python':'py','typescript':'ts'} and _normalize_lang(); the --lang option (cli.py:855-865) uses click.Choice((*SUPPORTED_LANGS,*LANG_ALIASES), case_sensitive=False) with a callback normalizing aliases to canonical codes. Direct CLI runs: 'scaffold --lang python' EXIT=0 generating h3-harness-py, and 'scaffold --lang typescript' EXIT=0 generating h3-harness-ts. Test test_scaffold_lang_aliases_accepted (tests/test_cli.py:310-320) passes; full suite 299 passed; ruff clean; no LSP diagnostics."
+              }
+            ],
+            "summary": "hermes-h3 scaffold --lang now accepts python/typescript aliases, mapping them to py/ts, with both direct CLI runs exiting 0 and the full test suite (299 passed) green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-029\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 PASS: hermes-h3 scaffold --lang python exits 0 (and --lang typescript likewise), or the error for those values is a helpful alias message rather than 'invalid choice': src/h3_shim/cli.py:59-66 defines LANG_ALIASES={'python':'py','typescript':'ts'} and _normalize_lang(); the --lang option (cli.py:855-865) uses click.Choice((*SUPPORTED_LANGS,*LANG_ALIASES), case_sensitive=False) with a callback normalizing aliases to canonical codes. Direct CLI runs: 'scaffold --lang python' EXIT=0 generating h3-harness-py, and 'scaffold --lang typescript' EXIT=0 generating h3-harness-ts. Test test_scaffold_lang_aliases_accepted (tests/test_cli.py:310-320) passes; full suite 299 passed; ruff clean; no LSP diagnostics.\nhermes-h3 scaffold --lang now accepts python/typescript aliases, mapping them to py/ts, with both direct CLI runs exiting 0 and the full test suite (299 passed) green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-17T10:44:18.759978"
+}
