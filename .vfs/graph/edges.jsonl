@@ -169,3 +169,6 @@
 {"from":"tests/test_h3_plugin.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_cli.py","to":"pkg:h3_shim","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_cli.py","to":"pkg:h3_shim","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/templates/ts/index.ts","to":"pkg:node:crypto","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:importlib.metadata","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:h3_shim","rel":"imports","provenance":"ast_exact","confidence":1.0}
