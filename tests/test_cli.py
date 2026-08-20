@@ -1369,6 +1369,26 @@ class TestAllSubcommandHelp:
             assert e.code == 0
 
 
+# ── GAP-038 regression: hermes-h3 --version must work ───────────────────────
+
+
+class TestHermesH3VersionFlag:
+    """GAP-038 — ``hermes-h3 --version`` mirrors ``h3-test --version``."""
+
+    def test_version_exits_zero_and_prints_prog_and_path(self, runner):
+        result = runner.invoke(hermes_h3, ["--version"])
+        assert result.exit_code == 0, result.output
+        assert result.output.startswith("hermes-h3 ")
+        assert "h3_shim:" in result.output
+
+    def test_version_does_not_require_config(self, runner, tmp_path, monkeypatch):
+        """Version is a pure flag — no config file needed."""
+        monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", tmp_path / "no-such-config.yaml")
+        result = runner.invoke(hermes_h3, ["--version"])
+        assert result.exit_code == 0
+        assert "h3_shim:" in result.output
+
+
 # ── GAP-033 regression: pre-update-check must pass for the shipped pairing ──
 
 

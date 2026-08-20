@@ -426,7 +426,7 @@ async def _run(args: argparse.Namespace) -> int:
     )
 
 
-def _version_string() -> str:
+def _version_string(prog: str = "h3-test") -> str:
     """Version plus package install path — makes shadowed installs visible."""
     import importlib.metadata
 
@@ -436,7 +436,7 @@ def _version_string() -> str:
         version = importlib.metadata.version("hermes-h3-shim")
     except importlib.metadata.PackageNotFoundError:  # pragma: no cover
         version = "unknown"
-    return f"h3-test {version} (h3_shim: {Path(h3_shim.__file__).resolve()})"
+    return f"{prog} {version} (h3_shim: {Path(h3_shim.__file__).resolve()})"
 
 
 def _battery_version() -> str:
@@ -501,7 +501,13 @@ def main() -> None:
 # ---------------------------------------------------------------------------
 
 
-@click.group(name="hermes-h3", help="H3 harness management for Hermes.")
+@click.group(
+    name="hermes-h3",
+    help="H3 harness management for Hermes.",
+    # Allow the group callback to run without a subcommand so the
+    # --version flag works (GAP-038); bare invocation still errors below.
+    invoke_without_command=True,
+)
 @click.option(
     "--config",
     "config_path",
@@ -509,9 +515,24 @@ def main() -> None:
     default=None,
     help=f"Override config path (default: {CONFIG_PATH})",
 )
+@click.option(
+    "--version",
+    "show_version",
+    is_flag=True,
+    help="Show version and package install path, then exit",
+)
 @click.pass_context
-def hermes_h3(ctx: click.Context, config_path: Path | None) -> None:
+def hermes_h3(
+    ctx: click.Context,
+    config_path: Path | None,
+    show_version: bool,
+) -> None:
     """Top-level command group."""
+    if show_version:
+        click.echo(_version_string("hermes-h3"))
+        ctx.exit()
+    if ctx.invoked_subcommand is None:
+        raise click.UsageError("Missing command.")
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config_path
 
