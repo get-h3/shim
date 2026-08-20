@@ -58,8 +58,12 @@ from h3_shim.protocol import Context, Identity, Message
 from h3_shim.shim_loop import H3ShimLoop
 
 client = H3Client(endpoint="http://localhost:9191")
-loop = H3ShimLoop(client, session_id="s1", context=Context(),
-                  identity=Identity(platform="telegram", chat_id="-100"))
+loop = H3ShimLoop(
+    client,
+    session_id="s1",
+    context=Context(),
+    identity=Identity(platform="telegram", chat_id="-100"),
+)
 loop.register_tool("get_weather", lambda city: f"sunny, 24C in {city}")
 result = await loop.run(Message(role="user", content="weather in Berlin?"))
 # result is the EndReason string ('task_complete'/'error'/'timeout') — NOT the final text
