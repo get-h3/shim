@@ -89,7 +89,69 @@ dumps — read this to understand the system, not to replay a session.
   (`hermes h3 --config <path> list`).
 - Scaffold: generates a self-contained harness (inlined protocol models,
   zero shim dependency at runtime) that passes the battery out of the box —
-  the single best onboarding artifact in the project.
+  the single best onboarding artifact in the project. All three templates
+  (py/go/ts) verified battery-passing on 2026-08-20.
+
+## 2026-08-20 follow-up run — new lessons
+
+### 5. `pre-update-check` always blocks (GAP-033, P1)
+
+- **Symptom:** fresh wheel-installed venv → `hermes-h3 pre-update-check
+  0.18.0` (and 0.19.0, 0.20.0) → exit 1, "Update blocked. H3 shim v0.1.0 is
+  too old (requires H3 ≥ 1.0.0)".
+- **Why:** `pyproject.toml` version is still 0.1.0 while `versions.yaml`
+  (bundled in the wheel since GAP-011) declares h3_shim ≥ 1.0.0 for every
+  supported Hermes version. The check is therefore a constant: it can never
+  pass, so users learn to ignore it or believe the install is broken.
+- **Right way:** version numbers are a compatibility contract — the package
+  version and the compat matrix must move together, and the release smoke
+  test (GAP-008) should assert `pre-update-check` passes for the shipped
+  version. GAP-011 fixed *loading* the matrix; nobody ever checked the
+  matrix against the package's own version.
+
+### 6. The shim loop: what actually happens on each decision type (GAP-034/035)
+
+Driving H3ShimLoop against a live harness revealed the true decision
+execution table (docs/api.md says "execute tool call, LLM call, text, wait,
+delegate" — reality):
+
+| Decision | Actual behavior |
+|---|---|
+| `tool_call` | ✅ Executes registered tool fn; result POSTed back |
+| `text` | ⚠️ Logged only — no delivery hook; host sees nothing |
+| `wait` / `delegate` | Executed locally (pause / sub-agent result) |
+| `llm_call` | ❌ **Refused**: `ExecutionResult(type="error", data={error: "LLM not configured..."})` — safe, honest, but unimplemented |
+| `end` | ✅ Terminates; `run()` returns the **EndReason string** ('task_complete'/'error'/'timeout'), NOT the final assistant text — the harness's final `text` payload is discarded |
+
+- **Why:** the loop is a protocol skeleton for a host to embed; the host is
+  supposed to provide the LLM provider and the transport. Neither hook
+  exists yet, so the two most user-visible decision types (llm_call, text)
+  degrade to a log line / an error result.
+- **Right way:** injectable `llm_provider` callable + `on_text` callback on
+  H3ShimLoop (or documented subclass points), and docs must state the actual
+  contract (`run()` → EndReason) until then.
+
+### 7. The Decision wire shape is the undocumented tax (GAP-036, P2)
+
+- **Symptom:** building a probe harness from docs/api.md alone, the first two
+  payloads failed: `Field required [decision]` (I sent `type: "llm_call"`),
+  then `text: Input should be a valid dictionary` (I sent a plain string).
+- **Why:** the discriminator is a top-level `decision` field
+  (`llm_call`/`text`/`end`/...), NOT `type`; sub-payloads nest under
+  `llm_call`/`text`/`end`; `text` is a `TextResponse` dict. `protocol.py`
+  models document the fields, but no doc shows a single JSON example.
+- **Right way:** 2-3 concrete JSON examples in docs/api.md (or a pointer to
+  the get-h3/protocol OpenAPI spec). SDK repos have examples; the Hermes-side
+  consumer docs have none.
+
+### 8. Port-collision blindness (dogfood-only lesson)
+
+The Go scaffold's first run failed with `bind: address already in use`
+(py harness still on :9191) — and the battery against :9191 still reported
+44/44 against the *py* harness. For real verification, kill the previous
+harness (or use a distinct port) before starting a new one. Worth a
+troubleshooting line in integration.md: "if the battery passes but you're
+not sure which server answered, check `lsof -i :9191`."
 
 ## How the project got here
 
