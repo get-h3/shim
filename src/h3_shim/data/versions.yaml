@@ -5,6 +5,18 @@
 # See: h3/specs/03-Installer-Version-Compat.md
 
 hermes_versions:
+  # 0.1.x shim line — the currently shipped package (h3_shim __version__).
+  # This row must stay >= the shipped version or pre-update-check can never
+  # pass (GAP-033): version bumps and this matrix move together.
+  - hermes: "0.17.0"
+    h3_shim: "0.1.0"
+    protocol: "1.0"
+    min_h3: "0.1.0"
+    max_h3: "0.1.x"
+    grpc: false
+    status: "current"
+    notes: "Initial 0.1.x dev line. Pairing for the currently shipped package."
+
   - hermes: "0.18.0"
     h3_shim: "1.0.0"
     protocol: "1.0"

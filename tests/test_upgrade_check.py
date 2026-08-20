@@ -165,10 +165,37 @@ def test_bundled_versions_yaml_exists() -> None:
 
 
 def test_bundled_versions_yaml_loads_matrix() -> None:
-    """The bundled matrix parses to the same 3-entry hermes_versions list."""
+    """The bundled matrix parses to the 4-entry hermes_versions list."""
     matrix = _load_version_matrix(_bundled_versions_yaml_path())
-    assert len(matrix) == 3
-    assert matrix[0]["hermes"] == "0.18.0"
+    assert len(matrix) == 4
+    assert matrix[0]["hermes"] == "0.17.0"
+
+
+def test_bundled_matrix_passes_current_package_version(tmp_path: Path) -> None:
+    """GAP-033 — the shipped matrix accepts the shipped package version.
+
+    pre-update-check was a constant BLOCK: the matrix declared h3_shim
+    >= 1.0.0 for every supported Hermes version while the package itself
+    is still 0.1.0. The bundled versions.yaml now carries a 0.1.x row
+    (Hermes 0.17.0) whose min_h3 the current package satisfies — this
+    test uses the REAL bundled matrix and the REAL package version, no
+    mocking, exactly like a fresh install would.
+    """
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "_schema": CURRENT_CONFIG_SCHEMA,
+                "default_harness": None,
+                "harnesses": {},
+                "sessions": {},
+            }
+        )
+    )
+    result = pre_update_check("0.17.0", config_path=cfg)
+    assert result.severity == "OK"
+    assert result.ok
+    assert not result.blocked
 
 
 def test_default_path_prefers_bundled() -> None:

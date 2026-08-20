@@ -116,6 +116,21 @@ else
     fail "pre-update-check 0.18.0 (unexpected output: $OUT)"
 fi
 
+# ── pre-update-check (shipped pairing must pass — GAP-033) ──────────────────
+echo "── 8b. hermes-h3 pre-update-check (shipped 0.1.x pairing exits 0)"
+# GAP-033: the package version and the compat matrix move together. The
+# bundled matrix carries a 0.1.x row (Hermes 0.17.0) for the shipped
+# package, so a fresh install must NOT be blocked by its own pairing.
+set +e
+"$VENV_DIR/bin/hermes-h3" pre-update-check 0.17.0 >/dev/null 2>&1
+CODE=$?
+set -e
+if [ "$CODE" -eq 0 ]; then
+    pass "pre-update-check 0.17.0 (shipped pairing passes — exit 0)"
+else
+    fail "pre-update-check 0.17.0 (shipped pairing blocked — exit $CODE)"
+fi
+
 # ── Scaffold (exercises template rendering) ─────────────────────────────────
 echo "── 9. Scaffold a harness project (exercises templates)"
 SCAFFOLD_DIR="$SMOKE_DIR/scaffold"

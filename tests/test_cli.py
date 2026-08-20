@@ -1369,6 +1369,55 @@ class TestAllSubcommandHelp:
             assert e.code == 0
 
 
+# ── GAP-033 regression: pre-update-check must pass for the shipped pairing ──
+
+
+class TestPreUpdateCheck:
+    """GAP-033 — the compat matrix must accept the shipped package version.
+
+    Before GAP-033 the bundled versions.yaml required h3_shim >= 1.0.0 for
+    every Hermes version while the package was still 0.1.0, so
+    ``hermes-h3 pre-update-check`` could never exit 0. The bundled matrix
+    now carries a 0.1.x row (Hermes 0.17.0) that the shipped package
+    satisfies — the CLI must exit 0 against it, and still block against
+    future Hermes versions that legitimately need a newer shim.
+    """
+
+    def _write_config(self, tmp_path: Path) -> Path:
+        cfg = tmp_path / "config.yaml"
+        cfg.write_text(
+            yaml.safe_dump(
+                {
+                    "_schema": 1,
+                    "default_harness": None,
+                    "harnesses": {},
+                    "sessions": {},
+                }
+            )
+        )
+        return cfg
+
+    def test_passes_for_shipped_pairing(self, runner, tmp_path):
+        """Current package (0.1.x) vs its own matrix row → exit 0."""
+        cfg = self._write_config(tmp_path)
+        result = runner.invoke(
+            hermes_h3,
+            ["pre-update-check", "0.17.0", "--config", str(cfg)],
+        )
+        assert result.exit_code == 0, result.output
+        assert "All checks passed" in result.output
+
+    def test_still_blocks_for_future_hermes(self, runner, tmp_path):
+        """Hermes 0.18.0 needs shim >= 1.0.0 — 0.1.x must still block."""
+        cfg = self._write_config(tmp_path)
+        result = runner.invoke(
+            hermes_h3,
+            ["pre-update-check", "0.18.0", "--config", str(cfg)],
+        )
+        assert result.exit_code == 1
+        assert "too old" in result.output
+
+
 # ── GAP-008 regression: template files must exist in source ─────────────────
 
 
