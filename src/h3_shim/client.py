@@ -63,8 +63,7 @@ class H3Client:
         # to REST behavior.
         if transport != "rest":
             raise ValueError(
-                f"{transport} transport not supported yet "
-                f"(only 'rest' is implemented)"
+                f"{transport} transport not supported yet (only 'rest' is implemented)"
             )
         self.transport = transport
         self.timeout = timeout_ms / 1000
