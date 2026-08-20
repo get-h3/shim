@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-034",
+  "task_title": "P1 LLMCall decisions refused vs api.md claim",
+  "task_criteria": [
+    "docs state LLM-call behavior accurately or a provider hook executes real model calls"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 docs state LLM-call behavior accurately or a provider hook executes real model calls: Both halves of the OR are satisfied. (1) Provider hook executes real model calls: src/h3_shim/shim_loop.py:79-80 accepts llm_provider; _execute_llm (lines 300-326) invokes llm_provider(prompt, context) and returns a successful llm_response with data.content; when unset it refuses with a structured error (lines 340-355) rather than fabricating output. (2) Docs accurate: docs/api.md:233-248 documents the llm_provider signature, context dict fields (model, system_prompt, temperature, max_tokens, messages, session_id), and the refusal message. Tests: full suite 315 passed (exit 0), including new GAP-034 tests test_llm_provider_invoked_and_text_returned, test_llm_provider_exception_returns_error_result, test_run_llm_call_with_provider_posts_text_back (all pass). ruff check passes, no LSP diagnostics.\nGAP-034 is complete: an injectable llm_provider hook executes real LLM_CALL decisions (or refuses with a structured error when absent), docs/api.md accurately describes this behavior, and all 315 tests pass.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 docs state LLM-call behavior accurately or a provider hook executes real model calls: Both halves of the OR are satisfied. (1) Provider hook executes real model calls: src/h3_shim/shim_loop.py:79-80 accepts llm_provider; _execute_llm (lines 300-326) invokes llm_provider(prompt, context) and returns a successful llm_response with data.content; when unset it refuses with a structured error (lines 340-355) rather than fabricating output. (2) Docs accurate: docs/api.md:233-248 documents",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "docs state LLM-call behavior accurately or a provider hook executes real model calls",
+                "status": "PASS",
+                "detail": "Both halves of the OR are satisfied. (1) Provider hook executes real model calls: src/h3_shim/shim_loop.py:79-80 accepts llm_provider; _execute_llm (lines 300-326) invokes llm_provider(prompt, context) and returns a successful llm_response with data.content; when unset it refuses with a structured error (lines 340-355) rather than fabricating output. (2) Docs accurate: docs/api.md:233-248 documents the llm_provider signature, context dict fields (model, system_prompt, temperature, max_tokens, messages, session_id), and the refusal message. Tests: full suite 315 passed (exit 0), including new GAP-034 tests test_llm_provider_invoked_and_text_returned, test_llm_provider_exception_returns_error_result, test_run_llm_call_with_provider_posts_text_back (all pass). ruff check passes, no LSP diagnostics."
+              }
+            ],
+            "summary": "GAP-034 is complete: an injectable llm_provider hook executes real LLM_CALL decisions (or refuses with a structured error when absent), docs/api.md accurately describes this behavior, and all 315 tests pass."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-034\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 docs state LLM-call behavior accurately or a provider hook executes real model calls: Both halves of the OR are satisfied. (1) Provider hook executes real model calls: src/h3_shim/shim_loop.py:79-80 accepts llm_provider; _execute_llm (lines 300-326) invokes llm_provider(prompt, context) and returns a successful llm_response with data.content; when unset it refuses with a structured error (lines 340-355) rather than fabricating output. (2) Docs accurate: docs/api.md:233-248 documents the llm_provider signature, context dict fields (model, system_prompt, temperature, max_tokens, messages, session_id), and the refusal message. Tests: full suite 315 passed (exit 0), including new GAP-034 tests test_llm_provider_invoked_and_text_returned, test_llm_provider_exception_returns_error_result, test_run_llm_call_with_provider_posts_text_back (all pass). ruff check passes, no LSP diagnostics.\nGAP-034 is complete: an injectable llm_provider hook executes real LLM_CALL decisions (or refuses with a structured error when absent), docs/api.md accurately describes this behavior, and all 315 tests pass.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-20T16:50:35.761520"
+}
