@@ -62,6 +62,11 @@ class H3ShimLoop:
         successful ``llm_response`` result. When unset, ``LLM_CALL``
         decisions are refused with a structured error rather than
         fabricating model output.
+    on_text:
+        Optional callback invoked with the content of every ``TEXT``
+        decision, so the host can deliver assistant text to the user.
+        ``run()`` returns the terminating ``EndReason`` string — text is
+        delivered through this hook, not through the return value.
 
     The ``identity`` kwarg is forwarded on every ``/v1/process`` call;
     if omitted, a placeholder ``("unknown", session_id)`` identity is
@@ -77,6 +82,7 @@ class H3ShimLoop:
         max_iterations: int = 50,
         identity: Identity | None = None,
         llm_provider: Callable[[str, dict[str, Any]], str] | None = None,
+        on_text: Callable[[str], None] | None = None,
     ):
         self.client = client
         self.session_id = session_id
@@ -87,6 +93,7 @@ class H3ShimLoop:
             chat_id=session_id,
         )
         self.llm_provider = llm_provider
+        self.on_text = on_text
         self.iteration = 0
         self._available_tools: dict[str, Callable[..., object]] = {}
 
@@ -354,13 +361,17 @@ class H3ShimLoop:
     async def _execute_text(self, text: TextResponse) -> ExecutionResult:
         """Send a text payload to the user.
 
-        The shim doesn't own a transport here, so we just log and
-        forward a ``text_sent`` marker back to the harness.  When
-        ``finished`` is set the harness will receive that flag in the
-        result so it can treat the turn as closed.
+        The shim doesn't own a transport here: when an ``on_text``
+        callback was injected at construction it is invoked with the
+        text content so the host can deliver it (chat gateway, terminal,
+        …). We then forward a ``text_sent`` marker back to the harness.
+        When ``finished`` is set the harness will receive that flag in
+        the result so it can treat the turn as closed.
         """
         start = time.monotonic()
         logger.info("TEXT: %s", text.content[:100])
+        if self.on_text is not None:
+            self.on_text(text.content)
         data: dict[str, object] = {"content": text.content}
         if text.finished:
             data["finished"] = True

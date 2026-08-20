@@ -587,6 +587,61 @@ class TestExecuteText:
         assert result.duration_ms >= 0.0
 
 
+# ── on_text callback (GAP-035) ──────────────────────────────────────────────
+
+
+class TestOnText:
+    @pytest.mark.asyncio
+    async def test_text_then_end_delivers_text_and_returns_reason(self):
+        """GAP-035 — run() returns the EndReason; text goes to on_text."""
+        client = _mock_client()
+        client.process.return_value = _decision(
+            DecisionType.TEXT,
+            text=TextResponse(content="hello there", finished=False),
+        )
+        client.result.return_value = _decision(
+            DecisionType.END,
+            decision_id="d_002",
+            end=End(reason=EndReason.TASK_COMPLETE, summary="done"),
+        )
+        received: list[str] = []
+        loop = _make_loop(client=client, on_text=received.append)
+        reason = await loop.run(_msg())
+        assert reason == "task_complete"
+        assert received == ["hello there"]
+
+    @pytest.mark.asyncio
+    async def test_every_text_decision_invokes_callback(self):
+        """Each TEXT hop (not just the last) reaches the callback."""
+        client = _mock_client()
+        client.process.return_value = _decision(
+            DecisionType.TEXT,
+            decision_id="d_001",
+            text=TextResponse(content="first", finished=False),
+        )
+        client.result.side_effect = [
+            _decision(
+                DecisionType.TEXT,
+                decision_id="d_002",
+                text=TextResponse(content="second", finished=True),
+            ),
+            _decision(DecisionType.END, decision_id="d_003"),
+        ]
+        received: list[str] = []
+        loop = _make_loop(client=client, on_text=received.append)
+        reason = await loop.run(_msg())
+        assert reason == "task_complete"
+        assert received == ["first", "second"]
+
+    @pytest.mark.asyncio
+    async def test_no_callback_still_returns_text_sent(self):
+        """Without on_text the executor behaves exactly as before."""
+        loop = _make_loop()
+        result = await loop._execute_text(TextResponse(content="hi"))
+        assert result.type == "text_sent"
+        assert result.success is True
+
+
 # ── _execute_wait ───────────────────────────────────────────────────────────
 
 
