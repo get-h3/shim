@@ -147,7 +147,7 @@ await loader.close()
 
 ## H3ShimLoop
 
-`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None)`
+`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None, llm_provider=None, on_text=None)`
 
 Drives one H3 session through the process / result loop. `client` is the
 `H3Client` talking to the harness, `session_id` is the stable session
@@ -155,6 +155,14 @@ identifier, and `context` is the per-session `Context` (history, tools,
 models, memory, …). `max_iterations` (default 50) caps `/v1/result`
 round-trips per `run()` — mirroring the canonical Hermes agent loop. When
 `identity` is omitted a placeholder `("shim", session_id)` identity is used.
+
+Optional hooks let the embedding host supply the two things the loop
+itself does not own — the LLM client and the user-facing transport:
+
+| Parameter | Type | Behaviour |
+|---|---|---|
+| `llm_provider` | `Callable[[str, dict], str]` | Executes `LLM_CALL` decisions. Called as `llm_provider(prompt, context)` where `prompt` is the flattened message list (`role: content` lines) and `context` carries `model`, `system_prompt`, `temperature`, `max_tokens`, `messages`, `session_id`. Its return value becomes a successful `llm_response` result with `data.content`. **Without it, `LLM_CALL` decisions are refused** — the loop returns an `error` result (`"LLM not configured: no LLM provider wired in this shim"`) rather than fabricate model output. |
+| `on_text` | `Callable[[str], None]` | Receives the content of every `TEXT` decision so the host can deliver it to the user (chat gateway, terminal, …). |
 
 ### Methods
 
@@ -173,7 +181,10 @@ async def run(self, message: Message) -> str
 Execute the full loop for one user message: POST `/v1/process`, execute the
 returned decision (tool call, LLM call, text, wait, delegate), POST the
 `/v1/result`, repeat until the harness returns END or `max_iterations` is
-reached. Returns the final assistant text.
+reached. **Returns the `EndReason` string** of the terminating END decision
+(`"task_complete"`, `"error"`, `"timeout"`, …) — not the assistant text.
+Final assistant text is delivered incrementally through the `on_text`
+callback as the harness emits `TEXT` decisions.
 
 ```python
 async def register_tool(...)  # see above

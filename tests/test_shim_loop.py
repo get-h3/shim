@@ -483,6 +483,83 @@ class TestExecuteLLM:
         assert result.success is False
         assert "LLM not configured" in result.data.get("error", "")
 
+    @pytest.mark.asyncio
+    async def test_llm_provider_invoked_and_text_returned(self):
+        """GAP-034 — an injected provider executes the call for real."""
+        calls: list[tuple[str, dict]] = []
+
+        def fake_provider(prompt: str, context: dict) -> str:
+            calls.append((prompt, context))
+            return "42 is the answer"
+
+        llm = LLMCall(
+            model="gpt-4",
+            messages=[
+                Message(role="user", content="what is 6*7?"),
+                Message(role="assistant", content="thinking..."),
+            ],
+            system_prompt="be terse",
+            temperature=0.2,
+            max_tokens=64,
+        )
+        loop = _make_loop(llm_provider=fake_provider)
+        result = await loop._execute_llm(llm)
+
+        assert result.success is True
+        assert result.type == "llm_response"
+        assert result.data.get("content") == "42 is the answer"
+        assert result.duration_ms >= 0.0
+        # The provider saw the flattened prompt + a context dict.
+        assert len(calls) == 1
+        prompt, context = calls[0]
+        assert "what is 6*7?" in prompt
+        assert "thinking..." in prompt
+        assert context["model"] == "gpt-4"
+        assert context["system_prompt"] == "be terse"
+        assert context["temperature"] == 0.2
+        assert context["max_tokens"] == 64
+        assert len(context["messages"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_llm_provider_exception_returns_error_result(self):
+        """A provider that raises yields a structured error, not a crash."""
+
+        def broken_provider(prompt: str, context: dict) -> str:
+            raise RuntimeError("provider down")
+
+        loop = _make_loop(llm_provider=broken_provider)
+        result = await loop._execute_llm(
+            LLMCall(model="gpt-4", messages=[Message(role="user", content="hi")])
+        )
+        assert result.success is False
+        assert result.type == "error"
+        assert "provider" in result.data.get("error", "").lower()
+        assert result.data.get("phase") == "llm_call"
+
+    @pytest.mark.asyncio
+    async def test_run_llm_call_with_provider_posts_text_back(self):
+        """GAP-034 — full loop: LLM_CALL executes via provider, text POSTed."""
+        client = _mock_client()
+        client.process.return_value = _decision(
+            DecisionType.LLM_CALL,
+            llm_call=LLMCall(
+                model="gpt-4",
+                messages=[Message(role="user", content="hi")],
+            ),
+        )
+        client.result.return_value = _decision(
+            DecisionType.END,
+            decision_id="d_002",
+            end=End(reason=EndReason.TASK_COMPLETE, summary="done"),
+        )
+        loop = _make_loop(client=client, llm_provider=lambda p, c: "hello back")
+        reason = await loop.run(_msg())
+        assert reason == "task_complete"
+        # The ExecutionResult POSTed to /v1/result carries the model text.
+        sent = client.result.await_args.args[2]
+        assert sent.success is True
+        assert sent.data.get("content") == "hello back"
+
 
 # ── _execute_text ───────────────────────────────────────────────────────────
 

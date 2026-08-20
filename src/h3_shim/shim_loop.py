@@ -19,6 +19,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable
+from typing import Any
 
 import httpx
 
@@ -54,6 +55,13 @@ class H3ShimLoop:
     max_iterations:
         Hard cap on the number of ``/v1/result`` round-trips per ``run``.
         Defaults to ``50`` to mirror the canonical Hermes agent loop.
+    llm_provider:
+        Optional callable that executes ``LLM_CALL`` decisions:
+        ``llm_provider(prompt: str, context: dict) -> str``. When set,
+        ``_execute_llm`` invokes it and returns the model text as a
+        successful ``llm_response`` result. When unset, ``LLM_CALL``
+        decisions are refused with a structured error rather than
+        fabricating model output.
 
     The ``identity`` kwarg is forwarded on every ``/v1/process`` call;
     if omitted, a placeholder ``("unknown", session_id)`` identity is
@@ -68,6 +76,7 @@ class H3ShimLoop:
         context: Context,
         max_iterations: int = 50,
         identity: Identity | None = None,
+        llm_provider: Callable[[str, dict[str, Any]], str] | None = None,
     ):
         self.client = client
         self.session_id = session_id
@@ -77,6 +86,7 @@ class H3ShimLoop:
             platform="shim",
             chat_id=session_id,
         )
+        self.llm_provider = llm_provider
         self.iteration = 0
         self._available_tools: dict[str, Callable[..., object]] = {}
 
@@ -267,16 +277,61 @@ class H3ShimLoop:
         result.duration_ms = (time.monotonic() - start) * 1000
         return result
 
+    @staticmethod
+    def _llm_prompt(llm: LLMCall) -> str:
+        """Flatten an ``LLMCall``'s messages into a single prompt string.
+
+        Each message becomes a ``role: content`` line (chronological, so
+        a chat-style provider sees the conversation). Falls back to the
+        harness's ``system_prompt`` when no messages were sent.
+        """
+        if llm.messages:
+            return "\n".join(f"{m.role}: {m.content}" for m in llm.messages)
+        return llm.system_prompt or ""
+
     async def _execute_llm(self, llm: LLMCall) -> ExecutionResult:
         """Execute an ``LLMCall`` decision.
 
-        Forwarding to Hermes' configured LLM provider is not wired yet, so
-        this refuses with a structured error instead of fabricating model
-        output: a harness issuing an ``LLMCall`` must never receive fake
-        content presented as a successful answer. The refusal path keeps
-        the loop end-to-end testable without dragging in a model client.
+        When an ``llm_provider`` callable was injected at construction it
+        is invoked as ``llm_provider(prompt, context)`` and its text is
+        returned as a successful ``llm_response`` result — the host wires
+        its real model client here. Without a provider the shim refuses
+        with a structured error instead of fabricating model output: a
+        harness issuing an ``LLMCall`` must never receive fake content
+        presented as a successful answer.
         """
         start = time.monotonic()
+        if self.llm_provider is not None:
+            try:
+                prompt = self._llm_prompt(llm)
+                context: dict[str, Any] = {
+                    "model": llm.model,
+                    "system_prompt": llm.system_prompt,
+                    "temperature": llm.temperature,
+                    "max_tokens": llm.max_tokens,
+                    "messages": [m.model_dump() for m in llm.messages],
+                    "session_id": self.session_id,
+                }
+                text = self.llm_provider(prompt, context)
+            except Exception as e:
+                logger.error("LLM provider raised: %s", e, exc_info=True)
+                result = ExecutionResult(
+                    type="error",
+                    data={
+                        "error": f"LLM provider failed: {e}",
+                        "phase": "llm_call",
+                    },
+                    success=False,
+                )
+            else:
+                result = ExecutionResult(
+                    type="llm_response",
+                    data={"content": text},
+                    success=True,
+                )
+            result.duration_ms = (time.monotonic() - start) * 1000
+            return result
+
         logger.warning(
             "LLM call refused: model=%s messages=%d (no LLM provider configured)",
             llm.model,
