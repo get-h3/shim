@@ -74,6 +74,17 @@ class NotH3EndpointError(Exception):
         super().__init__(f"Target does not look like an H3 endpoint: {reason}")
 
 
+def _truncated_body(text: str, limit: int = 200) -> str:
+    """Squeeze a raw response body into a one-line snippet for error text.
+
+    Non-JSON bodies (e.g. an HTML 404 page) are multi-line and noisy;
+    collapsing whitespace and truncating keeps the wrong-server warning
+    readable while preserving enough of the body to identify the server
+    that answered (GAP-037).
+    """
+    return " ".join(text.split())[:limit]
+
+
 # ── battery ─────────────────────────────────────────────────────────────────
 
 
@@ -138,7 +149,7 @@ class H3TestBattery:
             raise NotH3EndpointError(f"connection error: {exc}") from exc
 
         if resp.status_code >= 400:
-            body_snippet = resp.text[:200] if resp.text else ""
+            body_snippet = _truncated_body(resp.text) if resp.text else ""
             reason = f"status {resp.status_code} {resp.reason_phrase}"
             if body_snippet:
                 reason += f": {body_snippet}"
@@ -152,7 +163,11 @@ class H3TestBattery:
         try:
             body = resp.json()
         except Exception as exc:  # noqa: BLE001
-            raise NotH3EndpointError(f"non-JSON body: {exc}", resp.text) from exc
+            body_snippet = f" ({_truncated_body(resp.text)})" if resp.text else ""
+            raise NotH3EndpointError(
+                f"non-JSON body: {exc}{body_snippet}",
+                resp.text,
+            ) from exc
 
         if not isinstance(body, dict):
             raise NotH3EndpointError(

@@ -82,6 +82,47 @@ class TestProbe:
             await battery.probe()
         assert "connection error" in exc_info.value.reason
 
+    async def test_404_html_body_truncated_to_one_line(self, fake_client):
+        """GAP-037 — a full HTML error page must not dump into the warning."""
+        html = (
+            '<!DOCTYPE HTML>\n<html lang="en">\n<head>\n'
+            "<title>Error response</title>\n</head>\n<body>\n"
+            "<h1>Error response</h1>\n<p>Error code: 404</p>\n"
+            "<p>Message: File not found.</p>\n"
+            "<p>Error code explanation: HTTPStatus.NOT_FOUND - "
+            "Nothing matches the given URI.</p>\n</body></html>\n"
+        )
+        fake_client(
+            get_return=_fake_response(
+                404,
+                {},
+                text=html,
+                reason_phrase="File not found",
+            )
+        )
+        battery = H3TestBattery("http://localhost:9123")
+        with pytest.raises(NotH3EndpointError) as exc_info:
+            await battery.probe()
+        assert "status 404" in exc_info.value.reason
+        # Status info kept, body squeezed onto one line and truncated.
+        assert "File not found" in exc_info.value.reason
+        assert "\n" not in exc_info.value.reason
+        assert len(exc_info.value.reason) < 400
+        # The raw body stays available on the exception for debugging.
+        assert exc_info.value.response_text == html
+
+    async def test_non_json_200_body_snippet(self, fake_client):
+        """GAP-037 — 2xx with a non-JSON body carries a truncated snippet."""
+        resp = _fake_response(200, {}, text="<html>plain page, not JSON</html>")
+        resp.json = MagicMock(side_effect=ValueError("not json"))
+        fake_client(get_return=resp)
+        battery = H3TestBattery("http://localhost:9123")
+        with pytest.raises(NotH3EndpointError) as exc_info:
+            await battery.probe()
+        assert "non-JSON body" in exc_info.value.reason
+        assert "plain page, not JSON" in exc_info.value.reason
+        assert "\n" not in exc_info.value.reason
+
     async def test_healthy_h3_shape(self, fake_client):
         fake_client(
             get_return=_fake_response(
