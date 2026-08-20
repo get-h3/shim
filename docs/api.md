@@ -16,6 +16,89 @@ must be awaited. Pydantic models for requests/responses live in
 
 ---
 
+## Wire protocol (REST / JSON)
+
+Harness communication is plain HTTP + JSON. The full schema lives in
+`get-h3/protocol` (OpenAPI 3.1); the examples below are the concrete shapes
+a harness must accept and return. **The `Decision` discriminator is a
+top-level `decision` field — NOT `type`** — and the sub-payload for that
+kind nests under the same name (`llm_call`, `text`, `end`, …).
+
+### POST /v1/process — request
+
+```json
+{
+  "session_id": "sess-7f3a9c",
+  "message": {
+    "role": "user",
+    "content": "Book a flight to Medellín",
+    "timestamp": "2026-08-20T14:03:11Z"
+  },
+  "identity": {
+    "platform": "telegram",
+    "chat_id": "-1001234567890",
+    "user_id": "6849342682"
+  },
+  "context": {
+    "history": [],
+    "tools": [],
+    "models": [],
+    "memory": "",
+    "skills": [],
+    "config": {},
+    "session_state": {}
+  }
+}
+```
+
+### POST /v1/process — Decision response (`text`)
+
+The harness answers a process (or result) request with a `Decision`:
+
+```json
+{
+  "decision": "text",
+  "decision_id": "d_0042",
+  "text": {
+    "content": "On it — checking flights now.",
+    "finished": false
+  }
+}
+```
+
+### POST /v1/process — Decision response (`end`)
+
+```json
+{
+  "decision": "end",
+  "decision_id": "d_0043",
+  "end": {
+    "reason": "task_complete",
+    "summary": "Flight AV-0142 booked for Friday."
+  }
+}
+```
+
+Other decision kinds use the identical shape:
+`{"decision": "tool_call", "tool_call": {...}}`,
+`{"decision": "llm_call", "llm_call": {...}}`,
+`{"decision": "wait", "wait": {...}}`,
+`{"decision": "delegate", "delegate": {...}}`.
+The shim loop executes each decision locally and POSTs the result back;
+the harness replies with the next `Decision`, until it sends
+`"decision": "end"`.
+
+### POST /v1/result — request
+
+```json
+{"session_id": "sess-7f3a9c", "decision_id": "d_0042", "result": {"type": "text_sent", "data": {"content": "On it — checking flights now."}, "success": true}}
+```
+
+`/v1/result` returns the harness's next `Decision` — the loop repeats until
+an `end` decision arrives.
+
+---
+
 ## H3Client
 
 `H3Client(endpoint, transport="rest", timeout_ms=30000, hermes_token=None, hermes_identity=None, protocol_version="1.0")`
