@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-032",
+  "task_title": "ruff format drift in client.py (GAP-030 f-string, gate 6 failure at tick #348)",
+  "task_criteria": [
+    "ruff format --check . exits 0 on the repo; pytest suite still 302/302"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 ruff format --check . exits 0 on the repo; pytest suite still 302/302: ruff format --check . -> '23 files already formatted', EXIT=0. pytest -x -q -> '302 passed in 2.03s', EXIT=0. Both run fresh via run_command. Fix in src/h3_shim/client.py collapses the GAP-030 f-string across two adjacent string literals into one line (commit 1b60681).\nRuff format check passes (exit 0) and the full pytest suite passes 302/302 after the one-file format fix in client.py.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 ruff format --check . exits 0 on the repo; pytest suite still 302/302: ruff format --check . -> '23 files already formatted', EXIT=0. pytest -x -q -> '302 passed in 2.03s', EXIT=0. Both run fresh via run_command. Fix in src/h3_shim/client.py collapses the GAP-030 f-string across two adjacent string literals into one line (commit 1b60681).\nRuff format check passes (exit 0) and the full pytest suite passes 302/302 after the one-file format fix in client.py.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "ruff format --check . exits 0 on the repo; pytest suite still 302/302",
+                "status": "PASS",
+                "detail": "ruff format --check . -> '23 files already formatted', EXIT=0. pytest -x -q -> '302 passed in 2.03s', EXIT=0. Both run fresh via run_command. Fix in src/h3_shim/client.py collapses the GAP-030 f-string across two adjacent string literals into one line (commit 1b60681)."
+              }
+            ],
+            "summary": "Ruff format check passes (exit 0) and the full pytest suite passes 302/302 after the one-file format fix in client.py."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-032\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 ruff format --check . exits 0 on the repo; pytest suite still 302/302: ruff format --check . -> '23 files already formatted', EXIT=0. pytest -x -q -> '302 passed in 2.03s', EXIT=0. Both run fresh via run_command. Fix in src/h3_shim/client.py collapses the GAP-030 f-string across two adjacent string literals into one line (commit 1b60681).\nRuff format check passes (exit 0) and the full pytest suite passes 302/302 after the one-file format fix in client.py.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-20T11:01:35.541474"
+}
