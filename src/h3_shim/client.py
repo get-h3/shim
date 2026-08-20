@@ -57,6 +57,15 @@ class H3Client:
         protocol_version: str = "1.0",
     ):
         self.endpoint = endpoint.rstrip("/")
+        # Fail fast on unsupported transports: the client is REST-only.
+        # GAP-030 — gRPC was advertised but never implemented, so a
+        # ``transport`` other than ``rest`` must not silently fall back
+        # to REST behavior.
+        if transport != "rest":
+            raise ValueError(
+                f"{transport} transport not supported yet "
+                f"(only 'rest' is implemented)"
+            )
         self.transport = transport
         self.timeout = timeout_ms / 1000
 

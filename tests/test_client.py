@@ -89,6 +89,11 @@ class TestConstruction:
         c = H3Client(endpoint="http://localhost:9000")
         assert c.transport == "rest"
 
+    def test_transport_grpc_rejected(self):
+        """GAP-030: unsupported transports fail fast instead of silent REST."""
+        with pytest.raises(ValueError, match="grpc transport not supported yet"):
+            H3Client(endpoint="http://localhost:9000", transport="grpc")
+
     def test_multiple_trailing_slashes_stripped(self):
         c = H3Client(endpoint="http://localhost:9000///")
         assert c.endpoint == "http://localhost:9000"

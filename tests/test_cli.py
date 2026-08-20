@@ -367,6 +367,24 @@ class TestInstall:
         assert spec["transport"] == "rest"
         assert spec["timeout_ms"] == 30000
 
+    def test_install_rejects_grpc_transport(self, cfg_path, runner):
+        """GAP-030: unsupported transports fail fast, never silently stored."""
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "--endpoint",
+                "http://x:1",
+                "--transport",
+                "grpc",
+                "myharness",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "grpc transport not supported yet" in result.output
+        # The config must not be written with a silently-ignored transport.
+        assert not cfg_path.exists()
+
     def test_install_set_default_promotes(self, cfg_path, runner):
         result = runner.invoke(
             hermes_h3,

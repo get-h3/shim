@@ -611,6 +611,22 @@ def list_cmd(ctx: click.Context, config_path: Path | None) -> None:
         )
 
 
+# Transports the shim actually implements. Anything else (e.g. ``grpc``)
+# is rejected at selection time — GAP-030: gRPC was advertised but never
+# implemented, so ``install --transport grpc`` used to store the string
+# and silently fall back to REST.
+SUPPORTED_TRANSPORTS: tuple[str, ...] = ("rest",)
+
+
+def _validate_transport(transport: str) -> None:
+    """Fail fast on transports the shim does not implement (GAP-030)."""
+    if transport not in SUPPORTED_TRANSPORTS:
+        raise click.ClickException(
+            f"{transport} transport not supported yet "
+            f"(only {', '.join(SUPPORTED_TRANSPORTS)} is implemented)"
+        )
+
+
 @hermes_h3.command(help="Register a harness in the config.")
 @_config_option
 @click.argument("name")
@@ -619,7 +635,7 @@ def list_cmd(ctx: click.Context, config_path: Path | None) -> None:
     "--transport",
     default="rest",
     show_default=True,
-    help="Transport protocol (rest, grpc, ...).",
+    help="Transport protocol (only 'rest' is implemented).",
 )
 @click.option(
     "--timeout-ms",
@@ -646,6 +662,7 @@ def install(
     """Add or update a harness entry."""
     if config_path is not None:
         ctx.obj["config_path"] = config_path
+    _validate_transport(transport)
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
     harnesses[name] = {

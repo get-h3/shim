@@ -51,7 +51,7 @@ See `docs/integration.md` for the full troubleshooting matrix.
 ## Components
 
 - `protocol.py` — Pydantic models (generated from get-h3/protocol)
-- `client.py` — REST/gRPC client for harness communication
+- `client.py` — REST client for harness communication
 - `loader.py` — Harness discovery, health check, session routing
 - `shim_loop.py` — Main H3ShimLoop
 - `native.py` — Native Hermes loop wrapper
@@ -59,6 +59,8 @@ See `docs/integration.md` for the full troubleshooting matrix.
 - `cli.py` — the `hermes-h3` CLI (9 subcommands: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin in this repo exposes them as `hermes h3 <cmd>`
 
 ## Development
+
+Prerequisite: [uv](https://docs.astral.sh/uv/) (`make typecheck` runs `uv run --with mypy mypy src/`; install via `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`). Everything else uses plain `python3` + `pip` (see the Makefile).
 
 ```bash
 make install   # create venv + install deps

@@ -12,7 +12,7 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 ## Components
 
 - `protocol.py` — Pydantic models (generated from get-h3/protocol)
-- `client.py` — REST/gRPC client for harness communication
+- `client.py` — REST client for harness communication
 - `loader.py` — Harness discovery, health check loop, session routing
 - `shim_loop.py` — Main H3ShimLoop: process → execute → result → loop
 - `native.py` — Native Hermes loop as H3 harness wrapper

@@ -18,4 +18,4 @@ This project uses `uv` for dependency management. Run `uv lock --upgrade` period
 
 ## Build Process
 
-The shim does not execute arbitrary code from harnesses at build time. Harness communication is restricted to the H3 protocol over HTTP/gRPC.
+The shim does not execute arbitrary code from harnesses at build time. Harness communication is restricted to the H3 protocol over HTTP.

@@ -59,7 +59,7 @@ hermes-h3 uninstall my-harness
 Real flags for `install` (from `src/h3_shim/cli.py`):
 
 ```text
-hermes-h3 install NAME --endpoint URL [--transport rest|grpc]
+hermes-h3 install NAME --endpoint URL [--transport rest]
                        [--timeout-ms 30000] [--set-default]
 ```
 

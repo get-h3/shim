@@ -165,7 +165,9 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     p.add_argument("name", help="Harness name.")
     p.add_argument("--endpoint", required=True, help="Harness endpoint URL.")
     p.add_argument(
-        "--transport", default="rest", help="Transport protocol (rest, grpc, ...)."
+        "--transport",
+        default="rest",
+        help="Transport protocol (only 'rest' is implemented).",
     )
     p.add_argument(
         "--timeout-ms",

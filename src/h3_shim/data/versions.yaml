@@ -19,18 +19,18 @@ hermes_versions:
     protocol: "1.0"
     min_h3: "1.0.0"
     max_h3: "1.x.x"
-    grpc: true
+    grpc: false
     status: "planned"
-    notes: "gRPC beta. Protocol still 1.0, backward-compatible."
+    notes: "gRPC planned for this version — NOT yet implemented (GAP-030). Protocol still 1.0, backward-compatible."
 
   - hermes: "0.20.0"
     h3_shim: "2.0.0"
     protocol: "2.0"
     min_h3: "2.0.0"
     max_h3: "2.x.x"
-    grpc: true
+    grpc: false
     status: "planned"
-    notes: "Protocol 2.0. Breaking changes. Bridge adapter for 1.0 harnesses."
+    notes: "Protocol 2.0. Breaking changes. Bridge adapter for 1.0 harnesses. gRPC planned — NOT yet implemented (GAP-030)."
 
 # SDK versions map to protocol versions (from S03 §5)
 sdk_versions:

@@ -126,6 +126,17 @@ class TestLoad:
         kwargs = fake.call_args.kwargs
         assert kwargs["timeout_ms"] == 30_000
 
+    def test_grpc_transport_fails_fast(self, monkeypatch):
+        """GAP-030: a config claiming gRPC must not silently use REST."""
+        _patch_h3_client_factory(monkeypatch)
+        cfg = {
+            "harnesses": {
+                "alpha": {"endpoint": "http://a:1", "transport": "grpc"},
+            }
+        }
+        with pytest.raises(ValueError, match="grpc transport not supported yet"):
+            H3Loader(cfg)
+
     def test_custom_timeout_passed_through(self, monkeypatch):
         fake = _patch_h3_client_factory(monkeypatch)
         cfg = {"harnesses": {"alpha": {"endpoint": "http://a:1", "timeout_ms": 9999}}}
