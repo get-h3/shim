@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-039",
+  "task_title": "PEP 668 trap in scaffold output + quickstart for GENERATED harness",
+  "task_criteria": [
+    "scaffold banner (cli.py) and README quickstart include venv creation/activation (python3 -m venv .venv && source .venv/bin/activate) before any pip install; on a PEP 668 host, following scaffold instructions verbatim yields a running harness and h3-test 44/44 exit 0"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 scaffold banner (cli.py) and README quickstart include venv creation/activation (python3 -m venv .venv && source .venv/bin/activate) before any pip install; on a PEP 668 host, following scaffold instructions verbatim yields a running harness and h3-test 44/44 exit 0: cli.py _format_run_instructions (src/h3_shim/cli.py:245-249) emits 'python3 -m venv .venv' + 'source .venv/bin/activate' before 'pip install -e .' for py; README.md quickstart (lines 28-32) has the same venv preamble before 'pip install -e . && python main.py'; generated main.py docstring also includes it. End-to-end verified: scaffolded harness, python3 -m venv .venv, source .venv/bin/activate, pip install -e . (exit 0), python main.py (listening :9191), then h3-test battery -> TOTAL 44/44 PASSED, EXIT=0. Regression test tests/test_cli.py:289-293 asserts banner contains venv guidance. Full suite: 317 passed (pytest -x -q), ruff check clean, no LSP diagnostics.\nGAP-039 complete: venv preamble added to scaffold banner, README quickstart, and generated main.py before any pip install; verified end-to-end on a fresh scaffold yielding a running harness and h3-test 44/44 exit 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 scaffold banner (cli.py) and README quickstart include venv creation/activation (python3 -m venv .venv && source .venv/bin/activate) before any pip install; on a PEP 668 host, following scaffold instructions verbatim yields a running harness and h3-test 44/44 exit 0: cli.py _format_run_instructions (src/h3_shim/cli.py:245-249) emits 'python3 -m venv .venv' + 'source .venv/bin/activate' before 'pip install -e .' for py; README.md quickstart (lines 28-32) has the same venv preamble be",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "scaffold banner (cli.py) and README quickstart include venv creation/activation (python3 -m venv .venv && source .venv/bin/activate) before any pip install; on a PEP 668 host, following scaffold instructions verbatim yields a running harness and h3-test 44/44 exit 0",
+                "status": "PASS",
+                "detail": "cli.py _format_run_instructions (src/h3_shim/cli.py:245-249) emits 'python3 -m venv .venv' + 'source .venv/bin/activate' before 'pip install -e .' for py; README.md quickstart (lines 28-32) has the same venv preamble before 'pip install -e . && python main.py'; generated main.py docstring also includes it. End-to-end verified: scaffolded harness, python3 -m venv .venv, source .venv/bin/activate, pip install -e . (exit 0), python main.py (listening :9191), then h3-test battery -> TOTAL 44/44 PASSED, EXIT=0. Regression test tests/test_cli.py:289-293 asserts banner contains venv guidance. Full suite: 317 passed (pytest -x -q), ruff check clean, no LSP diagnostics."
+              }
+            ],
+            "summary": "GAP-039 complete: venv preamble added to scaffold banner, README quickstart, and generated main.py before any pip install; verified end-to-end on a fresh scaffold yielding a running harness and h3-test 44/44 exit 0."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-039\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 scaffold banner (cli.py) and README quickstart include venv creation/activation (python3 -m venv .venv && source .venv/bin/activate) before any pip install; on a PEP 668 host, following scaffold instructions verbatim yields a running harness and h3-test 44/44 exit 0: cli.py _format_run_instructions (src/h3_shim/cli.py:245-249) emits 'python3 -m venv .venv' + 'source .venv/bin/activate' before 'pip install -e .' for py; README.md quickstart (lines 28-32) has the same venv preamble before 'pip install -e . && python main.py'; generated main.py docstring also includes it. End-to-end verified: scaffolded harness, python3 -m venv .venv, source .venv/bin/activate, pip install -e . (exit 0), python main.py (listening :9191), then h3-test battery -> TOTAL 44/44 PASSED, EXIT=0. Regression test tests/test_cli.py:289-293 asserts banner contains venv guidance. Full suite: 317 passed (pytest -x -q), ruff check clean, no LSP diagnostics.\nGAP-039 complete: venv preamble added to scaffold banner, README quickstart, and generated main.py before any pip install; verified end-to-end on a fresh scaffold yielding a running harness and h3-test 44/44 exit 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-23T17:37:04.089720"
+}
