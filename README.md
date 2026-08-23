@@ -24,7 +24,12 @@ This installs two CLI entry points:
 ```bash
 # 1. Stand up a demo harness first (scaffolds h3-harness-py/ + run instructions):
 hermes-h3 scaffold --lang py
-cd h3-harness-py && pip install -e . && python main.py   # listens on :9191
+cd h3-harness-py
+# PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
+# always use a venv:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . && python main.py   # listens on :9191
 
 # 2. In another terminal, run the test battery against it:
 h3-test --endpoint http://localhost:9191

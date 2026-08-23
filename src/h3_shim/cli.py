@@ -242,6 +242,10 @@ def _format_run_instructions(lang: str, project_dir: Path) -> str:
             [
                 "Build and run:",
                 f"  cd {project_dir}",
+                "  # PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs",
+                "  # always use a venv:",
+                "  python3 -m venv .venv",
+                "  source .venv/bin/activate",
                 "  pip install -e .",
                 "  python main.py",
                 "",

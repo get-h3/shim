@@ -286,6 +286,11 @@ class TestScaffold:
         assert (project / "requirements.txt").is_file()
         assert (project / "pyproject.toml").is_file()
         assert "h3-test --endpoint http://localhost:9191" in result.output
+        # GAP-039: banner must guide the generated-harness dev through a venv
+        # before any pip install (PEP 668 distros refuse bare pip).
+        assert "python3 -m venv .venv" in result.output
+        assert "source .venv/bin/activate" in result.output
+        assert "pip install -e ." in result.output
 
     def test_scaffold_lang_ts_generates_files(self, tmp_path, runner):
         result = runner.invoke(

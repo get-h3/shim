@@ -8,6 +8,10 @@ result callbacks.
 
 Run with::
 
+    # PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
+    # always use a venv:
+    python3 -m venv .venv
+    source .venv/bin/activate
     pip install -e .
     python main.py
 
