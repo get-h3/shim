@@ -12,12 +12,39 @@ WHEEL_DIR="$SMOKE_DIR/wheels"
 VENV_DIR="$SMOKE_DIR/venv"
 PASSED=0
 FAILED=0
+# PID of the scaffolded harness started in step 9c — killed by cleanup() on
+# EVERY exit path (including mid-script failures under set -e).
+SERVER_PID=""
 
-cleanup() { rm -rf "$SMOKE_DIR"; }
+cleanup() {
+    if [ -n "$SERVER_PID" ]; then
+        kill "$SERVER_PID" 2>/dev/null || true
+        wait "$SERVER_PID" 2>/dev/null || true
+    fi
+    rm -rf "$SMOKE_DIR"
+}
 trap cleanup EXIT
 
 pass() { echo "  ✅ PASS: $1"; PASSED=$((PASSED + 1)); }
 fail() { echo "  ❌ FAIL: $1"; FAILED=$((FAILED + 1)); }
+
+# Find a free TCP port starting at $1 (default 9191) — the harness may be
+# occupied on the default by another process, in which case PORT overrides.
+free_port() {
+    python3 -c "
+import socket, sys
+start = int(sys.argv[1])
+for port in range(start, start + 50):
+    with socket.socket() as s:
+        try:
+            s.bind(('127.0.0.1', port))
+        except OSError:
+            continue
+        print(port)
+        sys.exit(0)
+sys.exit(1)
+" "$1"
+}
 
 echo "=== H3 Shim Smoke Test ==="
 echo "Smoke dir: $SMOKE_DIR"
@@ -145,6 +172,100 @@ if "$VENV_DIR/bin/hermes-h3" scaffold --lang py --output-dir "$SCAFFOLD_DIR" --f
     fi
 else
     fail "hermes-h3 scaffold --lang py"
+fi
+
+# ── Scaffolded project: non-editable wheel + install + serve (GAP-040) ──────
+# GAP-040 regression: the template pyproject's hatchling include filter
+# (include = ["main.py"]) silently dropped __init__.py from NON-EDITABLE
+# wheels — the same GAP-005-class breakage the shim itself had. Editable
+# installs mask it (source tree is used directly), so the scaffolded project
+# must be built, installed non-editable, and actually serve end-to-end.
+echo "── 9b. Scaffolded project: pip wheel . (non-editable) + contents"
+SCAFFOLD_PROJ="$SCAFFOLD_DIR/h3-harness-py"
+SCAFFOLD_WHEEL_DIR="$SMOKE_DIR/scaffold_wheels"
+SCAFFOLD_VENV="$SMOKE_DIR/scaffold_venv"
+mkdir -p "$SCAFFOLD_WHEEL_DIR"
+
+if [ ! -f "$SCAFFOLD_PROJ/pyproject.toml" ]; then
+    fail "scaffolded project missing ($SCAFFOLD_PROJ/pyproject.toml)"
+    exit 1
+fi
+
+if (cd "$SCAFFOLD_PROJ" && "$VENV_DIR/bin/pip" wheel . --no-deps -w "$SCAFFOLD_WHEEL_DIR" > /dev/null 2>&1); then
+    pass "scaffolded project: pip wheel . (non-editable build)"
+else
+    fail "scaffolded project: pip wheel ."
+    exit 1
+fi
+
+SCAFFOLD_WHEEL="$(echo "$SCAFFOLD_WHEEL_DIR"/h3_harness_py-*.whl)"
+if [ ! -f "$SCAFFOLD_WHEEL" ]; then
+    fail "scaffolded wheel not found in $SCAFFOLD_WHEEL_DIR"
+    exit 1
+fi
+pass "scaffolded wheel produced: $(basename "$SCAFFOLD_WHEEL")"
+
+# main.py AND __init__.py must BOTH be in the wheel — a missing __init__.py
+# here is the exact GAP-040/GAP-005 bug and must fail loudly.
+python3 -c "
+import zipfile, sys
+z = zipfile.ZipFile('$SCAFFOLD_WHEEL')
+# hatchling (packages = ['.']) may emit entries prefixed with './' — match
+# by trailing path component instead.
+names = z.namelist()
+missing = [n for n in ('main.py', '__init__.py') if not any(x.endswith(n) for x in names)]
+if missing:
+    print('FAIL: scaffolded wheel missing: ' + ', '.join(missing))
+    print('wheel entries: ' + ', '.join(sorted(names)))
+    sys.exit(1)
+print('OK: scaffolded wheel contains main.py + __init__.py')
+" || { fail "scaffolded wheel contents (main.py/__init__.py)"; exit 1; }
+pass "scaffolded wheel contains main.py + __init__.py"
+
+# ── Non-editable install into a FRESH venv, then serve the INSTALLED code ───
+echo "── 9c. Scaffolded project: non-editable install + serve :9191"
+python3 -m venv "$SCAFFOLD_VENV" > /dev/null 2>&1
+if "$SCAFFOLD_VENV/bin/pip" install "$SCAFFOLD_WHEEL" > /dev/null 2>&1; then
+    pass "scaffolded wheel: pip install (non-editable, fresh venv)"
+else
+    fail "scaffolded wheel: pip install (non-editable, fresh venv)"
+fi
+
+PORT="$(free_port 9191)" || { fail "no free port found for scaffolded harness"; exit 1; }
+# Run from a NEUTRAL directory via `python -m main` so the INSTALLED wheel
+# artifact is exercised — `python main.py` from the project dir would run the
+# working-tree copy and prove nothing about the non-editable install.
+(
+    cd "$SMOKE_DIR"
+    PORT="$PORT" exec "$SCAFFOLD_VENV/bin/python" -m main
+) > "$SMOKE_DIR/scaffold_harness.log" 2>&1 &
+SERVER_PID=$!
+
+HEALTH_OK=""
+for _ in {1..30}; do
+    if curl -sf -o /dev/null "http://127.0.0.1:$PORT/v1/health"; then
+        HEALTH_OK=1
+        break
+    fi
+    sleep 1
+done
+
+if [ -n "$HEALTH_OK" ]; then
+    BODY="$(curl -s "http://127.0.0.1:$PORT/v1/health")"
+    if echo "$BODY" | grep -q '"status"'; then
+        pass "scaffolded harness serves /v1/health on :$PORT (H3 shape: $BODY)"
+    else
+        fail "scaffolded harness /v1/health missing H3 fields: $BODY"
+    fi
+else
+    fail "scaffolded harness did not answer /v1/health on :$PORT (see scaffold_harness.log)"
+fi
+
+# Stop the harness now; cleanup() also guards every other exit path.
+if [ -n "$SERVER_PID" ]; then
+    kill "$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
+    SERVER_PID=""
 fi
 
 # ── Battery run (verify it can be invoked without ImportError) ──────────────

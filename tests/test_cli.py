@@ -1462,3 +1462,35 @@ class TestTemplatesExist:
         for rel in self.TEMPLATES:
             full = TEMPLATES_DIR / rel
             assert full.is_file(), f"template missing: {rel}"
+
+
+class TestPyTemplateWheelConfig:
+    """GAP-040 regression — scaffolded py projects must build non-editable wheels.
+
+    The template pyproject.toml previously shipped a hatchling ``include``
+    filter (``include = ["main.py"]``) that silently dropped ``__init__.py``
+    from non-editable wheels — the same GAP-005-class breakage the shim
+    itself had. Editable installs mask it (they use the source tree), so the
+    template must carry an ``__init__.py`` and must NOT restrict wheel
+    contents via ``include``.
+    """
+
+    def test_template_has_init_py(self):
+        """templates/py ships an __init__.py so wheels include it."""
+        from h3_shim.cli import TEMPLATES_DIR
+
+        init = TEMPLATES_DIR / "py" / "__init__.py"
+        assert init.is_file(), "template py/__init__.py missing"
+
+    def test_template_pyproject_has_no_include_filter(self):
+        """The template wheel target must not use an ``include`` filter."""
+        from h3_shim.cli import TEMPLATES_DIR
+
+        text = (TEMPLATES_DIR / "py" / "pyproject.toml").read_text()
+        assert "include" not in text, (
+            "template pyproject.toml still restricts wheel contents via "
+            "include — GAP-005-class breakage"
+        )
+        # The positive contract: hatchling with a plain packages selection.
+        assert "hatchling" in text
+        assert 'packages = ["."]' in text
