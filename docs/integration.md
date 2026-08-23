@@ -21,6 +21,10 @@ see [Optional: the `hermes h3` plugin](#optional-the-hermes-h3-plugin).
 ## 1. Install the shim
 
 ```bash
+# PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
+# always use a venv:
+python3 -m venv .venv
+source .venv/bin/activate
 pip install git+https://github.com/get-h3/shim
 ```
 
