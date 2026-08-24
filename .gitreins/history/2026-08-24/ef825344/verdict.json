@@ -1,0 +1,57 @@
+{
+  "task_id": "gap-064",
+  "task_title": "GAP-064 scaffold go template bumps sdk-go to v0.1.4",
+  "task_criteria": [
+    "src/h3_shim/templates/go/go.mod requires github.com/get-h3/sdk-go v0.1.4 (grep 'require github.com/get-h3/sdk-go' src/h3_shim/templates/go/go.mod shows v0.1.4)"
+  ],
+  "passed": true,
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 src/h3_shim/templates/go/go.mod requires github.com/get-h3/sdk-go v0.1.4 (grep 'require github.com/get-h3/sdk-go' src/h3_shim/templates/go/go.mod shows v0.1.4): src/h3_shim/templates/go/go.mod line 4 reads 'require github.com/get-h3/sdk-go v0.1.4'. Confirmed via `git show HEAD:src/h3_shim/templates/go/go.mod` and commit 141f1409 diff showing v0.1.1 -> v0.1.4.\nThe scaffold Go template go.mod correctly pins github.com/get-h3/sdk-go to v0.1.4.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 src/h3_shim/templates/go/go.mod requires github.com/get-h3/sdk-go v0.1.4 (grep 'require github.com/get-h3/sdk-go' src/h3_shim/templates/go/go.mod shows v0.1.4): src/h3_shim/templates/go/go.mod line 4 reads 'require github.com/get-h3/sdk-go v0.1.4'. Confirmed via `git show HEAD:src/h3_shim/templates/go/go.mod` and commit 141f1409 diff showing v0.1.1 -> v0.1.4.\nThe scaffold Go template go.mod correctly pins github.com/get-h3/sdk-go to v0.1.4.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "src/h3_shim/templates/go/go.mod requires github.com/get-h3/sdk-go v0.1.4 (grep 'require github.com/get-h3/sdk-go' src/h3_shim/templates/go/go.mod shows v0.1.4)",
+                "status": "PASS",
+                "detail": "src/h3_shim/templates/go/go.mod line 4 reads 'require github.com/get-h3/sdk-go v0.1.4'. Confirmed via `git show HEAD:src/h3_shim/templates/go/go.mod` and commit 141f1409 diff showing v0.1.1 -> v0.1.4."
+              }
+            ],
+            "summary": "The scaffold Go template go.mod correctly pins github.com/get-h3/sdk-go to v0.1.4."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-064\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 src/h3_shim/templates/go/go.mod requires github.com/get-h3/sdk-go v0.1.4 (grep 'require github.com/get-h3/sdk-go' src/h3_shim/templates/go/go.mod shows v0.1.4): src/h3_shim/templates/go/go.mod line 4 reads 'require github.com/get-h3/sdk-go v0.1.4'. Confirmed via `git show HEAD:src/h3_shim/templates/go/go.mod` and commit 141f1409 diff showing v0.1.1 -> v0.1.4.\nThe scaffold Go template go.mod correctly pins github.com/get-h3/sdk-go to v0.1.4.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-08-24T22:21:59.398182"
+}
