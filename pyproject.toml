@@ -32,12 +32,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
-    "pytest-asyncio>=0.23",
-    "ruff>=0.1",
-    "datamodel-code-generator>=0.25",
     "build>=1.0",
+    "datamodel-code-generator>=0.69.0",
     "jsonschema>=4.20",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-mock>=3.15.1",
+    "ruff>=0.1",
 ]
 
 [project.scripts]
@@ -61,7 +62,6 @@ testpaths = ["tests"]
 dev = [
     "build>=1.0",
     "datamodel-code-generator>=0.69.0",
-    "httpx2>=2.7.0",
     "jsonschema>=4.20",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
