@@ -15,12 +15,12 @@
 #
 # External mode (H3_ENDPOINT set): run the battery against an already-running
 # endpoint (e.g. a registered harness) without scaffolding — the classic
-# `h3-test --endpoint` flow, with the same exit-0 + 44/44 assertions.
+# `h3-test --endpoint` flow, with the same exit-0 + 45/45 assertions.
 #
 # FAILS the build (exit 1) when:
 #   * h3-test exits non-zero — 1 = real compliance failure, 2 = unreachable /
 #     not-an-H3-endpoint. Never swallowed, never silently green.
-#   * The output does not assert TOTAL 44/44 PASSED.
+#   * The output does not assert TOTAL 45/45 PASSED.
 #   * The harness never becomes healthy (curl /v1/health).
 
 set -euo pipefail
@@ -157,8 +157,8 @@ else
     ENDPOINT="http://127.0.0.1:$PORT"
 fi
 
-# ── Run THE GATE: battery must exit 0 AND print TOTAL 44/44 PASSED ───────────
-echo "── 4. Running 44-test battery (h3-test --endpoint $ENDPOINT)"
+# ── Run THE GATE: battery must exit 0 AND print TOTAL 45/45 PASSED ───────────
+echo "── 4. Running 45-test battery (h3-test --endpoint $ENDPOINT)"
 set +e
 "$H3_TEST" --endpoint "$ENDPOINT" > "$WORK_DIR/battery.log" 2>&1
 BATTERY_CODE=$?
@@ -172,10 +172,10 @@ else
     pass "h3-test exit code 0"
 fi
 
-if grep -q "TOTAL.*44/44.*PASSED" "$WORK_DIR/battery.log"; then
-    pass "battery asserts TOTAL 44/44 PASSED"
+if grep -q "TOTAL.*45/45.*PASSED" "$WORK_DIR/battery.log"; then
+    pass "battery asserts TOTAL 45/45 PASSED"
 else
-    fail "battery output missing 'TOTAL 44/44 PASSED' — gate FAILS the build"
+    fail "battery output missing 'TOTAL 45/45 PASSED' — gate FAILS the build"
 fi
 
 # ── Summary ──────────────────────────────────────────────────────────────────
@@ -189,6 +189,6 @@ if [ "$FAILED" -gt 0 ]; then
     echo "❌ COMPLIANCE GATE FAILED"
     exit 1
 else
-    echo "✅ COMPLIANCE GATE PASSED — 44/44, exit 0"
+    echo "✅ COMPLIANCE GATE PASSED — 45/45, exit 0"
     exit 0
 fi

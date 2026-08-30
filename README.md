@@ -16,7 +16,7 @@ pip install git+https://github.com/get-h3/shim
 
 This installs two CLI entry points:
 
-- `h3-test` — the 44-test H3 compliance battery (`h3-test --endpoint <url>`)
+- `h3-test` — the 45-test H3 compliance battery (`h3-test --endpoint <url>`)
 - `hermes-h3` — harness management (`install`, `list`, `test`, `verify`, `scaffold`, ...)
 
 ## Quickstart
@@ -60,7 +60,7 @@ See `docs/integration.md` for the full troubleshooting matrix.
 - `loader.py` — Harness discovery, health check, session routing
 - `shim_loop.py` — Main H3ShimLoop
 - `native.py` — Native Hermes loop wrapper
-- `test_battery.py` — 44 compliance tests (THE GATE)
+- `test_battery.py` — 45 compliance tests (THE GATE)
 - `cli.py` — the `hermes-h3` CLI (9 subcommands: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin in this repo exposes them as `hermes h3 <cmd>`
 
 ## Development

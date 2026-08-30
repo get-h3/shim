@@ -100,7 +100,7 @@ CATEGORIES: dict[str, str] = {
 }
 
 # Total expected count — kept here so we can sanity-check at runtime.
-EXPECTED_TEST_COUNT = 44
+EXPECTED_TEST_COUNT = 45
 
 
 class H3TestBattery:
@@ -1305,6 +1305,7 @@ class H3TestBattery:
             await self.test_5_9_cancel_mid_processing(),
             await self.test_5_9b_cancel_unknown_session(),
             await self.test_5_10_session_not_found(),
+            await self.test_5_11_session_status_completed(),
         ]
 
     async def test_5_1_malformed_json(self) -> TestResult:
@@ -1563,6 +1564,88 @@ class H3TestBattery:
             if 400 <= resp.status_code < 500:
                 return done(True, f"{resp.status_code}")
             return done(False, f"Expected 404, got {resp.status_code}")
+        except Exception as exc:  # noqa: BLE001
+            return done(False, f"Exception: {exc}")
+
+    async def test_5_11_session_status_completed(self) -> TestResult:
+        """A finished session reports status ``completed`` (not ``active``).
+
+        Drives a full process → result(END) loop on a fresh session, then
+        GETs the session. Harnesses that track session status must report
+        ``completed`` once the loop has ended — a wheel that hardcodes
+        ``active`` (stale h3-harness-sdk 0.1.3, GAP-043) fails here.
+        Harnesses that do not expose session state (405/404) or do not
+        emit a ``status`` field pass: emission is only asserted when the
+        harness reports one.
+        """
+        cat = CATEGORIES["errors"]
+        done = self._timed("session_status_completed", cat)
+        sid = self._sid("status")
+        try:
+            body = {
+                "session_id": sid,
+                "message": {"role": "user", "content": "finish the session"},
+                "identity": {"platform": "test", "chat_id": "test-chat"},
+                "context": self._blank_context(),
+            }
+            resp, err = await self._safe_call(
+                self.client.post("/v1/process", json=body)
+            )
+            if err is not None or resp is None:
+                return done(False, f"Process exception: {err}")
+            if resp.status_code != 200:
+                return done(False, f"Process status {resp.status_code}")
+            data = resp.json()
+            if data.get("decision") != "end":
+                did = data.get("decision_id")
+                if not did:
+                    return done(
+                        False,
+                        "No decision_id after process; cannot close the loop",
+                    )
+                result_body = {
+                    "session_id": sid,
+                    "decision_id": did,
+                    "result": {
+                        "type": "text_sent",
+                        "data": {"finished": True},
+                        "success": True,
+                    },
+                }
+                resp2, err2 = await self._safe_call(
+                    self.client.post("/v1/result", json=result_body)
+                )
+                if err2 is not None or resp2 is None:
+                    return done(False, f"Result exception: {err2}")
+                if resp2.status_code != 200:
+                    return done(False, f"Result status {resp2.status_code}")
+            sresp, serr = await self._safe_call(self.client.get(f"/v1/sessions/{sid}"))
+            if serr is not None or sresp is None:
+                return done(False, f"Session GET exception: {serr}")
+            if sresp.status_code == 405:
+                return done(True, "405 (endpoint absent — no session state)")
+            if sresp.status_code == 404:
+                return done(True, "404 (harness keeps no session state)")
+            if sresp.status_code != 200:
+                return done(False, f"Session GET status {sresp.status_code}")
+            try:
+                sdata = sresp.json()
+            except Exception as exc:  # noqa: BLE001
+                return done(False, f"Session GET non-JSON body: {exc}")
+            if not isinstance(sdata, dict):
+                return done(
+                    False,
+                    f"Session GET body not an object: {type(sdata).__name__}",
+                )
+            if "status" not in sdata:
+                return done(True, "no status field (harness does not track status)")
+            status = sdata.get("status")
+            if status == "completed":
+                return done(True, f"status={status!r}")
+            return done(
+                False,
+                f"status={status!r} — expected 'completed' after END",
+            )
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 

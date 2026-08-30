@@ -17,7 +17,7 @@ test:
 	$(PYTHON) -m pytest -x --tb=short -q
 	bash scripts/test_battery.sh
 
-# GAP-043 — THE GATE: 44-test compliance battery against a live scaffolded
+# GAP-043 — THE GATE: 45-test compliance battery against a live scaffolded
 # harness (self-contained: scaffolds from the shim's own py template, no
 # external sdk-go checkout). Fails the build on exit 1 (compliance) or 2
 # (unreachable/not-H3) — never silently green.

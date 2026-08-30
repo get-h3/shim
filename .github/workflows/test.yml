@@ -36,7 +36,7 @@ jobs:
       # scaffolded harness. Self-contained: the harness is scaffolded from
       # this repo's own py template — no external get-h3/sdk-go checkout.
       # Fails the build on h3-test exit 1 (compliance) or 2 (unreachable).
-      - name: Compliance gate (44-test battery)
+      - name: Compliance gate (45-test battery)
         run: bash scripts/test_battery.sh
 
   compliance:
@@ -57,9 +57,9 @@ jobs:
 
       # GAP-043 — the compliance gate is fully self-contained (no sdk-go
       # checkout): scripts/test_battery.sh scaffolds a fresh Python harness
-      # from the shim's own templates, starts it, runs the 44-test battery,
-      # and asserts TOTAL 44/44 PASSED + exit 0.
-      - name: Run compliance gate (44-test battery)
+      # from the shim's own templates, starts it, runs the 45-test battery,
+      # and asserts TOTAL 45/45 PASSED + exit 0.
+      - name: Run compliance gate (45-test battery)
         run: bash scripts/test_battery.sh
 
   scaffold-compliance:
