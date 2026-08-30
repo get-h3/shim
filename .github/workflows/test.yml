@@ -62,8 +62,19 @@ jobs:
       - name: Run compliance gate (45-test battery)
         run: bash scripts/test_battery.sh
 
+  # GAP-045 — matrix scaffold-compliance gate: each --lang (go|py|ts) is
+  # scaffolded from THIS repo's own templates, built, started, and verified
+  # with h3-test. Exit 0 AND battery output asserting 'TOTAL 45/45 PASSED'
+  # are both required per leg. h3-test exit 1 (compliance failure) or
+  # exit 2 (unreachable/not-H3) fails the leg — never masked ('|| true' or
+  # set +e). Each matrix leg runs on its own runner, so :9191 cannot
+  # collide across legs. fail-fast:false keeps per-leg signal.
   scaffold-compliance:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lang: [go, py, ts]
     steps:
       - uses: actions/checkout@v4
 
@@ -73,9 +84,16 @@ jobs:
           python-version: '3.11'
 
       - name: Set up Go
+        if: matrix.lang == 'go'
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+
+      - name: Set up Node
+        if: matrix.lang == 'ts'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: Install shim
         run: |
@@ -83,27 +101,64 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -e '.[dev]'
 
-      - name: Scaffold fresh Go harness
-        run: .venv/bin/hermes-h3 scaffold --lang go --output-dir scaffold-check
+      - name: Scaffold fresh ${{ matrix.lang }} harness
+        run: .venv/bin/hermes-h3 scaffold --lang ${{ matrix.lang }} --output-dir scaffold-check
 
-      - name: Build scaffolded harness
+      - name: Build scaffolded harness (go)
+        if: matrix.lang == 'go'
         run: |
           cd scaffold-check/h3-harness-go
           go mod tidy
           go build .
 
-      - name: Start scaffolded harness
+      - name: Build scaffolded harness (py)
+        if: matrix.lang == 'py'
+        run: |
+          cd scaffold-check/h3-harness-py
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt
+
+      - name: Build scaffolded harness (ts)
+        if: matrix.lang == 'ts'
+        run: |
+          cd scaffold-check/h3-harness-ts
+          npm install
+          npm run build
+
+      - name: Start scaffolded harness (go)
+        if: matrix.lang == 'go'
         run: |
           nohup ./scaffold-check/h3-harness-go/h3-harness-go > /tmp/h3-harness-go.log 2>&1 &
           echo $! > /tmp/h3-harness-go.pid
 
-      - name: Wait for harness
-        run: sleep 2 && curl --retry 5 --retry-delay 1 --fail http://localhost:9191/v1/health
+      - name: Start scaffolded harness (py)
+        if: matrix.lang == 'py'
+        run: |
+          cd scaffold-check/h3-harness-py
+          nohup .venv/bin/python main.py > /tmp/h3-harness-py.log 2>&1 &
+          echo $! > /tmp/h3-harness-py.pid
 
+      - name: Start scaffolded harness (ts)
+        if: matrix.lang == 'ts'
+        run: |
+          cd scaffold-check/h3-harness-ts
+          nohup node dist/index.js > /tmp/h3-harness-ts.log 2>&1 &
+          echo $! > /tmp/h3-harness-ts.pid
+
+      - name: Wait for harness
+        run: sleep 2 && curl --retry 10 --retry-delay 1 --retry-connrefused --fail -o /dev/null http://localhost:9191/v1/health
+
+      # The gate: h3-test must exit 0 (battery passed) AND the battery output
+      # must assert 'TOTAL 45/45 PASSED'. GitHub Actions' default Linux shell
+      # is 'bash -e -o pipefail', so h3-test exit 1 (compliance) or 2
+      # (unreachable) propagates through the tee pipeline and fails the leg.
+      # No '|| true', no set +e — the exit-code contract is never masked.
       - name: Run scaffold compliance gate
-        run: .venv/bin/h3-test --endpoint http://localhost:9191
+        run: |
+          .venv/bin/h3-test --endpoint http://localhost:9191 | tee /tmp/h3-battery.log
+          grep -q "TOTAL.*45/45.*PASSED" /tmp/h3-battery.log
 
       - name: Kill scaffolded harness
         if: always()
         run: |
-          kill $(cat /tmp/h3-harness-go.pid) 2>/dev/null || true
+          kill $(cat /tmp/h3-harness-${{ matrix.lang }}.pid) 2>/dev/null || true
