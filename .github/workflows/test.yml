@@ -29,42 +29,25 @@ jobs:
       - name: Build check
         run: .venv/bin/python -c "import h3_shim"
 
-      - name: Test
+      - name: Unit tests
         run: .venv/bin/python -m pytest -x --tb=short -q
+
+      # GAP-043 — THE GATE: 44-test compliance battery against a live
+      # scaffolded harness. Self-contained: the harness is scaffolded from
+      # this repo's own py template — no external get-h3/sdk-go checkout.
+      # Fails the build on h3-test exit 1 (compliance) or 2 (unreachable).
+      - name: Compliance gate (44-test battery)
+        run: bash scripts/test_battery.sh
 
   compliance:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout sdk-go
-        uses: actions/checkout@v4
-        with:
-          repository: get-h3/sdk-go
-          path: sdk-go
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Build Go echo harness
-        run: |
-          cd sdk-go/examples/echo
-          go build -o echo-server .
-
-      - name: Start echo server
-        run: |
-          nohup ./sdk-go/examples/echo/echo-server > /tmp/echo-server.log 2>&1 &
-          echo $! > /tmp/echo-server.pid
-
-      - name: Wait for server
-        run: sleep 2 && curl --retry 5 --retry-delay 1 http://localhost:9191/health
 
       - name: Install shim
         run: |
@@ -72,13 +55,12 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -e '.[dev]'
 
-      - name: Run compliance tests
-        run: .venv/bin/h3-test --endpoint http://localhost:9191
-
-      - name: Kill echo server
-        if: always()
-        run: |
-          kill $(cat /tmp/echo-server.pid) 2>/dev/null || true
+      # GAP-043 — the compliance gate is fully self-contained (no sdk-go
+      # checkout): scripts/test_battery.sh scaffolds a fresh Python harness
+      # from the shim's own templates, starts it, runs the 44-test battery,
+      # and asserts TOTAL 44/44 PASSED + exit 0.
+      - name: Run compliance gate (44-test battery)
+        run: bash scripts/test_battery.sh
 
   scaffold-compliance:
     runs-on: ubuntu-latest

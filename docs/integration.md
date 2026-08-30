@@ -240,6 +240,36 @@ The battery is 44 tests across 6 categories (health, process, decisions,
 results, errors, stress).  See [Exit codes](#exit-codes) below for the
 meaning of each h3-test exit code.
 
+### 4.4 The compliance gate (GAP-043) — wired into `make test` and CI
+
+Since GAP-043 the 44-test battery is THE GATE: it runs against a live
+scaffolded harness on every `make test` and every CI push, and a protocol
+regression fails the build (h3-test exit 1) — no silent green.
+
+```bash
+make test          # pytest unit suite (317 tests) + the compliance gate
+make test-battery  # the gate alone
+bash scripts/test_battery.sh   # what the gate actually runs
+```
+
+The gate is fully self-contained — **no external checkout (get-h3/sdk-go)
+is required**:
+
+1. `hermes-h3 scaffold --lang py` generates a fresh harness from this
+   repo's own template (`src/h3_shim/templates/py/`) into a `mktemp` dir.
+2. The harness's own `requirements.txt` (fastapi/uvicorn/pydantic) is
+   installed into a throwaway venv — the project's `pyproject.toml` deps
+   are untouched.
+3. The harness starts on a free port (auto-scanned from 9191) and is
+   health-checked at `/v1/health`.
+4. `h3-test --endpoint` runs the battery; the script asserts **exit 0
+   AND `TOTAL 44/44 PASSED`**. Exit 1 (compliance) or 2 (unreachable /
+   not-H3) both fail the build.
+
+The endpoint defaults to the loader config
+(`~/.hermes/h3/config.yaml` → `default_harness` → `endpoint`, currently
+`http://localhost:9191`) and can be overridden with `H3_ENDPOINT`.
+
 ### Exit codes
 
 `h3-test` (and `hermes h3 test` / `hermes-h3 test`) uses three distinct
