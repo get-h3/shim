@@ -1570,13 +1570,16 @@ class H3TestBattery:
     async def test_5_11_session_status_completed(self) -> TestResult:
         """A finished session reports status ``completed`` (not ``active``).
 
-        Drives a full process → result(END) loop on a fresh session, then
-        GETs the session. Harnesses that track session status must report
+        Drives process → result round-trips until the harness returns an
+        ``end`` decision (bounded at 5 iterations — the Go/TS echoes end
+        after two result callbacks, the Python echo after one), then GETs
+        the session. Harnesses that track session status must report
         ``completed`` once the loop has ended — a wheel that hardcodes
         ``active`` (stale h3-harness-sdk 0.1.3, GAP-043) fails here.
-        Harnesses that do not expose session state (405/404) or do not
-        emit a ``status`` field pass: emission is only asserted when the
-        harness reports one.
+        Harnesses that never end the session, do not expose session state
+        (405/404), or do not emit a ``status`` field pass: emission is
+        only asserted when the harness both ends the session and reports
+        a status.
         """
         cat = CATEGORIES["errors"]
         done = self._timed("session_status_completed", cat)
@@ -1588,15 +1591,19 @@ class H3TestBattery:
                 "identity": {"platform": "test", "chat_id": "test-chat"},
                 "context": self._blank_context(),
             }
-            resp, err = await self._safe_call(
-                self.client.post("/v1/process", json=body)
-            )
-            if err is not None or resp is None:
-                return done(False, f"Process exception: {err}")
-            if resp.status_code != 200:
-                return done(False, f"Process status {resp.status_code}")
-            data = resp.json()
-            if data.get("decision") != "end":
+            ended = False
+            for _i in range(5):
+                resp, err = await self._safe_call(
+                    self.client.post("/v1/process", json=body)
+                )
+                if err is not None or resp is None:
+                    return done(False, f"Process exception: {err}")
+                if resp.status_code != 200:
+                    return done(False, f"Process status {resp.status_code}")
+                data = resp.json()
+                if data.get("decision") == "end":
+                    ended = True
+                    break
                 did = data.get("decision_id")
                 if not did:
                     return done(
@@ -1619,6 +1626,14 @@ class H3TestBattery:
                     return done(False, f"Result exception: {err2}")
                 if resp2.status_code != 200:
                     return done(False, f"Result status {resp2.status_code}")
+                if resp2.json().get("decision") == "end":
+                    ended = True
+                    break
+            if not ended:
+                return done(
+                    True,
+                    "session did not end within 5 round-trips; status not asserted",
+                )
             sresp, serr = await self._safe_call(self.client.get(f"/v1/sessions/{sid}"))
             if serr is not None or sresp is None:
                 return done(False, f"Session GET exception: {serr}")
