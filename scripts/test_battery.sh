@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GAP-043 — THE GATE: 44-test H3 compliance battery against a live harness,
+# GAP-043 — THE GATE: 45-test H3 compliance battery against a live harness,
 # wired into `make test` and CI (.github/workflows/test.yml).
 #
 # Self-contained by design (default mode):
