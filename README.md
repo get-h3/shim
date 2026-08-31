@@ -32,6 +32,8 @@ source .venv/bin/activate
 pip install -e . && python main.py   # listens on :9191
 
 # 2. In another terminal, run the test battery against it:
+# The new terminal does not inherit step 1's venv activation — reactivate it so h3-test is on PATH:
+source .venv/bin/activate
 h3-test --endpoint http://localhost:9191
 ```
 
