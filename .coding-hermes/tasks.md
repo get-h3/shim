@@ -1,0 +1,10 @@
+
+## Dogfood Findings (2026-09-01)
+Verdict: SHIPPABLE
+Promise: {"entry_point":"CLI binaries: `h3-test` (one-shot compliance battery against an endpoint) and `hermes-h3` (9-subcommand harness management: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); also a Python library (h3_shim.client/loader/shim_loop) and optional `hermes h3` plugin."}
+
+- [P1] Battery overstates compliance: 45/45 PASS while scaffolded harness 405s a documented protocol path — GET /v1/sessions/{id} is one of the five /v1 paths, but the py scaffold 405s it while h3-test reports 45/45 PASS and make test embeds the same gate — the compliance battery omits the session-status path, so its headline claim gives false confidence (listed in promises_broken, so it is a real gap, not a docs nit).
+- [P1] README quickstart ships no example ProcessRequest payload — First POST returns a pydantic 422 listing 4 required top-level fields; nested requirements (message.role+timestamp, identity 4-tuple, context 5-tuple) live only in get-h3/protocol/schemas, a different repo — 3+ trial-and-error attempts before first valid call despite a ~91s time-to-first-success.
+- [P2] Error contract drift: py scaffold emits 422 {"detail":[...]}, not the protocol's 400 INVALID_REQUEST envelope — Battery passes the error category either way, so the drift is invisible to the very tool meant to enforce the contract — undermines h3-test as a compliance gate for error shapes.
+- [P2] pre-update-check UX dead-ends on versions.yaml — 'no compatibility data for Hermes 0.1.0' gives no hint that the file ships at h3_shim/data/versions.yaml or that valid targets are 0.17.0+; the check's own actionable output (pip install --upgrade hint on 0.18.0) proves it can be helpful when the data exists.
+- [P2] Session routes only populate programmatically; CLI route prints 'no sessions configured' with no affordance — No CLI way to add a session route and no docs explaining sessions fill via plugin/shim_loop, so the routing story is half-invisible to CLI-only users; also no port-conflict warning even though both quickstart paths bind :9191.

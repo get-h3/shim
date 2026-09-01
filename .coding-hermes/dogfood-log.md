@@ -78,3 +78,10 @@ actually experienced, the verdict, and where the findings landed.
 - **Foreman:** woken — cooldown 21600s ≥ 14400s and real work added → PUT
   CooldownS=900 via scheduler API.
 
+
+## 2026-09-01 — h3-shim dogfood run
+
+- **Verdict:** SHIPPABLE
+- **Time-to-first-success:** ~91s
+- **Friction count:** 6
+- **Findings:** 5 (2 P1, 3 P2) — see .coding-hermes/tasks.md and DF-H3-SHIM-FOREMAN-1..5 on the board.
