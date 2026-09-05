@@ -8,7 +8,7 @@ This document is the developer-facing reference for the public surface of
 | `H3Client` | `h3_shim.client` | REST client that talks to an H3 harness (`/v1/process`, `/v1/result`, …) |
 | `H3Loader` | `h3_shim.loader` | Discovers harnesses from config, health-checks them, routes sessions |
 | `H3ShimLoop` | `h3_shim.shim_loop` | Drives a single session through the process → execute → result loop |
-| `H3TestBattery` | `h3_shim.test_battery` | 44-test compliance battery that verifies ANY harness against the H3 protocol |
+| `H3TestBattery` | `h3_shim.test_battery` | 45-test compliance battery that verifies ANY harness against the H3 protocol |
 
 All networking classes are `asyncio`-native: methods that talk to a harness
 must be awaited. Pydantic models for requests/responses live in
@@ -279,9 +279,12 @@ async def register_tool(...)  # see above
 
 `H3TestBattery(endpoint, transport="rest", config=None)`
 
-The compliance battery — 44 tests across 6 categories (health, process
+The compliance battery — 45 tests across 6 categories (health, process
 flows, decision types, result handling, error & edge cases, stress). Runs
-against ANY harness endpoint without code changes.
+against ANY harness endpoint without code changes. The 45th test
+(`test_5_11_session_status_completed`, added in GAP-045) drives a full
+process → result(END) loop and asserts a finished session reports status
+`completed` when the harness tracks session state.
 
 ### Methods
 
@@ -299,7 +302,7 @@ async def run_all(self) -> TestReport
 
 Run every category sequentially and assemble a `TestReport` (see
 `TestResult` / `TestReport` below; `report.all_passing` tells you whether
-all 44 passed).
+all 45 passed).
 
 ### Result types
 
@@ -335,7 +338,7 @@ compliant, 1 = compliance failure, 2 = not an H3 endpoint).
 ## Notes
 
 - The battery is THE gate for this package: the 3 SDK echo examples
-  (Go / Python / TypeScript) must all pass 44/44 before release.
+  (Go / Python / TypeScript) must all pass 45/45 before release.
 - Request/response types (`Message`, `Identity`, `Context`, `Decision`,
   `ExecutionResult`, `HealthResponse`, `CancelResponse`) are Pydantic models
   in `h3_shim.protocol` — see `docs/integration.md` for the CLI/plugin
