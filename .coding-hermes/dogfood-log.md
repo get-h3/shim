@@ -85,3 +85,24 @@ actually experienced, the verdict, and where the findings landed.
 - **Time-to-first-success:** ~91s
 - **Friction count:** 6
 - **Findings:** 5 (2 P1, 3 P2) — see .coding-hermes/tasks.md and DF-H3-SHIM-FOREMAN-1..5 on the board.
+
+## 2026-09-05 — h3-shim dogfood run
+
+- **Verdict:** SHIPPABLE
+- **Time-to-first-success:** ~50s cold (31s locally; 14s install + 7s
+  harness setup + 0.6s battery on a fresh bunker container)
+- **Friction count:** 4
+- **Findings:** 4 (2 P1, 2 P2) — DF2-H3-SHIM-1..4 on the board; all five
+  09-01 DF tasks re-verified live and still open.
+- **Firsts this cycle:** bunker install leg (installability proven);
+  all-six-decision-types tour through H3ShimLoop (tool_call → llm_call →
+  wait+poll → delegate → text → end, final task_complete).
+- **Artifacts:** `docs/dogfood/2026-09-05-integration.md` (new),
+  `docs/dogfood/diagnostics.md` (§9-12 appended),
+  `skills/h3-shim-usage/SKILL.md` (v1.2.0 — 45 tests, on_text/
+  llm_provider documented, asyncio loader pitfalls), `.coding-hermes/tasks.md`.
+- **Foreman:** woken (cooldown 43200s ≥ 14400s + real work added → PUT
+  CooldownS=900). The new P1s are deliberately worker-actionable
+  (docs wire-shape examples, scaffold session GC) unlike the
+  diagnosis-shaped DF-1 that produced 9 barren ticks; DF2-H3-SHIM-4
+  tracks the foreman-pathology follow-up.

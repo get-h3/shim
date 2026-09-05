@@ -162,3 +162,69 @@ dogfood run continues that loop with the first *installed-artifact* findings
 (GAP-005..008). The one structural weakness the trail exposes: the foreman's
 gates exercise the source tree, not the wheel — GAP-008 makes that
 impossible to miss again.
+
+---
+
+## 2026-09-05 cycle — decision-tour diagnostics
+
+### 9. Decision payload shapes: the three sharp edges (live-verified)
+
+The loop validates every harness Decision through `src/h3_shim/protocol.py`
+pydantic models. Building a custom harness from docs/api.md alone, three
+shapes bit within ten minutes:
+
+- `llm_call.model` is a plain **string** (`"model": "mini"`), not an
+  object — a natural guess is `{"name": ..., "provider": ...}` because
+  `context.models[]` uses that shape. Guessing object → pydantic
+  ValidationError, hop dead.
+- `wait.reason` is **required**; `wait.duration_seconds` is `int` (a
+  float like `0.2` fails validation). The poll loop treats non-2xx as
+  transient and retries `poll_interval` (1s) up to `max_polls` (30).
+- `delegate` is `{"task": ..., "context": ...}` — no `harness`/`prompt`
+  keys (those were my guess from the docs prose "delegate to a
+  sub-agent").
+
+**Why:** these models are generated from get-h3/protocol JSON Schemas
+(`schemas/v1/llm-call.json`, `wait.json`, `delegate.json`) — the truth
+lives in a *different repo* than the shim docs. **Right way:** one JSON
+example per decision type in docs/api.md (DF2-H3-SHIM-1), or a prominent
+pointer to the protocol repo's `schemas/v1/*.json` files.
+
+### 10. Error collapse: how a contract violation becomes "error"
+
+`H3ShimLoop.run()` wraps the whole session in try/except. A
+`pydantic.ValidationError` raised while parsing a harness decision is
+logged (`H3ShimLoop: error in session <id>` + traceback) and the method
+returns the end-reason string `"error"`. The caller — the person who
+just wrote the harness — sees `FINAL: error` with no field names. The
+traceback *is* in the shim process's logs, so the fix pattern today is
+"run the shim with logging at INFO and read its stderr"
+(DF2-H3-SHIM-2 asks for decision_id + first error line in the surfaced
+error or an `on_error` callback).
+
+### 11. Session leak in the scaffold: 97 phantom sessions
+
+Found a leftover dogfood harness (26h uptime) answering :9191 with
+`active_sessions: 97`. Root cause in the template
+(`src/h3_shim/templates/py/main.py`): `EchoHarness._state()`
+auto-creates session entries, and the only removal path is
+`on_session_terminate()` via `DELETE /v1/sessions/{id}` — the loop's
+natural END decision never purges. Consequences: unbounded growth on
+long-lived harnesses and a meaningless `active_sessions` health metric.
+Same-side effect: a stale harness silently owns :9191 and the next
+user's battery tests the *old* server (hit in this cycle; DF-5/DF2-3).
+
+### 12. Foreman-vs-P1 pathology (fleet meta)
+
+Board events 315-325 (09-01 → 09-05): the shim foreman picked
+DF-H3-SHIM-FOREMAN-1 nine times. Verdict trajectory: dispatched+guard
+pass → REJECTED → NO_CHANGES → worker dry-run with `verdict: null`,
+then dry-run repeats. Zero commits. Meanwhile the finding is
+hand-reproducible in minutes (405 + 45/45 PASS). Reading: the task as
+scoped ("battery overstates compliance") is a *diagnosis*, not *work* —
+the foreman has no concrete failing test to add, and its battery
+integration likely re-runs the green gate, concluding "nothing to do".
+Fix direction recorded as DF2-H3-SHIM-4: re-scope P1s into
+single-commit tasks with exact file+assertion pointers
+(e.g. "add `tests/test_scaffold.py::test_get_session_not_405`, then add
+the GET route to `templates/py/main.py`").
