@@ -1,0 +1,38 @@
+# Verdict: df-h3-shim-foreman-1
+
+**Task:** Py scaffold GET /v1/sessions/{id} + battery 5_12 (45->46)
+**Evaluated:** 2026-09-06T07:14:45.993578
+**Result:** ✓ PASS
+
+## Pipeline Stages
+
+- ✓ **tier1**
+  -   ✓ guard: Tier 1 Guards: PASS  (test mode: diff, full suite — safety trigger)
+  ✓ secrets — clean
+  ✓ lint — o
+- ✓ **tier2**
+  - COMPLETE
+  ✓ templates/py/main.py registers GET /v1/sessions/{session_id}: 200 SessionResponse (session_id, ISO-8601 started_at, last_active, turn_count, status) for a known session, 404 for unknown: src/h3_shim/templates/py/main.py: @app.get('/v1/sessions/{session_id}', response_model=SessionResponse) calls harness.get_session(); SessionResponse model (session_id, started_at, last_active, turn_count, status) defined; get_session() returns 200 for known session and raises HTTPException(404) for unknown (checks dict directly, no auto-create).
+  ✓ test_battery.py gains test_5_12_session_get_after_process: GET session right after process must not 405/404 and must return the sent session_id + parseable ISO-8601 started_at (EXPECTED_TEST_COUNT 45->46): src/h3_shim/test_battery.py: test_5_12_session_get_after_process added (~line 1669) and wired into category_5_errors; EXPECTED_TEST_COUNT changed 45->46 (line 104). Test posts /v1/process then GETs /v1/sessions/{sid}, fails on 405/404, asserts session_id echo and ISO-8601 started_at via datetime.fromisoformat.
+  ✓ 45/45 assertions updated to 46/46 in scripts/test_battery.sh, .github/workflows/test.yml, tests/test_scaffold_build.py: scripts/test_battery.sh grep 'TOTAL.*46/46.*PASSED' and '46/46, exit 0'; .github/workflows/test.yml grep 'TOTAL.*46/46.*PASSED' (line 159); tests/test_scaffold_build.py renamed to test_py_scaffold_passes_46_46_battery and asserts '46/46'. No stray 45/45 in assertion files.
+  ✓ Freshly scaffolded py harness passes the full battery: TOTAL 46/46 PASSED, h3-test exit 0: Ran `bash scripts/test_battery.sh`: output 'TOTAL 46/46 PASSED', 'PASS: h3-test exit code 0', 'COMPLIANCE GATE PASSED — 46/46, exit 0'. Also full pytest suite: 321 passed.
+All 4 criteria verified: GET /v1/sessions/{id} route + SessionResponse added, test_5_12 added with EXPECTED_TEST_COUNT 45->46, all 45/45 assertions updated to 46/46, and freshly scaffolded py harness passes TOTAL 46/46 with h3-test exit 0.
+
+## Summary
+
+Judge Result: df-h3-shim-foreman-1
+
+Stage tier1: PASS
+    ✓ guard: Tier 1 Guards: PASS  (test mode: diff, full suite — safety trigger)
+  ✓ secrets — clean
+  ✓ lint — o
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ templates/py/main.py registers GET /v1/sessions/{session_id}: 200 SessionResponse (session_id, ISO-8601 started_at, last_active, turn_count, status) for a known session, 404 for unknown: src/h3_shim/templates/py/main.py: @app.get('/v1/sessions/{session_id}', response_model=SessionResponse) calls harness.get_session(); SessionResponse model (session_id, started_at, last_active, turn_count, status) defined; get_session() returns 200 for known session and raises HTTPException(404) for unknown (checks dict directly, no auto-create).
+  ✓ test_battery.py gains test_5_12_session_get_after_process: GET session right after process must not 405/404 and must return the sent session_id + parseable ISO-8601 started_at (EXPECTED_TEST_COUNT 45->46): src/h3_shim/test_battery.py: test_5_12_session_get_after_process added (~line 1669) and wired into category_5_errors; EXPECTED_TEST_COUNT changed 45->46 (line 104). Test posts /v1/process then GETs /v1/sessions/{sid}, fails on 405/404, asserts session_id echo and ISO-8601 started_at via datetime.fromisoformat.
+  ✓ 45/45 assertions updated to 46/46 in scripts/test_battery.sh, .github/workflows/test.yml, tests/test_scaffold_build.py: scripts/test_battery.sh grep 'TOTAL.*46/46.*PASSED' and '46/46, exit 0'; .github/workflows/test.yml grep 'TOTAL.*46/46.*PASSED' (line 159); tests/test_scaffold_build.py renamed to test_py_scaffold_passes_46_46_battery and asserts '46/46'. No stray 45/45 in assertion files.
+  ✓ Freshly scaffolded py harness passes the full battery: TOTAL 46/46 PASSED, h3-test exit 0: Ran `bash scripts/test_battery.sh`: output 'TOTAL 46/46 PASSED', 'PASS: h3-test exit code 0', 'COMPLIANCE GATE PASSED — 46/46, exit 0'. Also full pytest suite: 321 passed.
+All 4 criteria verified: GET /v1/sessions/{id} route + SessionResponse added, test_5_12 added with EXPECTED_TEST_COUNT 45->46, all 45/45 assertions updated to 46/46, and freshly scaffolded py harness passes TOTAL 46/46 with h3-test exit 0.
+
+Overall: PASS ✓
