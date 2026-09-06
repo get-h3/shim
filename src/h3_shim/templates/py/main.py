@@ -66,6 +66,13 @@ class HealthStatus(str, Enum):
     DOWN = "down"
 
 
+class SessionStatus(str, Enum):
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
 class Attachment(BaseModel):
     type: str
     url: str
@@ -185,8 +192,11 @@ class SessionState:
 
     def __init__(self) -> None:
         self.created_at = datetime.utcnow()
+        self.last_active = self.created_at
         self.result_count = 0
+        self.turn_count = 0
         self.streaming_mode = False
+        self.status = SessionStatus.ACTIVE.value
 
 
 class EchoHarness:
@@ -230,6 +240,8 @@ class EchoHarness:
     def on_process(self, req: ProcessRequest) -> Decision:
         st = self._state(req.session_id)
         st.streaming_mode = "do not finish" in req.message.content
+        st.turn_count += 1
+        st.last_active = datetime.utcnow()
 
         content = f"Echo: {req.message.content}"
         history = [
@@ -246,8 +258,10 @@ class EchoHarness:
     def on_result(self, req: ResultRequest) -> Decision:
         st = self._state(req.session_id)
         st.result_count += 1
+        st.last_active = datetime.utcnow()
 
         if not st.streaming_mode and st.result_count >= 2:
+            st.status = SessionStatus.COMPLETED.value
             return Decision(
                 decision=DecisionType.END,
                 decision_id="echo-end",
@@ -278,6 +292,22 @@ class EchoHarness:
     def on_session_terminate(self, session_id: str) -> None:
         with self._lock:
             self._sessions.pop(session_id, None)
+
+    def get_session(self, session_id: str) -> SessionResponse:
+        # Protocol GET /v1/sessions/{session_id}: metadata for an active or
+        # completed session. Check the dict directly — _state() would
+        # auto-create the session (mirrors on_cancel's 404 handling).
+        with self._lock:
+            st = self._sessions.get(session_id)
+            if st is None:
+                raise HTTPException(status_code=404, detail="Session not found")
+            return SessionResponse(
+                session_id=session_id,
+                started_at=st.created_at.isoformat(),
+                last_active=st.last_active.isoformat(),
+                turn_count=st.turn_count,
+                status=st.status,
+            )
 
 
 # ── FastAPI Wiring ───────────────────────────────────────────────────────────
@@ -312,6 +342,16 @@ class SessionTerminated(BaseModel):
     session_id: str
 
 
+class SessionResponse(BaseModel):
+    session_id: str
+    started_at: str
+    last_active: str
+    turn_count: int = 0
+    status: str = SessionStatus.ACTIVE.value
+    current_decision: str | None = None
+    current_decision_type: str | None = None
+
+
 @app.post("/v1/cancel", response_model=CancelResponse)
 def cancel(req: CancelRequest) -> CancelResponse:
     return harness.on_cancel(req)
@@ -321,6 +361,11 @@ def cancel(req: CancelRequest) -> CancelResponse:
 def delete_session(session_id: str) -> SessionTerminated:
     harness.on_session_terminate(session_id)
     return SessionTerminated(terminated=True, session_id=session_id)
+
+
+@app.get("/v1/sessions/{session_id}", response_model=SessionResponse)
+def get_session(session_id: str) -> SessionResponse:
+    return harness.get_session(session_id)
 
 
 if __name__ == "__main__":

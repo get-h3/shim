@@ -28,6 +28,7 @@ import logging
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -100,7 +101,7 @@ CATEGORIES: dict[str, str] = {
 }
 
 # Total expected count — kept here so we can sanity-check at runtime.
-EXPECTED_TEST_COUNT = 45
+EXPECTED_TEST_COUNT = 46
 
 
 class H3TestBattery:
@@ -1289,7 +1290,7 @@ class H3TestBattery:
             return done(False, f"Exception: {exc}")
 
     # ════════════════════════════════════════════════════════════════════
-    # Category 5 — Error & Edge Cases (10 tests)
+    # Category 5 — Error & Edge Cases (13 tests)
     # ════════════════════════════════════════════════════════════════════
 
     async def category_5_errors(self) -> list[TestResult]:
@@ -1306,6 +1307,7 @@ class H3TestBattery:
             await self.test_5_9b_cancel_unknown_session(),
             await self.test_5_10_session_not_found(),
             await self.test_5_11_session_status_completed(),
+            await self.test_5_12_session_get_after_process(),
         ]
 
     async def test_5_1_malformed_json(self) -> TestResult:
@@ -1661,6 +1663,72 @@ class H3TestBattery:
                 False,
                 f"status={status!r} — expected 'completed' after END",
             )
+        except Exception as exc:  # noqa: BLE001
+            return done(False, f"Exception: {exc}")
+
+    async def test_5_12_session_get_after_process(self) -> TestResult:
+        """GET /v1/sessions/{id} is a documented protocol path and must exist.
+
+        Regression for DF-H3-SHIM-FOREMAN-1: the battery blessed a scaffolded
+        harness whose GET /v1/sessions/{session_id} 405'd — test_5_10 accepts
+        405 as "endpoint absent — close enough", so a harness missing a
+        documented path still scored 45/45. A session that just accepted a
+        process call must be retrievable: 200, the sent session_id echoed, and
+        an ISO-8601 ``started_at``. Harnesses without the route (405) or that
+        forget the session (404) fail here.
+        """
+        cat = CATEGORIES["errors"]
+        done = self._timed("session_get_after_process", cat)
+        sid = self._sid("get_after_process")
+        try:
+            body = {
+                "session_id": sid,
+                "message": {"role": "user", "content": "hello session get"},
+                "identity": {"platform": "test", "chat_id": "test-chat"},
+                "context": self._blank_context(),
+            }
+            resp, err = await self._safe_call(
+                self.client.post("/v1/process", json=body)
+            )
+            if err is not None or resp is None:
+                return done(False, f"Process exception: {err}")
+            if resp.status_code != 200:
+                return done(False, f"Process status {resp.status_code}")
+            sresp, serr = await self._safe_call(self.client.get(f"/v1/sessions/{sid}"))
+            if serr is not None or sresp is None:
+                return done(False, f"Session GET exception: {serr}")
+            if sresp.status_code == 405:
+                return done(
+                    False,
+                    "405 — GET /v1/sessions/{id} is a documented protocol path "
+                    "but the harness does not implement it",
+                )
+            if sresp.status_code == 404:
+                return done(False, "404 — session not found right after a process call")
+            if sresp.status_code != 200:
+                return done(False, f"Session GET status {sresp.status_code}")
+            try:
+                sdata = sresp.json()
+            except Exception as exc:  # noqa: BLE001
+                return done(False, f"Session GET non-JSON body: {exc}")
+            if not isinstance(sdata, dict):
+                return done(
+                    False,
+                    f"Session GET body not an object: {type(sdata).__name__}",
+                )
+            if sdata.get("session_id") != sid:
+                return done(
+                    False,
+                    f"session_id {sdata.get('session_id')!r} != sent {sid!r}",
+                )
+            started = sdata.get("started_at")
+            if not isinstance(started, str) or not started:
+                return done(False, "missing started_at (ISO-8601 required)")
+            try:
+                datetime.fromisoformat(started.replace("Z", "+00:00"))
+            except ValueError:
+                return done(False, f"started_at not ISO-8601: {started!r}")
+            return done(True, f"GET session 200: session_id + started_at={started}")
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 

@@ -7,8 +7,8 @@ real toolchain the way CI does:
 * go — ``go mod tidy && go build .`` must produce the harness binary.
 * ts  — ``npm install && npm run build`` must produce ``dist/index.js``.
 * py  — a fresh venv must ``pip install -r requirements.txt`` cleanly,
-  and the harness must pass the full 45-test battery via ``h3-test``
-  (exit 0 AND ``TOTAL 45/45 PASSED`` asserted — the exit-code contract
+  and the harness must pass the full 46-test battery via ``h3-test``
+  (exit 0 AND ``TOTAL 46/46 PASSED`` asserted — the exit-code contract
   is checked explicitly, never masked).
 
 Toolchain-dependent tests skip when the toolchain is absent: CI's
@@ -176,16 +176,16 @@ class TestPyScaffoldBuild:
 
 
 class TestPyScaffoldBattery:
-    """The scaffolded py harness must pass the full 45-test battery.
+    """The scaffolded py harness must pass the full 46-test battery.
 
     This is the in-suite twin of the CI ``scaffold-compliance`` py leg and
     of ``scripts/test_battery.sh``: h3-test must exit 0 AND the output must
-    assert ``TOTAL 45/45 PASSED``. A non-zero exit (1 = compliance failure,
-    2 = unreachable) or a missing 45/45 assertion fails the test — the
+    assert ``TOTAL 46/46 PASSED``. A non-zero exit (1 = compliance failure,
+    2 = unreachable) or a missing 46/46 assertion fails the test — the
     exit-code contract is never masked.
     """
 
-    def test_py_scaffold_passes_45_45_battery(self, tmp_path: Path) -> None:
+    def test_py_scaffold_passes_46_46_battery(self, tmp_path: Path) -> None:
         proj = _scaffold("py", tmp_path)
         port = _free_port()
 
@@ -234,8 +234,8 @@ class TestPyScaffoldBattery:
                 f"h3-test exited {battery.returncode} "
                 f"(1=compliance failure, 2=unreachable) — battery:\n{battery.stdout}"
             )
-            assert "TOTAL" in battery.stdout and "45/45" in battery.stdout, (
-                f"battery output missing 45/45 assertion:\n{battery.stdout}"
+            assert "TOTAL" in battery.stdout and "46/46" in battery.stdout, (
+                f"battery output missing 46/46 assertion:\n{battery.stdout}"
             )
             assert "PASSED" in battery.stdout, (
                 f"battery did not PASS:\n{battery.stdout}"

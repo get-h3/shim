@@ -32,11 +32,11 @@ jobs:
       - name: Unit tests
         run: .venv/bin/python -m pytest -x --tb=short -q
 
-      # GAP-043 — THE GATE: 44-test compliance battery against a live
+      # GAP-043 — THE GATE: 46-test compliance battery against a live
       # scaffolded harness. Self-contained: the harness is scaffolded from
       # this repo's own py template — no external get-h3/sdk-go checkout.
       # Fails the build on h3-test exit 1 (compliance) or 2 (unreachable).
-      - name: Compliance gate (45-test battery)
+      - name: Compliance gate (46-test battery)
         run: bash scripts/test_battery.sh
 
   compliance:
@@ -57,14 +57,14 @@ jobs:
 
       # GAP-043 — the compliance gate is fully self-contained (no sdk-go
       # checkout): scripts/test_battery.sh scaffolds a fresh Python harness
-      # from the shim's own templates, starts it, runs the 45-test battery,
-      # and asserts TOTAL 45/45 PASSED + exit 0.
-      - name: Run compliance gate (45-test battery)
+      # from the shim's own templates, starts it, runs the 46-test battery,
+      # and asserts TOTAL 46/46 PASSED + exit 0.
+      - name: Run compliance gate (46-test battery)
         run: bash scripts/test_battery.sh
 
   # GAP-045 — matrix scaffold-compliance gate: each --lang (go|py|ts) is
   # scaffolded from THIS repo's own templates, built, started, and verified
-  # with h3-test. Exit 0 AND battery output asserting 'TOTAL 45/45 PASSED'
+  # with h3-test. Exit 0 AND battery output asserting 'TOTAL 46/46 PASSED'
   # are both required per leg. h3-test exit 1 (compliance failure) or
   # exit 2 (unreachable/not-H3) fails the leg — never masked ('|| true' or
   # set +e). Each matrix leg runs on its own runner, so :9191 cannot
@@ -149,14 +149,14 @@ jobs:
         run: sleep 2 && curl --retry 10 --retry-delay 1 --retry-connrefused --fail -o /dev/null http://localhost:9191/v1/health
 
       # The gate: h3-test must exit 0 (battery passed) AND the battery output
-      # must assert 'TOTAL 45/45 PASSED'. GitHub Actions' default Linux shell
+      # must assert 'TOTAL 46/46 PASSED'. GitHub Actions' default Linux shell
       # is 'bash -e -o pipefail', so h3-test exit 1 (compliance) or 2
       # (unreachable) propagates through the tee pipeline and fails the leg.
       # No '|| true', no set +e — the exit-code contract is never masked.
       - name: Run scaffold compliance gate
         run: |
           .venv/bin/h3-test --endpoint http://localhost:9191 | tee /tmp/h3-battery.log
-          grep -q "TOTAL.*45/45.*PASSED" /tmp/h3-battery.log
+          grep -q "TOTAL.*46/46.*PASSED" /tmp/h3-battery.log
 
       - name: Kill scaffolded harness
         if: always()
