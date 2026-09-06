@@ -106,3 +106,29 @@ actually experienced, the verdict, and where the findings landed.
   (docs wire-shape examples, scaffold session GC) unlike the
   diagnosis-shaped DF-1 that produced 9 barren ticks; DF2-H3-SHIM-4
   tracks the foreman-pathology follow-up.
+
+## 2026-09-06 — h3-shim dogfood run
+
+- **Verdict:** SHIPPABLE
+- **Time-to-first-success:** ~20s for scaffold+battery path (12s install +
+  5s harness + 0.64s battery on fresh bunker container); deep embedding
+  integration (all six decision types through H3ShimLoop with real hooks)
+  ~25 min including 5 consumer-side traps, 3 of which are library/docs
+  findings rather than user error.
+- **Friction count:** 5 (P1 datetime serialization crash; P2 worker-dispatch
+  barren ticks; P2 test-count drift 44/45/46 across docs; P3 constructor
+  shape docs; open DF2-H3-SHIM-2 opaque error collapse).
+- **Findings:** 4 new (DF3-H3-SHIM-1..4) on the board.
+- **Firsts this cycle:** both 09-05 P1s verified FIXED by the foreman
+  (4232ed3 docs wire-shapes, 5762d6f scaffold GET + test_5_12) — first
+  cycle where the board loop closed its own dogfood findings; deep
+  embedding-host integration with every hook wired; battery run against a
+  minimal docs-only harness (41/46, all 5 failures legitimate behavioral
+  contract demands with self-explanatory details).
+- **Artifacts:** `docs/dogfood/2026-09-06-integration.md` (new),
+  `docs/dogfood/diagnostics.md` (§13 appended),
+  `skills/h3-shim-usage/SKILL.md` (v1.3.0 — 46 tests, timestamp trap,
+  constructor shapes, loader default_harness), `.coding-hermes/tasks.md`.
+- **Foreman:** NOT woken — live scheduler API shows cooldown_s=900
+  (briefing's 259200s was stale) and ticks flowing (latest completed 09-06
+  04:28, outcome=committed). Enabled, healthy, already fast.

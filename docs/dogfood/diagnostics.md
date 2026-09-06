@@ -228,3 +228,41 @@ Fix direction recorded as DF2-H3-SHIM-4: re-scope P1s into
 single-commit tasks with exact file+assertion pointers
 (e.g. "add `tests/test_scaffold.py::test_get_session_not_405`, then add
 the GET route to `templates/py/main.py`").
+
+### 13. 2026-09-06 cycle — the loop closed itself, then showed its remaining seam
+
+**Foreman-direct works now.** After DF2-H3-SHIM-4 diagnosed the barren-tick
+pathology, both 09-05 P1s closed with real commits the same weekend:
+DF2-H3-SHIM-1 (docs wire-shape reference, 4232ed3, tick #371) and
+DF-H3-SHIM-FOREMAN-1 (scaffold GET /v1/sessions + battery test 5_12,
+5762d6f, tick #373, judge PASS). This cycle verified both by real use —
+a docs-only custom harness parsed every decision shape first try, and
+the new 46th test exists because the old scaffold really did 405.
+
+**The datetime serialization trap (why `mode="json"` matters).**
+`Message.timestamp` is `datetime | None`. Pydantic coerces the ISO string
+on construction; `H3Client` then does `json=req.model_dump()` (client.py
+111/141), leaving a live `datetime` object for httpx's json.dumps →
+`TypeError: Object of type datetime is not JSON serializable`. The loop's
+broad exception handling converts that into the end-reason string
+`"error"`, so the consumer sees nothing actionable. Lesson: any
+`BaseModel` crossing an HTTP boundary needs `model_dump(mode="json")`, and
+a loop that swallows exceptions must surface *something* (DF3-H3-SHIM-1,
+building on DF2-H3-SHIM-2). The battery cannot catch this class: the shim
+side never sends timestamps, so the round-trip only breaks from the
+embedding-host direction — another L3 (works-for-a-user) gap that green
+tests don't cover.
+
+**Foreman-direct vs worker-dispatch asymmetry.** Same foreman, same day:
+foreman-direct tasks closed with judged commits while DF-2 took three
+worker-dispatch ticks (events 349/354/355), all `worker=dry-run
+guard=not_run verdict=null commit=none`. The DF2-H3-SHIM-4 lesson
+generalizes: when a foreman has a working direct lane, the fastest fix for
+a stuck task is re-scoping it INTO the working lane, not repairing the
+broken one first (the repair is DF3-H3-SHIM-2's second option).
+
+**Fresh-install regression watch.** Bunker run (agent 39a24489, 12s
+install + 5s harness + 46/46) re-confirmed the scaffold session leak:
+`active_sessions: 98` after a single battery pass on a brand-new harness
+(DF2-H3-SHIM-3 still open). Installability itself remains clean — no
+sudo, no compose, no toolchain surprises on bare Debian.
