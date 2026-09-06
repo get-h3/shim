@@ -79,14 +79,110 @@ The harness answers a process (or result) request with a `Decision`:
 }
 ```
 
-Other decision kinds use the identical shape:
-`{"decision": "tool_call", "tool_call": {...}}`,
-`{"decision": "llm_call", "llm_call": {...}}`,
-`{"decision": "wait", "wait": {...}}`,
-`{"decision": "delegate", "delegate": {...}}`.
-The shim loop executes each decision locally and POSTs the result back;
-the harness replies with the next `Decision`, until it sends
-`"decision": "end"`.
+Other decision kinds use the identical envelope —
+`{"decision": "tool_call", "tool_call": {...}}` and so on;
+see [Decision wire shapes](#decision-wire-shapes-per-decision-type) below
+for each type's required fields. The shim loop executes each decision
+locally and POSTs the result back; the harness replies with the next
+`Decision`, until it sends `"decision": "end"`.
+
+### Decision wire shapes (per decision type)
+
+Every `Decision` envelope carries exactly two required top-level fields —
+`decision` (one of `tool_call`, `llm_call`, `text`, `wait`, `delegate`,
+`end`) and `decision_id` (a string) — plus one sub-payload, which nests
+under the same key as the `decision` value. A missing or mistyped required
+field makes Pydantic reject the payload (422); the shapes below are the
+contract harness authors should code against.
+
+**`text`** — emit a message to the user.
+
+```json
+{
+  "decision": "text",
+  "decision_id": "d_0042",
+  "text": {"content": "On it — checking flights now.", "finished": false}
+}
+```
+
+Required: `text.content`. Optional: `text.finished` (boolean, default
+`false`).
+
+**`end`** — terminate the session loop.
+
+```json
+{
+  "decision": "end",
+  "decision_id": "d_0043",
+  "end": {"reason": "task_complete", "summary": "Flight AV-0142 booked."}
+}
+```
+
+Required: `end.reason` — an enum: `task_complete`, `user_requested`,
+`error`, `timeout`, `rate_limited`, `cancelled`. Optional: `end.summary`.
+
+**`llm_call`** — ask the shim to run an LLM call. `llm_call.model` is a
+**string** (a model name such as `"glm-5.3-flash"`), NOT an object —
+`context.tools`/`models` entries are objects, but the decision field is a
+plain name string.
+
+```json
+{
+  "decision": "llm_call",
+  "decision_id": "d_0044",
+  "llm_call": {
+    "model": "glm-5.3-flash",
+    "messages": [{"role": "user", "content": "Summarize this thread"}],
+    "temperature": 0.7
+  }
+}
+```
+
+Required: `llm_call.model` (string). Optional: `llm_call.messages` (array,
+default `[]`; each message reuses the `/v1/process` message shape — `role`
+and `content` required, `timestamp`/`attachments` optional),
+`llm_call.system_prompt` (string), `llm_call.temperature` (number, default
+`0.7`), `llm_call.max_tokens` (integer).
+
+**`wait`** — pause the loop until a condition resolves. `wait.reason` is
+**required**.
+
+```json
+{
+  "decision": "wait",
+  "decision_id": "d_0045",
+  "wait": {"reason": "Awaiting user approval", "duration_seconds": 30}
+}
+```
+
+Required: `wait.reason`. Optional: `wait.duration_seconds` (integer),
+`wait.poll_endpoint` (string).
+
+**`delegate`** — hand a task to another agent.
+
+```json
+{
+  "decision": "delegate",
+  "decision_id": "d_0046",
+  "delegate": {"task": "Draft the reply in Spanish", "model": "glm-5.3-flash"}
+}
+```
+
+Required: `delegate.task`. Optional: `delegate.context`, `delegate.model`,
+`delegate.provider` (all strings).
+
+**`tool_call`** — invoke a named tool.
+
+```json
+{
+  "decision": "tool_call",
+  "decision_id": "d_0047",
+  "tool_call": {"name": "web_search", "params": {"query": "flights MDE-BOG"}}
+}
+```
+
+Required: `tool_call.name`. Optional: `tool_call.params` (object, default
+`{}`), `tool_call.reasoning` (string).
 
 ### POST /v1/result — request
 
@@ -185,11 +281,13 @@ Notable attributes after construction:
 ### Methods
 
 ```python
-async def resolve(self, platform: str, chat_id: str, session_id: str) -> str | None
+async def resolve(self, platform: str, chat_id: str, thread_id: str | None = None) -> str
 ```
 
-Resolve the harness name for a session from the routing config. Returns
-`None` when no route matches.
+Resolve the harness name for a session from the routing config. Matching is
+most-specific first: `platform:chat_id:thread_id`, then `platform:chat_id`,
+then `platform` alone. Falls back to `default_harness` when no route
+matches (never returns `None`).
 
 ```python
 def route_session(self, session_id: str, harness_name: str) -> None
@@ -220,7 +318,7 @@ from h3_shim.loader import H3Loader
 loader = H3Loader(config)  # config = {"harnesses": {...}, "sessions": {...}}
 await loader.start_health_checks()
 
-harness = loader.resolve("telegram", "-100", "84802")
+harness = loader.resolve("telegram", "-100", "84802")  # (platform, chat_id, thread_id)
 client = loader.harnesses.get(harness)  # None for native
 
 await loader.close()
