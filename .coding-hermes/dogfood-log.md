@@ -132,3 +132,4 @@ actually experienced, the verdict, and where the findings landed.
 - **Foreman:** NOT woken — live scheduler API shows cooldown_s=900
   (briefing's 259200s was stale) and ticks flowing (latest completed 09-06
   04:28, outcome=committed). Enabled, healthy, already fast.
+2026-09-07 | SHIPPABLE | 22s t2fs | friction 6 | 5 findings

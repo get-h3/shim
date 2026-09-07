@@ -25,3 +25,13 @@ Both 09-05 P1s were FIXED BY THE FOREMAN and verified live this cycle: DF2-H3-SH
 - [P3] H3ShimLoop constructor docs imply tuple identity ('("shim", session_id)' placeholder reads as a literal tuple; real default is Identity(platform="shim", chat_id=session_id)), Context.memory is a string (docs show nothing), and H3Loader Usage omits default_harness (un-routed sessions resolve to 'native' → harnesses KeyError). Fix: embedding-host quickstart block with exact kwargs. (Board: DF3-H3-SHIM-4)
 - [P2] INSTALL-h3-shim: fresh install on ephemeral bunker (las-bunker-03) took 12s (shim) + 5s (harness scaffold setup); smoke passed — 46/46 battery, exit 0, on bare Debian from the documented path only. Regression datum: fresh harness reports active_sessions: 98 after one battery run (DF2-H3-SHIM-3 still open, reproduces).
 - Regression check: DF2-H3-SHIM-2 (opaque error collapse) reproduced twice live (identity tuple; datetime crash) — still open; DF2-H3-SHIM-3 reproduces on fresh scaffold; GAP-033 (pre-update-check always-block) not re-tested this cycle.
+
+## Dogfood Findings (2026-09-07)
+Verdict: SHIPPABLE
+Promise: {"entry_point":"CLI binaries `h3-test` (one-shot compliance battery) and `hermes-h3` (9 subcommands: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify), optionally exposed as the `hermes h3` plugin command group; also a Python library (H3Client, H3Loader, H3ShimLoop, H3T
+
+- [P1] Test-count drift: README 45, AGENTS.md 44, actual 46/46 — Live run: h3-test --endpoint http://localhost:9191 → 46/46 PASSED, exit 0, 0.33s (p50 1.20ms/p95 40.69ms). EXPECTED_TEST_COUNT=46 (test_battery.py:104) and 46 'async def test_*' fns; README.md:19/65 s
+- [P1] No example ProcessRequest payload in README — First POST /v1/process with {'message':'hi','identity':{...}} → 422 (session_id, context missing; message must be dict); valid shape only discoverable via trial-and-error or scaffold source: session_i
+- [P2] install accepts dead endpoints silently — hermes-h3 install dead-harness --endpoint http://localhost:9999 → exit 0 'installed'; verify dead-harness → exit 1 'All connection attempts failed'. cli.py install() writes config without any health p
+- [P2] route subcommand is a dead end for adding session routes — hermes-h3 route --config scratch.yaml → 'no sessions configured' (exit 0); no CLI flag to add a session binding — docs/integration.md:294 requires hand-editing ~/.hermes/h3/config.yaml under 'sessions
+- [P2] Dispatch repo path drift (4th occurrence) — Brief path /home/kara/h3-shim-foreman does not exist; real repo is /home/kara/get-h3/shim (git HEAD 158ff3e). Same class as the h3 verdict's path drift — recurring dispatch-doc issue.
