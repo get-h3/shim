@@ -55,6 +55,83 @@ so CI can distinguish a real compliance failure from a wrong server:
 
 See `docs/integration.md` for the full troubleshooting matrix.
 
+### Send a request
+
+A harness is driven by `POST /v1/process` with a `ProcessRequest` body. Its four
+top-level fields — `session_id`, `message`, `identity`, `context` — are all
+required, and each nested object has its own required fields (see
+`get-h3/protocol` → `schemas/v1/process-request.json` and `common.json`).
+A valid, copyable payload:
+
+```json
+{
+  "session_id": "sess-7f3a9c",
+  "message": {
+    "role": "user",
+    "content": "Book a flight to Medellín",
+    "timestamp": "2026-08-20T14:05:42Z"
+  },
+  "identity": {
+    "platform": "telegram",
+    "chat_id": "-1001234567890",
+    "user_name": "Alice",
+    "user_id": "424242"
+  },
+  "context": {
+    "history": [
+      {"role": "user", "content": "Hi, I need help with travel"},
+      {"role": "assistant", "content": "Sure — where are you flying from, and when?"}
+    ],
+    "tools": [
+      {
+        "name": "terminal",
+        "description": "Execute shell commands on a Linux environment",
+        "parameters": {
+          "command": {"type": "string", "description": "Shell command to execute"}
+        }
+      }
+    ],
+    "models": [
+      {
+        "name": "deepseek-v4-pro",
+        "provider": "deepseek",
+        "cost_per_1k_input": 0.0011,
+        "cost_per_1k_output": 0.0044,
+        "context_window": 128000,
+        "supports_vision": false,
+        "supports_tool_calling": true
+      }
+    ],
+    "config": {
+      "max_iterations": 50,
+      "timeout_seconds": 600
+    },
+    "session_state": {
+      "turn_count": 1,
+      "total_tool_calls": 0,
+      "total_llm_calls": 1,
+      "cost_so_far": 0.0003,
+      "started_at": "2026-08-20T14:03:11Z"
+    }
+  }
+}
+```
+
+Save it as `process-request.json` and POST it to the running harness:
+
+```bash
+curl -sS http://localhost:9191/v1/process \
+  -H 'Content-Type: application/json' \
+  -d @process-request.json
+```
+
+The harness answers with a `Decision` (`{"decision": "tool_call", ...}`,
+`{"decision": "text", ...}`, …) rather than a final answer — the shim loop
+executes that decision and POSTs the result back, so the harness never has to
+call a tool or a model itself. Optional fields (`message.attachments`,
+`identity.thread_id`, `context.memory`, `context.skills`, `context.config.*`
+beyond the two required keys) may be omitted.
+
 ## Configuration
 
 `hermes-h3` keeps its harness/session state in one YAML file
