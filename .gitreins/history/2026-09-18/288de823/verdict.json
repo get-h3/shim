@@ -1,0 +1,60 @@
+{
+  "task_id": "df-h3-9-tpl",
+  "task_title": "DF-H3-9: go scaffold template honors PORT env",
+  "task_criteria": [
+    "At HEAD, src/h3_shim/templates/go/main.go derives its listen address from the PORT environment variable with a default of 9191 and contains no hardcoded addr assignment of \":9191\". The scaffolded go harness still builds: the go scaffold leg of tests/test_scaffold_build.py passes."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "c416d8977881730df6c0158bf9e50c62b1552cd5",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n  \u001b[33mUpdate available: v0.14.0 \u2192 https://pypi.org/project/gitreins/\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 At HEAD, src/h3_shim/templates/go/main.go derives its listen address from the PORT environment variable with a default of 9191 and contains no hardcoded addr assignment of \":9191\". The scaffolded go harness still builds: the go scaffold leg of tests/test_scaffold_build.py passes.: src/h3_shim/templates/go/main.go:148-153: main() does `port := os.Getenv(\"PORT\")`, `if port == \"\" { port = \"9191\" }`, `addr := \":\" + port`. grep for '9191' in src/h3_shim/templates/go/ returns only line 151 (the default value), no `addr := \":9191\"`. Test run: `.venv/bin/python -m pytest tests/test_scaffold_build.py -k go -v` => exit_code 0, `tests/test_scaffold_build.py::TestGoScaffoldBuild::test_scaffold_go_builds PASSED`, `1 passed, 3 deselected`.\nThe go scaffold template derives its listen address from PORT with a 9191 default and no hardcoded addr, and the go scaffold build test passes.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 At HEAD, src/h3_shim/templates/go/main.go derives its listen address from the PORT environment variable with a default of 9191 and contains no hardcoded addr assignment of \":9191\". The scaffolded go harness still builds: the go scaffold leg of tests/test_scaffold_build.py passes.: src/h3_shim/templates/go/main.go:148-153: main() does `port := os.Getenv(\"PORT\")`, `if port == \"\" { port = \"9191\" }`, `addr := \":\" + port`. grep for '9191' in src/h3_shim/templates/go/ returns only line 151 (the default value), no `addr := \":9191\"`. Test run: `.venv/bin/python -m pytest tests/test_scaffold_build.py -k go -v` => exit_code 0, `tests/test_scaffold_build.py::TestGoScaffoldBuild::test_scaffold_go_builds PASSED`, `1 passed, 3 deselected`.\nThe go scaffold template derives its listen address from PORT with a 9191 default and no hardcoded addr, and the go scaffold build test passes.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "At HEAD, src/h3_shim/templates/go/main.go derives its listen address from the PORT environment variable with a default of 9191 and contains no hardcoded addr assignment of \":9191\". The scaffolded go harness still builds: the go scaffold leg of tests/test_scaffold_build.py passes.",
+                "status": "PASS",
+                "detail": "src/h3_shim/templates/go/main.go:148-153: main() does `port := os.Getenv(\"PORT\")`, `if port == \"\" { port = \"9191\" }`, `addr := \":\" + port`. grep for '9191' in src/h3_shim/templates/go/ returns only line 151 (the default value), no `addr := \":9191\"`. Test run: `.venv/bin/python -m pytest tests/test_scaffold_build.py -k go -v` => exit_code 0, `tests/test_scaffold_build.py::TestGoScaffoldBuild::test_scaffold_go_builds PASSED`, `1 passed, 3 deselected`."
+              }
+            ],
+            "summary": "The go scaffold template derives its listen address from PORT with a 9191 default and no hardcoded addr, and the go scaffold build test passes."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-h3-9-tpl\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 At HEAD, src/h3_shim/templates/go/main.go derives its listen address from the PORT environment variable with a default of 9191 and contains no hardcoded addr assignment of \":9191\". The scaffolded go harness still builds: the go scaffold leg of tests/test_scaffold_build.py passes.: src/h3_shim/templates/go/main.go:148-153: main() does `port := os.Getenv(\"PORT\")`, `if port == \"\" { port = \"9191\" }`, `addr := \":\" + port`. grep for '9191' in src/h3_shim/templates/go/ returns only line 151 (the default value), no `addr := \":9191\"`. Test run: `.venv/bin/python -m pytest tests/test_scaffold_build.py -k go -v` => exit_code 0, `tests/test_scaffold_build.py::TestGoScaffoldBuild::test_scaffold_go_builds PASSED`, `1 passed, 3 deselected`.\nThe go scaffold template derives its listen address from PORT with a 9191 default and no hardcoded addr, and the go scaffold build test passes.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T18:21:13.215330"
+}
