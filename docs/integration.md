@@ -236,13 +236,13 @@ h3-test --endpoint http://localhost:9191 --json     # machine-readable report
 h3-test --endpoint http://localhost:9191 --categories health,process
 ```
 
-The battery is 45 tests across 6 categories (health, process, decisions,
+The battery is 46 tests across 6 categories (health, process, decisions,
 results, errors, stress).  See [Exit codes](#exit-codes) below for the
 meaning of each h3-test exit code.
 
 ### 4.4 The compliance gate (GAP-043) — wired into `make test` and CI
 
-Since GAP-043 the 45-test battery is THE GATE: it runs against a live
+Since GAP-043 the 46-test battery is THE GATE: it runs against a live
 scaffolded harness on every `make test` and every CI push, and a protocol
 regression fails the build (h3-test exit 1) — no silent green.
 

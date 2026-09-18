@@ -23,4 +23,4 @@ pip install git+https://github.com/get-h3/shim
 h3-test --endpoint http://localhost:9191
 ```
 
-44 compliance tests. Exit 0 = compliant.
+46 compliance tests. Exit 0 = compliant.
