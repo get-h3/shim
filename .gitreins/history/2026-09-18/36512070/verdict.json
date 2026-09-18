@@ -1,0 +1,83 @@
+{
+  "task_id": "gap-043",
+  "task_title": "GAP-043: mypy gate drift in the py scaffold template \u2014 _summarize_validation_errors annotated list[dict] but fed pydantic's Sequence[Any]",
+  "task_criteria": [
+    "uv run --with mypy mypy src/ returns to the 3 stub-only WARN envelope (no arg-type error at templates/py/main.py); full pytest suite green; ruff check + ruff format --check rc=0"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "7db2e08f770d255a54fed723024d08dfd8c1169f",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T231353.306582Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T231353.306582Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 uv run --with mypy mypy src/ returns to the 3 stub-only WARN envelope (no arg-type error at templates/py/main.py); full pytest suite green; ruff check + ruff format --check rc=0: Fresh runs at committed tree 7db2e08: (1) `uv run --with mypy mypy src/` -> 'Found 3 errors in 3 files (checked 11 source files)'; grep -c 'arg-type' = 0 and no output line references templates/py/main.py; the 3 errors are exactly the stub-only envelope (test_battery.py:1976 jsonschema [import-untyped], upgrade_check.py:26 yaml [import-untyped], cli.py:37 yaml [import-untyped]). (2) `.venv/bin/python -m pytest -q` -> exit 0, '369 passed, 4 warnings in 25.85s'. (3) `.venv/bin/ruff check .` -> exit 0, 'All checks passed!'; `.venv/bin/ruff format --check .` -> exit 0, '48 files already formatted'. Diff confirms the annotation fix: templates/py/main.py `_summarize_validation_errors(errors: Sequence[Mapping[str, Any]])` with `from collections.abc import Mapping, Sequence`, and shim_loop.py `_format_pydantic_error(error: Mapping[str, Any])` with `Mapping` added to the collections.abc import.\nAll three gates pass fresh: mypy src/ is back to the 3 stub-only import-untyped errors with zero arg-type findings, pytest is 369 passed, and ruff check/format both exit 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 uv run --with mypy mypy src/ returns to the 3 stub-only WARN envelope (no arg-type error at templates/py/main.py); full pytest suite green; ruff check + ruff format --check rc=0: Fresh runs at committed tree 7db2e08: (1) `uv run --with mypy mypy src/` -> 'Found 3 errors in 3 files (checked 11 source files)'; grep -c 'arg-type' = 0 and no output line references templates/py/main.py; the 3 errors are exactly the stub-only envelope (test_battery.py:1976 jsonschema [import-untyped], upgrade_check.py:26 yaml [import-untyped], cli.py:37 yaml [import-untyped]). (2) `.venv/bin/python -m pytest -q` -> exit 0, '369 passed, 4 warnings in 25.85s'. (3) `.venv/bin/ruff check .` -> exit 0, 'All checks passed!'; `.venv/bin/ruff format --check .` -> exit 0, '48 files already formatted'. Diff confirms the annotation fix: templates/py/main.py `_summarize_validation_errors(errors: Sequence[Mapping[str, Any]])` with `from collections.abc import Mapping, Sequence`, and shim_loop.py `_format_pydantic_error(error: Mapping[str, Any])` with `Mapping` added to the collections.abc import.\nAll three gates pass fresh: mypy src/ is back to the 3 stub-only import-untyped errors with zero arg-type findings, pytest is 369 passed, and ruff check/format both exit 0.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "uv run --with mypy mypy src/ returns to the 3 stub-only WARN envelope (no arg-type error at templates/py/main.py); full pytest suite green; ruff check + ruff format --check rc=0",
+                "status": "PASS",
+                "detail": "Fresh runs at committed tree 7db2e08: (1) `uv run --with mypy mypy src/` -> 'Found 3 errors in 3 files (checked 11 source files)'; grep -c 'arg-type' = 0 and no output line references templates/py/main.py; the 3 errors are exactly the stub-only envelope (test_battery.py:1976 jsonschema [import-untyped], upgrade_check.py:26 yaml [import-untyped], cli.py:37 yaml [import-untyped]). (2) `.venv/bin/python -m pytest -q` -> exit 0, '369 passed, 4 warnings in 25.85s'. (3) `.venv/bin/ruff check .` -> exit 0, 'All checks passed!'; `.venv/bin/ruff format --check .` -> exit 0, '48 files already formatted'. Diff confirms the annotation fix: templates/py/main.py `_summarize_validation_errors(errors: Sequence[Mapping[str, Any]])` with `from collections.abc import Mapping, Sequence`, and shim_loop.py `_format_pydantic_error(error: Mapping[str, Any])` with `Mapping` added to the collections.abc import."
+              }
+            ],
+            "summary": "All three gates pass fresh: mypy src/ is back to the 3 stub-only import-untyped errors with zero arg-type findings, pytest is 369 passed, and ruff check/format both exit 0."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-043\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 uv run --with mypy mypy src/ returns to the 3 stub-only WARN envelope (no arg-type error at templates/py/main.py); full pytest suite green; ruff check + ruff format --check rc=0: Fresh runs at committed tree 7db2e08: (1) `uv run --with mypy mypy src/` -> 'Found 3 errors in 3 files (checked 11 source files)'; grep -c 'arg-type' = 0 and no output line references templates/py/main.py; the 3 errors are exactly the stub-only envelope (test_battery.py:1976 jsonschema [import-untyped], upgrade_check.py:26 yaml [import-untyped], cli.py:37 yaml [import-untyped]). (2) `.venv/bin/python -m pytest -q` -> exit 0, '369 passed, 4 warnings in 25.85s'. (3) `.venv/bin/ruff check .` -> exit 0, 'All checks passed!'; `.venv/bin/ruff format --check .` -> exit 0, '48 files already formatted'. Diff confirms the annotation fix: templates/py/main.py `_summarize_validation_errors(errors: Sequence[Mapping[str, Any]])` with `from collections.abc import Mapping, Sequence`, and shim_loop.py `_format_pydantic_error(error: Mapping[str, Any])` with `Mapping` added to the collections.abc import.\nAll three gates pass fresh: mypy src/ is back to the 3 stub-only import-untyped errors with zero arg-type findings, pytest is 369 passed, and ruff check/format both exit 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T23:14:33.178171",
+  "evidence": {
+    "collected_at": "2026-09-18T23:14:33.187416+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3748,
+        "truncated": false,
+        "source": "git show 7db2e08f770d"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 2682,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "gap-043"
+  }
+}

@@ -1,0 +1,85 @@
+commit 7db2e08f770d255a54fed723024d08dfd8c1169f
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 18:13:42 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 18:13:42 2026 -0500
+
+    fix(types): GAP-043 — clear the two mypy arg-type drifts in src/ (template + shim_loop)
+    
+    Gate 7 (`uv run --with mypy mypy src/`) reported 4 errors instead of the
+    3-stub-only envelope: two real `arg-type` mismatches, both annotation-only,
+    both invisible to ruff/CI (neither runs mypy) and both introduced by the
+    previous tick's commits.
+    
+    1. src/h3_shim/templates/py/main.py — `_summarize_validation_errors` was
+       annotated `list[dict[str, Any]]` while its only caller feeds it
+       `RequestValidationError.errors()`, which pydantic types as
+       `Sequence[ErrorDetails]`. Introduced by 553620a (DF-H3-SHIM-FOREMAN-3,
+       tick #379). Widened to `Sequence[Mapping[str, Any]]` (+ the
+       `collections.abc` import) so the signature matches the real producer.
+    
+    2. src/h3_shim/shim_loop.py — `_format_pydantic_error` was annotated
+       `dict[str, Any]` while `_first_error_line` feeds it `exc.errors()[0]`
+       (`ErrorDetails`). Introduced by 8adce0e (DF2-H3-SHIM-2, this tick).
+       Widened to `Mapping[str, Any]`.
+    
+    Runtime behaviour is unchanged: both helpers only read via `.get()`/indexing,
+    which `Mapping` supports, and the annotations of the scaffold template are
+    never evaluated by the generated project (`from __future__ import
+    annotations`). No new dependency, no logic change.
+    
+    Gates (fresh, at the committed tree): `uv run --with mypy mypy src/` -> 3
+    errors in 3 files, all the known import-untyped stubs (types-PyYAML x2,
+    jsonschema x1) = back inside the documented envelope; `.venv/bin/python -m
+    pytest -q` -> 369 passed; `.venv/bin/ruff check .` rc=0;
+    `.venv/bin/ruff format --check .` -> 48 files already formatted.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ src/h3_shim/shim_loop.py         | 4 ++--
+ src/h3_shim/templates/py/main.py | 3 ++-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/h3_shim/shim_loop.py b/src/h3_shim/shim_loop.py
+index 1e62fa5..45d110e 100644
+--- a/src/h3_shim/shim_loop.py
++++ b/src/h3_shim/shim_loop.py
+@@ -18,7 +18,7 @@ back to the caller.
+ import asyncio
+ import logging
+ import time
+-from collections.abc import Callable
++from collections.abc import Callable, Mapping
+ from dataclasses import dataclass
+ from typing import Any
+ 
+@@ -98,7 +98,7 @@ class LoopError:
+         return self.message
+ 
+ 
+-def _format_pydantic_error(error: dict[str, Any]) -> str:
++def _format_pydantic_error(error: Mapping[str, Any]) -> str:
+     """Render one pydantic error dict as a single diagnostic line.
+ 
+     Mirrors pydantic's own field rendering (its ``input`` key is shown as
+diff --git a/src/h3_shim/templates/py/main.py b/src/h3_shim/templates/py/main.py
+index 48ccd49..a4ec8ec 100644
+--- a/src/h3_shim/templates/py/main.py
++++ b/src/h3_shim/templates/py/main.py
+@@ -29,6 +29,7 @@ from __future__ import annotations
+ 
+ import os
+ import threading
++from collections.abc import Mapping, Sequence
+ from datetime import datetime
+ from enum import Enum
+ from typing import Any
+@@ -334,7 +335,7 @@ harness = EchoHarness()
+ # purpose: the generated project must not import ``h3_shim`` at runtime.
+ 
+ 
+-def _summarize_validation_errors(errors: list[dict[str, Any]]) -> str:
++def _summarize_validation_errors(errors: Sequence[Mapping[str, Any]]) -> str:
+     """One short human-readable line describing a list of pydantic errors."""
+     if not errors:
+         return "Invalid request body"

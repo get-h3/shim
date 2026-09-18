@@ -1,0 +1,26 @@
+diff --git a/.vfs/graph/edges.jsonl b/.vfs/graph/edges.jsonl
+index 6558319..3ffb69e 100644
+--- a/.vfs/graph/edges.jsonl
++++ b/.vfs/graph/edges.jsonl
+@@ -238,3 +238,21 @@
+ {"from":"tests/test_scaffold_errors.py","to":"pkg:fastapi.testclient","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+ {"from":"tests/test_scaffold_errors.py","to":"pkg:h3_shim.templates.py","rel":"imports","provenance":"ast_exact","confidence":1.0}
+ {"from":"tests/test_scaffold_errors.py","to":"pkg:h3_shim.templates.py","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/cli.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/shim_loop.py","to":"pkg:dataclasses","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/shim_loop.py","to":"pkg:typing","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/shim_loop.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:asyncio","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:logging","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:dataclasses","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:dataclasses","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:unittest.mock","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:httpx","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:pydantic","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:h3_shim.client","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:h3_shim.client","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:h3_shim.protocol","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_shim_loop.py","to":"pkg:h3_shim.shim_loop","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/templates/py/main.py","to":"pkg:collections.abc","rel":"imports","provenance":"ast_exact","confidence":1.0}
