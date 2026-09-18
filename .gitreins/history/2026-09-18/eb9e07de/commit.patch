@@ -1,0 +1,278 @@
+commit 02f8f652571361381da3d474ce8ddff774ad5bf9
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 18:46:51 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 18:46:51 2026 -0500
+
+    fix(cli): DF-H3-3 - install accepts --name as an alias for the positional NAME
+    
+    Addresses DF-H3-3
+    
+    `hermes-h3 install --name X --endpoint URL` died with "No such option
+    '--name'" and the plugin surface `hermes h3 install --name X --endpoint
+    URL` died with argparse's "unrecognized arguments: --name": NAME was a
+    required positional while the help text, the docs, and verify's own
+    --harness/-h alias all advertised the flag idiom, so a dogfood judge and
+    real users guessed the flag form.
+    
+    Mirror verify's precedent on both entry points (src/h3_shim/cli.py and
+    the h3/ plugin mirror): NAME becomes an optional positional with a
+    --name alias, resolved once as `name if name is not None else name_opt`,
+    raising a loud click.UsageError (exit 2) when neither is given so no
+    unnamed entry can ever be installed.  The positional form behaves
+    byte-identically to before and wins when both are given; the plugin
+    rebuilds --name into the positional argv (an unset --name is omitted, so
+    click still reports the missing name).
+    
+    --endpoint/--transport/--timeout-ms/--set-default semantics and
+    transport validation are untouched.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ h3/__init__.py          | 24 +++++++++++++++--
+ src/h3_shim/cli.py      | 35 +++++++++++++++++++-----
+ tests/test_cli.py       | 33 +++++++++++++++++++++++
+ tests/test_h3_plugin.py | 71 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 155 insertions(+), 8 deletions(-)
+
+diff --git a/h3/__init__.py b/h3/__init__.py
+index 1d5f316..da3c592 100644
+--- a/h3/__init__.py
++++ b/h3/__init__.py
+@@ -94,6 +94,7 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
+         "transport": "rest",
+         "timeout_ms": 30000,
+         "set_default": False,
++        "name_opt": None,
+     },
+     "verify": {"harness": None, "endpoint": None, "fallback": False},
+     "scaffold": {"force": False, "lang": None, "output_dir": None},
+@@ -162,7 +163,18 @@ def _setup(parser: argparse.ArgumentParser) -> None:
+ 
+     p = sub.add_parser("install", help="Register a harness in the config.")
+     _add_config_option(p)
+-    p.add_argument("name", help="Harness name.")
++    p.add_argument(
++        "name",
++        nargs="?",
++        default=None,
++        help="Harness name (may also be given as --name; positional wins).",
++    )
++    p.add_argument(
++        "--name",
++        dest="name_opt",
++        default=None,
++        help="Harness name (alias for the positional NAME).",
++    )
+     p.add_argument("--endpoint", required=True, help="Harness endpoint URL.")
+     p.add_argument(
+         "--transport",
+@@ -274,7 +286,15 @@ def _argv_from_namespace(ns: argparse.Namespace) -> list[str]:
+ 
+     ns_dict = vars(ns)
+     for field in _POSITIONALS.get(cmd, ()):
+-        argv.append(str(ns_dict[field]))
++        value = ns_dict.get(field)
++        if value is None:
++            # Optional positionals (``install NAME``) have a ``--<field>``
++            # alias; fall back to it so ``install --name X`` rebuilds the
++            # argv as the positional form.  An unresolved name is left out
++            # entirely so click reports the missing NAME.
++            value = ns_dict.get(f"{field}_opt")
++        if value is not None:
++            argv.append(str(value))
+ 
+     defaults = _DEFAULTS.get(cmd, {})
+     for field in _OPTIONS.get(cmd, ()):
+diff --git a/src/h3_shim/cli.py b/src/h3_shim/cli.py
+index b567175..2278942 100644
+--- a/src/h3_shim/cli.py
++++ b/src/h3_shim/cli.py
+@@ -683,7 +683,13 @@ def _validate_transport(transport: str) -> None:
+ 
+ @hermes_h3.command(help="Register a harness in the config.")
+ @_config_option
+-@click.argument("name")
++@click.argument("name", required=False)
++@click.option(
++    "--name",
++    "name_opt",
++    default=None,
++    help="Harness name (alias for the positional NAME).",
++)
+ @click.option("--endpoint", required=True, help="Harness endpoint URL.")
+ @click.option(
+     "--transport",
+@@ -707,27 +713,44 @@ def _validate_transport(transport: str) -> None:
+ def install(
+     ctx: click.Context,
+     config_path: Path | None,
+-    name: str,
++    name: str | None,
++    name_opt: str | None,
+     endpoint: str,
+     transport: str,
+     timeout_ms: int,
+     set_default: bool,
+ ) -> None:
+-    """Add or update a harness entry."""
++    """Add or update a harness entry.
++
++    NAME is an optional positional alias for ``--name``::
++
++        hermes-h3 install [NAME] [--name NAME] --endpoint URL [options]
++
++    Exactly one of NAME / **--name** must be given; with neither the
++    command fails loudly instead of installing an unnamed entry.  When
++    both are given, NAME wins.
++    """
+     if config_path is not None:
+         ctx.obj["config_path"] = config_path
++    # Positional NAME wins over the --name flag (same rule as verify).
++    resolved = name if name is not None else name_opt
++    if resolved is None:
++        raise click.UsageError(
++            "install requires a harness name: pass it positionally "
++            "(install NAME ...) or with --name NAME"
++        )
+     _validate_transport(transport)
+     config = load_config(_config_path(ctx))
+     harnesses = config.setdefault("harnesses", {})
+-    harnesses[name] = {
++    harnesses[resolved] = {
+         "endpoint": endpoint,
+         "transport": transport,
+         "timeout_ms": timeout_ms,
+     }
+     if set_default or not config.get("default_harness"):
+-        config["default_harness"] = name
++        config["default_harness"] = resolved
+     path = save_config(config, _config_path(ctx))
+-    click.echo(f"installed harness {name!r} at {endpoint} ({transport})")
++    click.echo(f"installed harness {resolved!r} at {endpoint} ({transport})")
+     click.echo(f"config: {path}")
+ 
+ 
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 7678601..607ed90 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -444,6 +444,39 @@ class TestInstall:
+         data = yaml.safe_load(cfg_path.read_text())
+         assert data["harnesses"]["h"]["timeout_ms"] == 12345
+ 
++    def test_install_name_flag_alias(self, cfg_path, runner):
++        """DF-H3-3: ``--name`` is an alias for the positional NAME."""
++        result = runner.invoke(
++            hermes_h3,
++            ["install", "--name", "flagharness", "--endpoint", "http://x:1"],
++        )
++        assert result.exit_code == 0
++        assert "installed harness 'flagharness'" in result.output
++        data = yaml.safe_load(cfg_path.read_text())
++        assert "flagharness" in data["harnesses"]
++        assert data["harnesses"]["flagharness"]["endpoint"] == "http://x:1"
++        assert data["default_harness"] == "flagharness"
++
++    def test_install_without_name_fails_loudly(self, cfg_path, runner):
++        """Neither NAME nor --name: fail loudly, never install unnamed."""
++        result = runner.invoke(hermes_h3, ["install", "--endpoint", "http://x:1"])
++        assert result.exit_code != 0
++        assert "requires a harness name" in result.output
++        # Nothing may be written — no phantom unnamed entry.
++        assert not cfg_path.exists()
++
++    def test_install_positional_wins_over_name_flag(self, cfg_path, runner):
++        """With both forms given, the positional NAME wins (verify's rule)."""
++        result = runner.invoke(
++            hermes_h3,
++            ["install", "pos", "--name", "flag", "--endpoint", "http://x:1"],
++        )
++        assert result.exit_code == 0
++        data = yaml.safe_load(cfg_path.read_text())
++        assert "pos" in data["harnesses"]
++        assert "flag" not in data["harnesses"]
++        assert data["default_harness"] == "pos"
++
+ 
+ # ── uninstall ──────────────────────────────────────────────────────────────
+ 
+diff --git a/tests/test_h3_plugin.py b/tests/test_h3_plugin.py
+index 45def4a..9da23e4 100644
+--- a/tests/test_h3_plugin.py
++++ b/tests/test_h3_plugin.py
+@@ -161,3 +161,74 @@ def test_test_subcommand_with_config_and_flags(plugin: object) -> None:
+     assert ns.h3_command == "test"
+     assert ns.h3_config == CONFIG_PATH
+     assert ns.as_json is True
++
++
++# ── DF-H3-3: install --name is an alias for the positional NAME ────────────
++# The plugin mirror must expose the same two surfaces as the click CLI.
++# Before the fix, ``hermes h3 install --name X --endpoint URL`` died in
++# argparse with ``unrecognized arguments: --name`` — the same mirror-drift
++# class as H3-GAP-091.
++
++INSTALL_ENDPOINT = "http://localhost:9191"
++
++
++def test_install_name_flag_parses(plugin: object) -> None:
++    """``hermes h3 install --name X`` reaches the namespace (no argparse error)."""
++    parser = _new_parser(plugin)
++    ns = parser.parse_args(
++        ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT]
++    )
++    assert ns.h3_command == "install"
++    assert ns.name is None
++    assert ns.name_opt == "scout"
++    assert ns.endpoint == INSTALL_ENDPOINT
++
++
++def test_install_name_flag_rebuilds_positional_argv(plugin: object) -> None:
++    """``--name X`` rebuilds the byte-identical argv of ``install X``."""
++    parser = _new_parser(plugin)
++    flag_ns = parser.parse_args(
++        ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT]
++    )
++    pos_ns = parser.parse_args(["install", "scout", "--endpoint", INSTALL_ENDPOINT])
++    flag_argv = plugin._argv_from_namespace(flag_ns)  # type: ignore[attr-defined]
++    pos_argv = plugin._argv_from_namespace(pos_ns)  # type: ignore[attr-defined]
++    assert flag_argv == pos_argv == ["install", "scout", "--endpoint", INSTALL_ENDPOINT]
++    # An unset --name is omitted entirely (and an unset positional too), so
++    # click reports the missing NAME instead of installing an unnamed entry.
++    none_ns = parser.parse_args(["install", "--endpoint", INSTALL_ENDPOINT])
++    assert plugin._argv_from_namespace(none_ns) == [  # type: ignore[attr-defined]
++        "install",
++        "--endpoint",
++        INSTALL_ENDPOINT,
++    ]
++
++
++def test_install_flag_and_positional_behave_identically(
++    plugin: object, tmp_path: Path
++) -> None:
++    """Drive the real click group with both rebuilt argvs (behaviour parity)."""
++    import yaml
++    from click.testing import CliRunner
++
++    from h3_shim.cli import hermes_h3
++
++    parser = _new_parser(plugin)
++    runner = CliRunner()
++    configs: dict[str, dict] = {}
++    for label, raw in (
++        (
++            "flag",
++            ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT],
++        ),
++        ("positional", ["install", "scout", "--endpoint", INSTALL_ENDPOINT]),
++    ):
++        cfg = tmp_path / f"{label}.yaml"
++        ns = parser.parse_args([*raw, "--config", str(cfg)])
++        argv = plugin._argv_from_namespace(ns)  # type: ignore[attr-defined]
++        result = runner.invoke(hermes_h3, argv)
++        assert result.exit_code == 0, result.output
++        assert "installed harness 'scout'" in result.output
++        configs[label] = yaml.safe_load(cfg.read_text())
++    assert configs["flag"] == configs["positional"]
++    assert configs["flag"]["harnesses"]["scout"]["endpoint"] == INSTALL_ENDPOINT

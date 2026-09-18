@@ -1,0 +1,83 @@
+{
+  "task_id": "df-h3-3",
+  "task_title": "DF-H3-3: hermes-h3 install accepts --name as an alias for the positional NAME (plus the hermes h3 plugin mirror)",
+  "task_criteria": [
+    "The install command accepts --name as an alias for the positional NAME on BOTH documented entry points: hermes-h3 install --name X --endpoint URL registers the harness X and exits 0; the positional form hermes-h3 install X --endpoint URL keeps its exact previous behaviour; passing neither name form exits non-zero with a message naming the missing name; when both forms are given the positional NAME wins (the verify convention); the plugin front-end hermes h3 install --name X --endpoint URL reaches the same click command with the same resolved name; tests in tests/test_cli.py and tests/test_h3_plugin.py cover the alias, the missing-name failure and the conflict; the full shim pytest suite exits 0; ruff check and ruff format --check are clean on the changed files."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "02f8f652571361381da3d474ce8ddff774ad5bf9",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T235331.401842Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T235331.401842Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The install command accepts --name as an alias for the positional NAME on BOTH documented entry points: hermes-h3 install --name X --endpoint URL registers the harness X and exits 0; the positional form hermes-h3 install X --endpoint URL keeps its exact previous behaviour; passing neither name form exits non-zero with a message naming the missing name; when both forms are given the positional NAME wins (the verify convention); the plugin front-end hermes h3 install --name X --endpoint URL reaches the same click command with the same resolved name; tests in tests/test_cli.py and tests/test_h3_plugin.py cover the alias, the missing-name failure and the conflict; the full shim pytest suite exits 0; ruff check and ruff format --check are clean on the changed files.: Click CLI (src/h3_shim/cli.py:686-696, 713-733): `@click.argument(\"name\", required=False)` + `--name`/`name_opt`, `resolved = name if name is not None else name_opt`, `raise click.UsageError(\"install requires a harness name: ...\")` when None. Live CliRunner evidence: `install --name X --endpoint http://u:1` -> exit 0, \"installed harness 'X' at http://u:1 (rest)\", config harnesses={'X':...}; positional `install X --endpoint ...` -> exit 0 identical output/config (diff vs HEAD~1 shows the positional path writes the same dict, same echo, same default_harness promotion); neither form -> exit 2 with \"Error: install requires a harness name: pass it positionally (install NAME ...) or with --name NAME\"; both `install pos --name flag` -> exit 0, \"installed harness 'pos'\", 'flag' absent from harnesses (positional wins). Plugin mirror (h3/__init__.py:166-179, 286-296): positional `nargs=\"?\"` + `--name` dest=name_opt, `_argv_from_namespace` falls back to `<field>_opt` and omits unset values. Live evidence: `_setup` parser on ['install','--name','X','--endpoint','http://u:1'] rebuilds argv ['install','X','--endpoint','http://u:1'] -> same click command exit 0, same config; unset name rebuilds ['install','--endpoint',...] -> click exit 2 with the same missing-name message. Tests: tests/test_cli.py test_install_name_flag_alias / test_install_without_name_fails_loudly / test_install_positional_wins_over_name_flag; tests/test_h3_plugin.py test_install_name_flag_parses / test_install_name_flag_rebuilds_positional_argv / test_install_flag_and_positional_behave_identically. Command evidence: `.venv/bin/python -m pytest -q` -> \"375 passed, 4 warnings in 23.25s\", EXIT=0; `ruff check src/h3_shim/cli.py h3/__init__.py tests/test_cli.py tests/test_h3_plugin.py` -> \"All checks passed!\", CHECK_EXIT=0; `ruff format --check` same files -> \"4 files already formatted\", FMT_EXIT=0; read_lsp_diagnostics -> 0 findings.\nAll DF-H3-3 requirements verified: --name alias works on both the click CLI and the hermes h3 plugin mirror with positional-wins and loud missing-name failure, tests cover all three cases, and the full suite (375 passed, exit 0) plus ruff check/format are clean.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The install command accepts --name as an alias for the positional NAME on BOTH documented entry points: hermes-h3 install --name X --endpoint URL registers the harness X and exits 0; the positional form hermes-h3 install X --endpoint URL keeps its exact previous behaviour; passing neither name form exits non-zero with a message naming the missing name; when both forms are given the positional NAME wins (the verify convention); the plugin front-end hermes h3 install --name X --endpoint URL reaches the same click command with the same resolved name; tests in tests/test_cli.py and tests/test_h3_plugin.py cover the alias, the missing-name failure and the conflict; the full shim pytest suite exits 0; ruff check and ruff format --check are clean on the changed files.: Click CLI (src/h3_shim/cli.py:686-696, 713-733): `@click.argument(\"name\", required=False)` + `--name`/`name_opt`, `resolved = name if name is not None else name_opt`, `raise click.UsageError(\"install requires a harness name: ...\")` when None. Live CliRunner evidence: `install --name X --endpoint http://u:1` -> exit 0, \"installed harness 'X' at http://u:1 (rest)\", config harnesses={'X':...}; positional `install X --endpoint ...` -> exit 0 identical output/config (diff vs HEAD~1 shows the positional path writes the same dict, same echo, same default_harness promotion); neither form -> exit 2 with \"Error: install requires a harness name: pass it positionally (install NAME ...) or with --name NAME\"; both `install pos --name flag` -> exit 0, \"installed harness 'pos'\", 'flag' absent from harnesses (positional wins). Plugin mirror (h3/__init__.py:166-179, 286-296): positional `nargs=\"?\"` + `--name` dest=name_opt, `_argv_from_namespace` falls back to `<field>_opt` and omits unset values. Live evidence: `_setup` parser on ['install','--name','X','--endpoint','http://u:1'] rebuilds argv ['install','X','--endpoint','http://u:1'] -> same click command exit 0, same config; unset name rebuilds ['install','--endpoint',...] -> click exit 2 with the same missing-name message. Tests: tests/test_cli.py test_install_name_flag_alias / test_install_without_name_fails_loudly / test_install_positional_wins_over_name_flag; tests/test_h3_plugin.py test_install_name_flag_parses / test_install_name_flag_rebuilds_positional_argv / test_install_flag_and_positional_behave_identically. Command evidence: `.venv/bin/python -m pytest -q` -> \"375 passed, 4 warnings in 23.25s\", EXIT=0; `ruff check src/h3_shim/cli.py h3/__init__.py tests/test_cli.py tests/test_h3_plugin.py` -> \"All checks passed!\", CHECK_EXIT=0; `ruff format --check` same files -> \"4 files already formatted\", FMT_EXIT=0; read_lsp_diagnostics -> 0 findings.\nAll DF-H3-3 requirements verified: --name alias works on both the click CLI and the hermes h3 plugin mirror with positional-wins and loud missing-name failure, tests cover all three cases, and the full suite (375 passed, exit 0) plus ruff check/format are clean.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The install command accepts --name as an alias for the positional NAME on BOTH documented entry points: hermes-h3 install --name X --endpoint URL registers the harness X and exits 0; the positional form hermes-h3 install X --endpoint URL keeps its exact previous behaviour; passing neither name form exits non-zero with a message naming the missing name; when both forms are given the positional NAME wins (the verify convention); the plugin front-end hermes h3 install --name X --endpoint URL reaches the same click command with the same resolved name; tests in tests/test_cli.py and tests/test_h3_plugin.py cover the alias, the missing-name failure and the conflict; the full shim pytest suite exits 0; ruff check and ruff format --check are clean on the changed files.",
+                "status": "PASS",
+                "detail": "Click CLI (src/h3_shim/cli.py:686-696, 713-733): `@click.argument(\"name\", required=False)` + `--name`/`name_opt`, `resolved = name if name is not None else name_opt`, `raise click.UsageError(\"install requires a harness name: ...\")` when None. Live CliRunner evidence: `install --name X --endpoint http://u:1` -> exit 0, \"installed harness 'X' at http://u:1 (rest)\", config harnesses={'X':...}; positional `install X --endpoint ...` -> exit 0 identical output/config (diff vs HEAD~1 shows the positional path writes the same dict, same echo, same default_harness promotion); neither form -> exit 2 with \"Error: install requires a harness name: pass it positionally (install NAME ...) or with --name NAME\"; both `install pos --name flag` -> exit 0, \"installed harness 'pos'\", 'flag' absent from harnesses (positional wins). Plugin mirror (h3/__init__.py:166-179, 286-296): positional `nargs=\"?\"` + `--name` dest=name_opt, `_argv_from_namespace` falls back to `<field>_opt` and omits unset values. Live evidence: `_setup` parser on ['install','--name','X','--endpoint','http://u:1'] rebuilds argv ['install','X','--endpoint','http://u:1'] -> same click command exit 0, same config; unset name rebuilds ['install','--endpoint',...] -> click exit 2 with the same missing-name message. Tests: tests/test_cli.py test_install_name_flag_alias / test_install_without_name_fails_loudly / test_install_positional_wins_over_name_flag; tests/test_h3_plugin.py test_install_name_flag_parses / test_install_name_flag_rebuilds_positional_argv / test_install_flag_and_positional_behave_identically. Command evidence: `.venv/bin/python -m pytest -q` -> \"375 passed, 4 warnings in 23.25s\", EXIT=0; `ruff check src/h3_shim/cli.py h3/__init__.py tests/test_cli.py tests/test_h3_plugin.py` -> \"All checks passed!\", CHECK_EXIT=0; `ruff format --check` same files -> \"4 files already formatted\", FMT_EXIT=0; read_lsp_diagnostics -> 0 findings."
+              }
+            ],
+            "summary": "All DF-H3-3 requirements verified: --name alias works on both the click CLI and the hermes h3 plugin mirror with positional-wins and loud missing-name failure, tests cover all three cases, and the full suite (375 passed, exit 0) plus ruff check/format are clean."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-h3-3\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The install command accepts --name as an alias for the positional NAME on BOTH documented entry points: hermes-h3 install --name X --endpoint URL registers the harness X and exits 0; the positional form hermes-h3 install X --endpoint URL keeps its exact previous behaviour; passing neither name form exits non-zero with a message naming the missing name; when both forms are given the positional NAME wins (the verify convention); the plugin front-end hermes h3 install --name X --endpoint URL reaches the same click command with the same resolved name; tests in tests/test_cli.py and tests/test_h3_plugin.py cover the alias, the missing-name failure and the conflict; the full shim pytest suite exits 0; ruff check and ruff format --check are clean on the changed files.: Click CLI (src/h3_shim/cli.py:686-696, 713-733): `@click.argument(\"name\", required=False)` + `--name`/`name_opt`, `resolved = name if name is not None else name_opt`, `raise click.UsageError(\"install requires a harness name: ...\")` when None. Live CliRunner evidence: `install --name X --endpoint http://u:1` -> exit 0, \"installed harness 'X' at http://u:1 (rest)\", config harnesses={'X':...}; positional `install X --endpoint ...` -> exit 0 identical output/config (diff vs HEAD~1 shows the positional path writes the same dict, same echo, same default_harness promotion); neither form -> exit 2 with \"Error: install requires a harness name: pass it positionally (install NAME ...) or with --name NAME\"; both `install pos --name flag` -> exit 0, \"installed harness 'pos'\", 'flag' absent from harnesses (positional wins). Plugin mirror (h3/__init__.py:166-179, 286-296): positional `nargs=\"?\"` + `--name` dest=name_opt, `_argv_from_namespace` falls back to `<field>_opt` and omits unset values. Live evidence: `_setup` parser on ['install','--name','X','--endpoint','http://u:1'] rebuilds argv ['install','X','--endpoint','http://u:1'] -> same click command exit 0, same config; unset name rebuilds ['install','--endpoint',...] -> click exit 2 with the same missing-name message. Tests: tests/test_cli.py test_install_name_flag_alias / test_install_without_name_fails_loudly / test_install_positional_wins_over_name_flag; tests/test_h3_plugin.py test_install_name_flag_parses / test_install_name_flag_rebuilds_positional_argv / test_install_flag_and_positional_behave_identically. Command evidence: `.venv/bin/python -m pytest -q` -> \"375 passed, 4 warnings in 23.25s\", EXIT=0; `ruff check src/h3_shim/cli.py h3/__init__.py tests/test_cli.py tests/test_h3_plugin.py` -> \"All checks passed!\", CHECK_EXIT=0; `ruff format --check` same files -> \"4 files already formatted\", FMT_EXIT=0; read_lsp_diagnostics -> 0 findings.\nAll DF-H3-3 requirements verified: --name alias works on both the click CLI and the hermes h3 plugin mirror with positional-wins and loud missing-name failure, tests cover all three cases, and the full suite (375 passed, exit 0) plus ruff check/format are clean.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T23:56:02.831663",
+  "evidence": {
+    "collected_at": "2026-09-18T23:56:02.843828+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 11577,
+        "truncated": false,
+        "source": "git show 02f8f6525713"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 1714,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "df-h3-3"
+  }
+}
