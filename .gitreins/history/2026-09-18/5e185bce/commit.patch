@@ -1,0 +1,44 @@
+commit e39c32bfb8320f42feee8e630e9c90ec9eec3dca
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 17:54:38 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 17:54:38 2026 -0500
+
+    style(cli): DF-H3-11 follow-up - ruff format the route --session code
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ src/h3_shim/cli.py | 4 +---
+ tests/test_cli.py  | 4 +---
+ 2 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/src/h3_shim/cli.py b/src/h3_shim/cli.py
+index fcbbcd8..b567175 100644
+--- a/src/h3_shim/cli.py
++++ b/src/h3_shim/cli.py
+@@ -1027,9 +1027,7 @@ def route(
+     sessions: dict[str, Any] = config.get("sessions", {}) or {}
+     if session is not None:
+         if session not in sessions:
+-            raise click.ClickException(
+-                f"no session {session!r} in the routing table"
+-            )
++            raise click.ClickException(f"no session {session!r} in the routing table")
+         click.echo(f"{session} -> {_session_harness(sessions[session])}")
+         return
+     if not sessions:
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 5d8fe3c..7678601 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -630,9 +630,7 @@ class TestRoute:
+         assert result.exit_code != 0
+         assert "nope" in result.output
+ 
+-    def test_route_session_unknown_on_empty_config_fails_loudly(
+-        self, cfg_path, runner
+-    ):
++    def test_route_session_unknown_on_empty_config_fails_loudly(self, cfg_path, runner):
+         # The pathological case this finding exists for: empty routing
+         # table must not answer an unknown id with a zero exit.
+         result = runner.invoke(hermes_h3, ["route", "--session", "nope"])

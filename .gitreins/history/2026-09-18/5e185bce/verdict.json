@@ -1,0 +1,83 @@
+{
+  "task_id": "df-h3-11",
+  "task_title": "DF-H3-11 - hermes-h3 route --session <id> answers a single session binding",
+  "task_criteria": [
+    "route --session is implemented and proven at committed HEAD: src/h3_shim/cli.py route() declares a --session option; .venv/bin/python -m h3_shim.cli route --session <configured-id> exits 0 and prints that session's harness binding for BOTH the dict form ({harness: alpha}) and the bare-string form (beta); an unknown session id exits NON-ZERO with a message naming the id; the no-flag routing table output is unchanged; tests/test_cli.py covers the found and unknown paths; .venv/bin/python -m pytest -x --tb=short -q exits 0."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "e39c32bfb8320f42feee8e630e9c90ec9eec3dca",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T225508.345363Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T225508.345363Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 route --session is implemented and proven at committed HEAD: Verified at HEAD e39c32bfb8320f42feee8e630e9c90ec9eec3dca; git diff HEAD -- src/h3_shim/cli.py tests/test_cli.py is empty, and all CLI/test evidence above was produced against that committed state.\nroute --session is implemented at committed HEAD, correctly answers dict and bare-string bindings, fails non-zero naming unknown ids, leaves no-flag output unchanged, is covered by tests, and the full pytest suite exits 0 (361 passed).",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 route --session is implemented and proven at committed HEAD: Verified at HEAD e39c32bfb8320f42feee8e630e9c90ec9eec3dca; git diff HEAD -- src/h3_shim/cli.py tests/test_cli.py is empty, and all CLI/test evidence above was produced against that committed state.\nroute --session is implemented at committed HEAD, correctly answers dict and bare-string bindings, fails non-zero naming unknown ids, leaves no-flag output unchanged, is covered by tests, and the full pytest suite exits 0 (361 passed).",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "route --session is implemented and proven at committed HEAD",
+                "status": "PASS",
+                "detail": "Verified at HEAD e39c32bfb8320f42feee8e630e9c90ec9eec3dca; git diff HEAD -- src/h3_shim/cli.py tests/test_cli.py is empty, and all CLI/test evidence above was produced against that committed state."
+              }
+            ],
+            "summary": "route --session is implemented at committed HEAD, correctly answers dict and bare-string bindings, fails non-zero naming unknown ids, leaves no-flag output unchanged, is covered by tests, and the full pytest suite exits 0 (361 passed)."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-h3-11\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 route --session is implemented and proven at committed HEAD: Verified at HEAD e39c32bfb8320f42feee8e630e9c90ec9eec3dca; git diff HEAD -- src/h3_shim/cli.py tests/test_cli.py is empty, and all CLI/test evidence above was produced against that committed state.\nroute --session is implemented at committed HEAD, correctly answers dict and bare-string bindings, fails non-zero naming unknown ids, leaves no-flag output unchanged, is covered by tests, and the full pytest suite exits 0 (361 passed).\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T22:57:11.583299",
+  "evidence": {
+    "collected_at": "2026-09-18T22:57:11.594434+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1803,
+        "truncated": false,
+        "source": "git show e39c32bfb832"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 670,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "df-h3-11"
+  }
+}
