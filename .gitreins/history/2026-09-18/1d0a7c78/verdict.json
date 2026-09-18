@@ -1,0 +1,75 @@
+{
+  "task_id": "df3-h3-shim-5",
+  "task_title": "gitreins 0.13.0 DEGRADED (rc2) fails judge tier1 and blocks docs-only commits",
+  "task_criteria": [
+    "guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "0c9921df12bc87bfd6b36933608aa246e5e5a750",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T073434.634392Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T073434.634392Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json: (1) `cat .gitreins/config.yaml` shows `allow_skips: true` under guards: (also in HEAD via `git show HEAD:.gitreins/config.yaml`). (2) Clean tree `gitreins guard` printed 'Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)' with EXIT_CODE=0 (was rc=2); engine logic at gitreins/cli.py:2038 only sys.exit(2) when `result.degraded and not result.extra.get('allow_skips', False)`. (3) Staging engine/version.py produced 'Tier 1 Guards: PASS (test mode: diff, 1 test file(s))' with '\u2713 tests (diff: 1 files)' EXIT_CODE=0 \u2014 no 'no staged files' skip. (4) Live `gitreins task complete eval-probe-shim5 --skip-tier2` (post-change; config committed 6be4111 on 2026-09-16) printed 'Stage tier1: PASS ... Overall: PASS \u2713 Verdict saved: e5f09622'; the resulting verdict.json files (.gitreins/history/2026-09-18/46a6a49b, d1f7febe, 97d6a414) record task_id=eval-probe-shim5, passed=True, tier1 passed=True, any_failed=False, with lint/secrets/tests steps all passed=True exit=0. Pre-existing post-change verdicts (2026-09-17) likewise show tier1 passed=True. Probe task deleted afterward.\nAll four sub-parts verified with live output: allow_skips:true is set, clean-tree guard exits 0, staged source diffs still run the tests gate, and post-change task complete records tier1 PASS in verdict.json.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json: (1) `cat .gitreins/config.yaml` shows `allow_skips: true` under guards: (also in HEAD via `git show HEAD:.gitreins/config.yaml`). (2) Clean tree `gitreins guard` printed 'Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)' with EXIT_CODE=0 (was rc=2); engine logic at gitreins/cli.py:2038 only sys.exit(2) when `result.degraded and not result.extra.get('allow_skips', False)`. (3) Staging engine/version.py produced 'Tier 1 Guards: PASS (test mode: diff, 1 test file(s))' with '\u2713 tests (diff: 1 files)' EXIT_CODE=0 \u2014 no 'no staged files' skip. (4) Live `gitreins task complete eval-probe-shim5 --skip-tier2` (post-change; config committed 6be4111 on 2026-09-16) printed 'Stage tier1: PASS ... Overall: PASS \u2713 Verdict saved: e5f09622'; the resulting verdict.json files (.gitreins/history/2026-09-18/46a6a49b, d1f7febe, 97d6a414) record task_id=eval-probe-shim5, passed=True, tier1 passed=True, any_failed=False, with lint/secrets/tests steps all passed=True exit=0. Pre-existing post-change verdicts (2026-09-17) likewise show tier1 passed=True. Probe task deleted afterward.\nAll four sub-parts verified with live output: allow_skips:true is set, clean-tree guard exits 0, staged source diffs still run the tests gate, and post-change task complete records tier1 PASS in verdict.json.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json",
+                "status": "PASS",
+                "detail": "(1) `cat .gitreins/config.yaml` shows `allow_skips: true` under guards: (also in HEAD via `git show HEAD:.gitreins/config.yaml`). (2) Clean tree `gitreins guard` printed 'Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)' with EXIT_CODE=0 (was rc=2); engine logic at gitreins/cli.py:2038 only sys.exit(2) when `result.degraded and not result.extra.get('allow_skips', False)`. (3) Staging engine/version.py produced 'Tier 1 Guards: PASS (test mode: diff, 1 test file(s))' with '\u2713 tests (diff: 1 files)' EXIT_CODE=0 \u2014 no 'no staged files' skip. (4) Live `gitreins task complete eval-probe-shim5 --skip-tier2` (post-change; config committed 6be4111 on 2026-09-16) printed 'Stage tier1: PASS ... Overall: PASS \u2713 Verdict saved: e5f09622'; the resulting verdict.json files (.gitreins/history/2026-09-18/46a6a49b, d1f7febe, 97d6a414) record task_id=eval-probe-shim5, passed=True, tier1 passed=True, any_failed=False, with lint/secrets/tests steps all passed=True exit=0. Pre-existing post-change verdicts (2026-09-17) likewise show tier1 passed=True. Probe task deleted afterward."
+              }
+            ],
+            "summary": "All four sub-parts verified with live output: allow_skips:true is set, clean-tree guard exits 0, staged source diffs still run the tests gate, and post-change task complete records tier1 PASS in verdict.json."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df3-h3-shim-5\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json: (1) `cat .gitreins/config.yaml` shows `allow_skips: true` under guards: (also in HEAD via `git show HEAD:.gitreins/config.yaml`). (2) Clean tree `gitreins guard` printed 'Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)' with EXIT_CODE=0 (was rc=2); engine logic at gitreins/cli.py:2038 only sys.exit(2) when `result.degraded and not result.extra.get('allow_skips', False)`. (3) Staging engine/version.py produced 'Tier 1 Guards: PASS (test mode: diff, 1 test file(s))' with '\u2713 tests (diff: 1 files)' EXIT_CODE=0 \u2014 no 'no staged files' skip. (4) Live `gitreins task complete eval-probe-shim5 --skip-tier2` (post-change; config committed 6be4111 on 2026-09-16) printed 'Stage tier1: PASS ... Overall: PASS \u2713 Verdict saved: e5f09622'; the resulting verdict.json files (.gitreins/history/2026-09-18/46a6a49b, d1f7febe, 97d6a414) record task_id=eval-probe-shim5, passed=True, tier1 passed=True, any_failed=False, with lint/secrets/tests steps all passed=True exit=0. Pre-existing post-change verdicts (2026-09-17) likewise show tier1 passed=True. Probe task deleted afterward.\nAll four sub-parts verified with live output: allow_skips:true is set, clean-tree guard exits 0, staged source diffs still run the tests gate, and post-change task complete records tier1 PASS in verdict.json.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T07:38:36.748700",
+  "evidence": {
+    "collected_at": "2026-09-18T07:38:36.768309+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 26555,
+        "truncated": false,
+        "source": "git show 0c9921df12bc"
+      }
+    ],
+    "task_id": "df3-h3-shim-5"
+  }
+}
