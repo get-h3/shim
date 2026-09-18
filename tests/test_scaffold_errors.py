@@ -28,8 +28,8 @@ from h3_shim.templates.py import main
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # The protocol repo is a sibling checkout (get-h3/{shim,protocol}). Resolve it
-# from this file first, allow an explicit override, and only then fall back to
-# the canonical absolute path.
+# from this file first, then allow an explicit override — the test skips when
+# neither is present (e.g. a CI checkout of this repo alone).
 _PROTOCOL_SCHEMA = Path("schemas") / "v1" / "error-response.json"
 
 
@@ -40,7 +40,6 @@ def _protocol_schema_path() -> Path | None:
     if override:
         candidates.append(Path(override) / _PROTOCOL_SCHEMA)
     candidates.append(_REPO_ROOT.parent / "protocol" / _PROTOCOL_SCHEMA)
-    candidates.append(Path("/home/kara/get-h3/protocol") / _PROTOCOL_SCHEMA)
     for candidate in candidates:
         if candidate.is_file():
             return candidate
