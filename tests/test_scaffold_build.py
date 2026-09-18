@@ -60,6 +60,22 @@ def _h3_test_bin() -> str:
     return found
 
 
+def _with_harness_log(message: str, log_path: Path, lines: int = 20) -> str:
+    """Append the scaffolded harness's log tail to a failure ``message``.
+
+    The harness's stdout/stderr are redirected to ``log_path`` (a real file,
+    never an undrained PIPE), so a failing assertion can still show what the
+    harness said. Reading is best-effort: an unreadable/absent log must not
+    mask the original assertion.
+    """
+    try:
+        text = log_path.read_text(errors="replace")
+        tail = "\n".join(text.splitlines()[-lines:])
+    except OSError as exc:  # pragma: no cover - defensive
+        tail = f"<unreadable: {exc}>"
+    return f"{message}\n--- harness log (tail) ---\n{tail}"
+
+
 def _wait_healthy(port: int, timeout_s: float = 30.0) -> None:
     """Poll /v1/health until the harness answers or the timeout elapses."""
     import urllib.request
@@ -214,11 +230,20 @@ class TestPyScaffoldBattery:
         assert install.returncode == 0, install.stderr
 
         # Start the harness with PORT override, wait for health, run battery.
+        # The harness's stdout/stderr go to a FILE under tmp_path — never an
+        # undrained PIPE. The scaffolded harness logs several KB while the
+        # stress category runs, so a PIPE nobody reads fills (~8089 bytes) and
+        # parks the child in anon_pipe_write: it stops answering mid-battery
+        # (deterministic 42/46, every stress test hitting the client's 10s
+        # timeout) even though the harness itself is compliant. The file also
+        # keeps the log available for failure messages.
+        log_path = tmp_path / "harness.log"
+        log_file = log_path.open("w")
         proc = subprocess.Popen(
             [str(bin_dir / "python"), "main.py"],
             cwd=proj,
             env={"PORT": str(port), "PATH": "/usr/bin:/bin"},
-            stdout=subprocess.PIPE,
+            stdout=log_file,
             stderr=subprocess.STDOUT,
             text=True,
         )
@@ -230,15 +255,19 @@ class TestPyScaffoldBattery:
                 text=True,
                 timeout=300,
             )
-            assert battery.returncode == 0, (
+            assert battery.returncode == 0, _with_harness_log(
                 f"h3-test exited {battery.returncode} "
-                f"(1=compliance failure, 2=unreachable) — battery:\n{battery.stdout}"
+                f"(1=compliance failure, 2=unreachable) — battery:\n{battery.stdout}",
+                log_path,
             )
             assert "TOTAL" in battery.stdout and "46/46" in battery.stdout, (
-                f"battery output missing 46/46 assertion:\n{battery.stdout}"
+                _with_harness_log(
+                    f"battery output missing 46/46 assertion:\n{battery.stdout}",
+                    log_path,
+                )
             )
-            assert "PASSED" in battery.stdout, (
-                f"battery did not PASS:\n{battery.stdout}"
+            assert "PASSED" in battery.stdout, _with_harness_log(
+                f"battery did not PASS:\n{battery.stdout}", log_path
             )
         finally:
             proc.terminate()
@@ -246,3 +275,4 @@ class TestPyScaffoldBattery:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:  # pragma: no cover - defensive
                 proc.kill()
+            log_file.close()
