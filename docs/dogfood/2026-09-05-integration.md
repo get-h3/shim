@@ -50,8 +50,10 @@ loop = H3ShimLoop(
     client,
     session_id="tour-1",
     context=Context(),
-    llm_provider=lambda prompt, kw: f"LLM-SAYS({prompt[:30]})",  # NEW: makes LLM_CALL executable
-    on_text=texts.append,                                        # NEW: text delivery hook
+    llm_provider=lambda prompt, kw: (
+        f"LLM-SAYS({prompt[:30]})"
+    ),  # NEW: makes LLM_CALL executable
+    on_text=texts.append,  # NEW: text delivery hook
 )
 loop.register_tool("get_time", get_time)
 final = await loop.run(Message(role="user", content="tour every decision"))

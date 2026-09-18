@@ -64,8 +64,10 @@ loop = H3ShimLoop(
     session_id="s1",
     context=Context(),
     identity=Identity(platform="telegram", chat_id="-100"),
-    llm_provider=lambda prompt, kw: f"model text for: {prompt[:40]}",  # makes LLM_CALL executable
-    on_text=texts.append,          # every TEXT decision's content lands here
+    llm_provider=lambda prompt, kw: (
+        f"model text for: {prompt[:40]}"
+    ),  # makes LLM_CALL executable
+    on_text=texts.append,  # every TEXT decision's content lands here
 )
 loop.register_tool("get_weather", lambda city: f"sunny, 24C in {city}")
 result = await loop.run(Message(role="user", content="weather in Berlin?"))
