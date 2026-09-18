@@ -1,0 +1,72 @@
+{
+  "task_id": "df3-h3-shim-6",
+  "task_title": "tests/test_scaffold_build.py undrained stdout PIPE blocks the scaffolded harness (42/46 stress timeout)",
+  "task_criteria": [
+    "tests/test_scaffold_build.py must not leave the scaffolded harness's stdout as an undrained subprocess.PIPE: the child must be able to write without blocking (reader thread, temp file, or DEVNULL)",
+    "python -m pytest tests/test_scaffold_build.py -q must be green on this machine without reducing coverage: the py scaffold leg still asserts h3-test exit 0 + TOTAL 46/46 + PASSED",
+    "No regression in the other scaffold legs (go/ts) or the rest of the suite"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "95ef983c39c15e80b87dc055e10172b15877428e",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n  \u001b[33mUpdate available: v0.13.0 \u2192 https://pypi.org/project/gitreins/\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 tests/test_scaffold_build.py must not leave the scaffolded harness's stdout as an undrained subprocess.PIPE: the child must be able to write without blocking (reader thread, temp file, or DEVNULL): tests/test_scaffold_build.py:242-249 now opens log_path = tmp_path/'harness.log' and passes stdout=log_file, stderr=subprocess.STDOUT to subprocess.Popen (previously stdout=subprocess.PIPE). log_file.close() is in the finally block at line 278. grep for 'PIPE' in the file returns only comment text (lines 67, 234, 235) \u2014 no subprocess.PIPE remains. The child writes to a real file, so it can never block on a full pipe buffer.\n  \u2713 python -m pytest tests/test_scaffold_build.py -q must be green on this machine without reducing coverage: the py scaffold leg still asserts h3-test exit 0 + TOTAL 46/46 + PASSED: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -q` -> '4 passed in 15.20s', exit_code 0 (repeat run: '4 passed in 15.60s'). Coverage unchanged: lines 258-271 still assert battery.returncode == 0, `\"TOTAL\" in battery.stdout and \"46/46\" in battery.stdout`, and `\"PASSED\" in battery.stdout`; the only change is wrapping the messages in _with_harness_log(...) (lines 60-75), which appends the log tail and is best-effort (OSError -> '<unreadable>'), so it cannot mask or weaken the assertions.\n  \u2713 No regression in the other scaffold legs (go/ts) or the rest of the suite: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -v -rs` -> TestGoScaffoldBuild::test_scaffold_go_builds PASSED, TestTsScaffoldBuild::test_scaffold_ts_builds PASSED, TestPyScaffoldBuild::test_scaffold_py_installs PASSED, TestPyScaffoldBattery::test_py_scaffold_passes_46_46_battery PASSED; '4 passed in 23.94s', EXIT=0, no skips. Full suite `.venv/bin/python -m pytest -q` -> '322 passed in 24.71s', exit_code 0. The commit diff touches only tests/test_scaffold_build.py (36 insertions, 6 deletions) with no src changes; LSP diagnostics report 0 findings.\nThe undrained PIPE was replaced with a tmp_path log file (closed in finally), the py battery leg still asserts exit 0 + TOTAL 46/46 + PASSED, and both the scaffold file (4 passed) and the full suite (322 passed) are green with no skips.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 tests/test_scaffold_build.py must not leave the scaffolded harness's stdout as an undrained subprocess.PIPE: the child must be able to write without blocking (reader thread, temp file, or DEVNULL): tests/test_scaffold_build.py:242-249 now opens log_path = tmp_path/'harness.log' and passes stdout=log_file, stderr=subprocess.STDOUT to subprocess.Popen (previously stdout=subprocess.PIPE). log_file.close() is in the finally block at line 278. grep for 'PIPE' in the file returns only comment text (lines 67, 234, 235) \u2014 no subprocess.PIPE remains. The child writes to a real file, so it can never block on a full pipe buffer.\n  \u2713 python -m pytest tests/test_scaffold_build.py -q must be green on this machine without reducing coverage: the py scaffold leg still asserts h3-test exit 0 + TOTAL 46/46 + PASSED: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -q` -> '4 passed in 15.20s', exit_code 0 (repeat run: '4 passed in 15.60s'). Coverage unchanged: lines 258-271 still assert battery.returncode == 0, `\"TOTAL\" in battery.stdout and \"46/46\" in battery.stdout`, and `\"PASSED\" in battery.stdout`; the only change is wrapping the messages in _with_harness_log(...) (lines 60-75), which appends the log tail and is best-effort (OSError -> '<unreadable>'), so it cannot mask or weaken the assertions.\n  \u2713 No regression in the other scaffold legs (go/ts) or the rest of the suite: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -v -rs` -> TestGoScaffoldBuild::test_scaffold_go_builds PASSED, TestTsScaffoldBuild::test_scaffold_ts_builds PASSED, TestPyScaffoldBuild::test_scaffold_py_installs PASSED, TestPyScaffoldBattery::test_py_scaffold_passes_46_46_battery PASSED; '4 passed in 23.94s', EXIT=0, no skips. Full suite `.venv/bin/python -m pytest -q` -> '322 passed in 24.71s', exit_code 0. The commit diff touches only tests/test_scaffold_build.py (36 insertions, 6 deletions) with no src changes; LSP diagnostics report 0 findings.\nThe undrained PIPE was replaced with a tmp_path log file (closed in finally), the py battery leg still asserts exit 0 + TOTAL 46/46 + PASSED, and both the scaffold file (4 passed) and the full suite (322 passed) are green with no skips.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "tests/test_scaffold_build.py must not leave the scaffolded harness's stdout as an undrained subprocess.PIPE: the child must be able to write without blocking (reader thread, temp file, or DEVNULL)",
+                "status": "PASS",
+                "detail": "tests/test_scaffold_build.py:242-249 now opens log_path = tmp_path/'harness.log' and passes stdout=log_file, stderr=subprocess.STDOUT to subprocess.Popen (previously stdout=subprocess.PIPE). log_file.close() is in the finally block at line 278. grep for 'PIPE' in the file returns only comment text (lines 67, 234, 235) \u2014 no subprocess.PIPE remains. The child writes to a real file, so it can never block on a full pipe buffer."
+              },
+              {
+                "criterion": "python -m pytest tests/test_scaffold_build.py -q must be green on this machine without reducing coverage: the py scaffold leg still asserts h3-test exit 0 + TOTAL 46/46 + PASSED",
+                "status": "PASS",
+                "detail": "Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -q` -> '4 passed in 15.20s', exit_code 0 (repeat run: '4 passed in 15.60s'). Coverage unchanged: lines 258-271 still assert battery.returncode == 0, `\"TOTAL\" in battery.stdout and \"46/46\" in battery.stdout`, and `\"PASSED\" in battery.stdout`; the only change is wrapping the messages in _with_harness_log(...) (lines 60-75), which appends the log tail and is best-effort (OSError -> '<unreadable>'), so it cannot mask or weaken the assertions."
+              },
+              {
+                "criterion": "No regression in the other scaffold legs (go/ts) or the rest of the suite",
+                "status": "PASS",
+                "detail": "Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -v -rs` -> TestGoScaffoldBuild::test_scaffold_go_builds PASSED, TestTsScaffoldBuild::test_scaffold_ts_builds PASSED, TestPyScaffoldBuild::test_scaffold_py_installs PASSED, TestPyScaffoldBattery::test_py_scaffold_passes_46_46_battery PASSED; '4 passed in 23.94s', EXIT=0, no skips. Full suite `.venv/bin/python -m pytest -q` -> '322 passed in 24.71s', exit_code 0. The commit diff touches only tests/test_scaffold_build.py (36 insertions, 6 deletions) with no src changes; LSP diagnostics report 0 findings."
+              }
+            ],
+            "summary": "The undrained PIPE was replaced with a tmp_path log file (closed in finally), the py battery leg still asserts exit 0 + TOTAL 46/46 + PASSED, and both the scaffold file (4 passed) and the full suite (322 passed) are green with no skips."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df3-h3-shim-6\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 tests/test_scaffold_build.py must not leave the scaffolded harness's stdout as an undrained subprocess.PIPE: the child must be able to write without blocking (reader thread, temp file, or DEVNULL): tests/test_scaffold_build.py:242-249 now opens log_path = tmp_path/'harness.log' and passes stdout=log_file, stderr=subprocess.STDOUT to subprocess.Popen (previously stdout=subprocess.PIPE). log_file.close() is in the finally block at line 278. grep for 'PIPE' in the file returns only comment text (lines 67, 234, 235) \u2014 no subprocess.PIPE remains. The child writes to a real file, so it can never block on a full pipe buffer.\n  \u2713 python -m pytest tests/test_scaffold_build.py -q must be green on this machine without reducing coverage: the py scaffold leg still asserts h3-test exit 0 + TOTAL 46/46 + PASSED: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -q` -> '4 passed in 15.20s', exit_code 0 (repeat run: '4 passed in 15.60s'). Coverage unchanged: lines 258-271 still assert battery.returncode == 0, `\"TOTAL\" in battery.stdout and \"46/46\" in battery.stdout`, and `\"PASSED\" in battery.stdout`; the only change is wrapping the messages in _with_harness_log(...) (lines 60-75), which appends the log tail and is best-effort (OSError -> '<unreadable>'), so it cannot mask or weaken the assertions.\n  \u2713 No regression in the other scaffold legs (go/ts) or the rest of the suite: Ran `.venv/bin/python -m pytest tests/test_scaffold_build.py -v -rs` -> TestGoScaffoldBuild::test_scaffold_go_builds PASSED, TestTsScaffoldBuild::test_scaffold_ts_builds PASSED, TestPyScaffoldBuild::test_scaffold_py_installs PASSED, TestPyScaffoldBattery::test_py_scaffold_passes_46_46_battery PASSED; '4 passed in 23.94s', EXIT=0, no skips. Full suite `.venv/bin/python -m pytest -q` -> '322 passed in 24.71s', exit_code 0. The commit diff touches only tests/test_scaffold_build.py (36 insertions, 6 deletions) with no src changes; LSP diagnostics report 0 findings.\nThe undrained PIPE was replaced with a tmp_path log file (closed in finally), the py battery leg still asserts exit 0 + TOTAL 46/46 + PASSED, and both the scaffold file (4 passed) and the full suite (322 passed) are green with no skips.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T07:57:53.659737"
+}
