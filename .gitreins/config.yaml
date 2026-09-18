@@ -3,6 +3,14 @@ guards:
   lint: true
   tests: true
   test_mode: diff
+  # DF3-H3-SHIM-5: gitreins 0.13.0 makes a zero-work diff (docs/board-only
+  # commits, and the judge's pre-eval tier1 step which always runs on a clean
+  # index) a DEGRADED PASS that exits 2. With tier1 `on_fail: block` that both
+  # refused docs-only commits and marked every judged verdict tier1 FAIL even
+  # when tier2 passed. allow_skips is the engine's documented opt-in (what
+  # `gitreins init` writes for fresh repos): skipped gates are still named in
+  # the summary and the guard log, they just no longer fail the run.
+  allow_skips: true
   test_command: .venv/bin/python -m pytest -x --tb=short -q
 
 pipeline:
