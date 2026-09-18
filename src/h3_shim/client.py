@@ -108,7 +108,9 @@ class H3Client:
             context=context,
         )
         try:
-            resp = await self._rest.post("/v1/process", json=req.model_dump())
+            resp = await self._rest.post(
+                "/v1/process", json=req.model_dump(mode="json")
+            )
             resp.raise_for_status()
             return Decision(**resp.json())
         except httpx.TimeoutException:
@@ -138,7 +140,7 @@ class H3Client:
             result=result,
         )
         try:
-            resp = await self._rest.post("/v1/result", json=req.model_dump())
+            resp = await self._rest.post("/v1/result", json=req.model_dump(mode="json"))
             resp.raise_for_status()
             return Decision(**resp.json())
         except httpx.TimeoutException:

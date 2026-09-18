@@ -8,6 +8,7 @@ HTTP verb, returning a fake ``Response`` whose ``.json()`` and
 
 import json
 import os
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -409,3 +410,56 @@ class TestPayloadShape:
         as_json = json.loads(json.dumps(req.model_dump()))
         assert as_json["session_id"] == "s_rt"
         assert as_json["identity"]["thread_id"] == "t1"
+
+    async def test_timestamped_payload_is_json_serializable(self):
+        """DF3-H3-SHIM-1: datetime payload values must reach httpx as JSON.
+
+        ``Message.timestamp`` is typed ``datetime | None``. The POST sites used
+        ``req.model_dump()`` (python mode), which left the ``datetime`` object
+        in the payload dict; httpx then ran ``json.dumps`` on it and raised
+        ``TypeError: Object of type datetime is not JSON serializable``, which
+        ``H3ShimLoop.run()`` masks as EndReason 'error'. The same class of value
+        is reachable inside the free-form ``ExecutionResult.data``, so both POST
+        sites are pinned here.
+        """
+        ts = datetime(2026, 9, 18, 6, 16, 3, tzinfo=timezone.utc)
+        c = _make_client()
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "end",
+                "decision_id": "d_ts",
+                "end": {"reason": "task_complete"},
+            },
+        )
+
+        await c.process(
+            session_id="s_ts",
+            message=Message(role="user", content="hi", timestamp=ts),
+            identity=Identity(platform="telegram", chat_id="-100"),
+            context=Context(
+                history=[Message(role="user", content="prev", timestamp=ts)]
+            ),
+        )
+        process_body = c._rest.post.call_args.kwargs["json"]
+        # httpx runs exactly this on the payload — a datetime object raises.
+        json.dumps(process_body)
+        raw = process_body["message"]["timestamp"]
+        assert isinstance(raw, str)
+        assert datetime.fromisoformat(raw.replace("Z", "+00:00")) == ts
+        assert process_body["context"]["history"][0]["timestamp"] == raw
+
+        await c.result(
+            session_id="s_ts",
+            decision_id="d_ts",
+            result=ExecutionResult(
+                type="tool_result",
+                data={"finished_at": ts},
+                success=True,
+            ),
+        )
+        result_body = c._rest.post.call_args.kwargs["json"]
+        json.dumps(result_body)
+        raw_result = result_body["result"]["data"]["finished_at"]
+        assert isinstance(raw_result, str)
+        assert datetime.fromisoformat(raw_result.replace("Z", "+00:00")) == ts
