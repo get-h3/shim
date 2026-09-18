@@ -1,0 +1,38 @@
+commit 3329b729f722b3b372043ab67064cdc74a54c60a
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 17:26:37 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 17:26:37 2026 -0500
+
+    fix(ci): declare uvicorn in the dev extra — CI unit tests were red on the scaffold error-contract test
+    
+    Commit 553620a added tests/test_scaffold_errors.py, which imports the py scaffold template (src/h3_shim/templates/py/main.py) to exercise its FastAPI app. That module imports uvicorn at module level (the generated project's runner), and uvicorn was not in any dependency block, so the CI 'test' job's Unit tests step died at COLLECTION: ModuleNotFoundError: No module named 'uvicorn' (run 35401244037, head f9a722b). Declared uvicorn>=0.27 in both dev blocks ([project.optional-dependencies] and [dependency-groups]); uv.lock (gitignored) regenerated. Local suite unchanged at 357 passed.
+    
+    Addresses df3-h3-shim-7
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ pyproject.toml | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/pyproject.toml b/pyproject.toml
+index ca78da4..5a2601d 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -39,6 +39,10 @@ dev = [
+     "pytest-asyncio>=1.4.0",
+     "pytest-mock>=3.15.1",
+     "ruff>=0.1",
++    # tests/test_scaffold_errors.py imports the py scaffold TEMPLATE
++    # (src/h3_shim/templates/py/main.py) to exercise its FastAPI app, and that
++    # module imports uvicorn at module level (the generated project's runner).
++    "uvicorn>=0.27",
+ ]
+ 
+ [project.scripts]
+@@ -67,4 +71,5 @@ dev = [
+     "pytest-asyncio>=1.4.0",
+     "pytest-mock>=3.15.1",
+     "ruff>=0.1",
++    "uvicorn>=0.27",
+ ]

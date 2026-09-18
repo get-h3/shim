@@ -1,0 +1,75 @@
+{
+  "task_id": "df3-h3-shim-7",
+  "task_title": "CI unit-test job red: the scaffold error-contract test imports the py template, which needs uvicorn in the dev extra",
+  "task_criteria": [
+    "The CI 'test' job's Unit tests step collects and passes tests/test_scaffold_errors.py with a plain 'pip install -e .[dev]' environment (uvicorn declared in the dev extra in both pyproject dependency blocks); the local suite stays green (357 passed) and ruff check/format plus scripts/check-test-count.sh still pass; GitHub Actions run for the fix commit is green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "3329b729f722b3b372043ab67064cdc74a54c60a",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T222705.823343Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T222705.823343Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 The CI 'test' job's Unit tests step collects and passes tests/test_scaffold_errors.py with a plain 'pip install -e .[dev]' environment (uvicorn declared in the dev extra in both pyproject dependency blocks); the local suite stays green (357 passed) and ruff check/format plus scripts/check-test-count.sh still pass; GitHub Actions run for the fix commit is green: pyproject.toml declares \"uvicorn>=0.27\" in BOTH dev blocks: [project.optional-dependencies] dev (line 46, with explanatory comment) and [dependency-groups] dev (line 75). Verified in a fresh venv: `pip install -e '/home/kara/get-h3/shim[dev]'` exit 0, `import uvicorn` -> 0.53.0; `pytest tests/test_scaffold_errors.py` -> '5 passed' (collects cleanly, no ModuleNotFoundError). Local suite: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 20.63s'. `ruff check src/ tests/` -> 'All checks passed!' exit 0; `ruff format --check src/ tests/` -> '26 files already formatted' exit 0; `bash scripts/check-test-count.sh` -> 'PASS \u2014 canonical compliance-test count is 46' exit 0. GitHub Actions run 35401595384 for fix commit 3329b72 = 'completed success'; test job (ID 105782475779) all steps green including 'Unit tests' which logged '351 passed, 6 skipped, 2 warnings in 47.56s' (no collection error), plus Lint 'All checks passed!' and Compliance gate '46/46 PASSED'.\nuvicorn is declared in both dev dependency blocks, the scaffold error-contract test collects and passes under a plain pip install -e .[dev], the local suite is 357 passed with ruff and the count guard green, and the GitHub Actions run for the fix commit is green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 The CI 'test' job's Unit tests step collects and passes tests/test_scaffold_errors.py with a plain 'pip install -e .[dev]' environment (uvicorn declared in the dev extra in both pyproject dependency blocks); the local suite stays green (357 passed) and ruff check/format plus scripts/check-test-count.sh still pass; GitHub Actions run for the fix commit is green: pyproject.toml declares \"uvicorn>=0.27\" in BOTH dev blocks: [project.optional-dependencies] dev (line 46, with explanatory comment) and [dependency-groups] dev (line 75). Verified in a fresh venv: `pip install -e '/home/kara/get-h3/shim[dev]'` exit 0, `import uvicorn` -> 0.53.0; `pytest tests/test_scaffold_errors.py` -> '5 passed' (collects cleanly, no ModuleNotFoundError). Local suite: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 20.63s'. `ruff check src/ tests/` -> 'All checks passed!' exit 0; `ruff format --check src/ tests/` -> '26 files already formatted' exit 0; `bash scripts/check-test-count.sh` -> 'PASS \u2014 canonical compliance-test count is 46' exit 0. GitHub Actions run 35401595384 for fix commit 3329b72 = 'completed success'; test job (ID 105782475779) all steps green including 'Unit tests' which logged '351 passed, 6 skipped, 2 warnings in 47.56s' (no collection error), plus Lint 'All checks passed!' and Compliance gate '46/46 PASSED'.\nuvicorn is declared in both dev dependency blocks, the scaffold error-contract test collects and passes under a plain pip install -e .[dev], the local suite is 357 passed with ruff and the count guard green, and the GitHub Actions run for the fix commit is green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "The CI 'test' job's Unit tests step collects and passes tests/test_scaffold_errors.py with a plain 'pip install -e .[dev]' environment (uvicorn declared in the dev extra in both pyproject dependency blocks); the local suite stays green (357 passed) and ruff check/format plus scripts/check-test-count.sh still pass; GitHub Actions run for the fix commit is green",
+                "status": "PASS",
+                "detail": "pyproject.toml declares \"uvicorn>=0.27\" in BOTH dev blocks: [project.optional-dependencies] dev (line 46, with explanatory comment) and [dependency-groups] dev (line 75). Verified in a fresh venv: `pip install -e '/home/kara/get-h3/shim[dev]'` exit 0, `import uvicorn` -> 0.53.0; `pytest tests/test_scaffold_errors.py` -> '5 passed' (collects cleanly, no ModuleNotFoundError). Local suite: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 20.63s'. `ruff check src/ tests/` -> 'All checks passed!' exit 0; `ruff format --check src/ tests/` -> '26 files already formatted' exit 0; `bash scripts/check-test-count.sh` -> 'PASS \u2014 canonical compliance-test count is 46' exit 0. GitHub Actions run 35401595384 for fix commit 3329b72 = 'completed success'; test job (ID 105782475779) all steps green including 'Unit tests' which logged '351 passed, 6 skipped, 2 warnings in 47.56s' (no collection error), plus Lint 'All checks passed!' and Compliance gate '46/46 PASSED'."
+              }
+            ],
+            "summary": "uvicorn is declared in both dev dependency blocks, the scaffold error-contract test collects and passes under a plain pip install -e .[dev], the local suite is 357 passed with ruff and the count guard green, and the GitHub Actions run for the fix commit is green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df3-h3-shim-7\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 The CI 'test' job's Unit tests step collects and passes tests/test_scaffold_errors.py with a plain 'pip install -e .[dev]' environment (uvicorn declared in the dev extra in both pyproject dependency blocks); the local suite stays green (357 passed) and ruff check/format plus scripts/check-test-count.sh still pass; GitHub Actions run for the fix commit is green: pyproject.toml declares \"uvicorn>=0.27\" in BOTH dev blocks: [project.optional-dependencies] dev (line 46, with explanatory comment) and [dependency-groups] dev (line 75). Verified in a fresh venv: `pip install -e '/home/kara/get-h3/shim[dev]'` exit 0, `import uvicorn` -> 0.53.0; `pytest tests/test_scaffold_errors.py` -> '5 passed' (collects cleanly, no ModuleNotFoundError). Local suite: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 20.63s'. `ruff check src/ tests/` -> 'All checks passed!' exit 0; `ruff format --check src/ tests/` -> '26 files already formatted' exit 0; `bash scripts/check-test-count.sh` -> 'PASS \u2014 canonical compliance-test count is 46' exit 0. GitHub Actions run 35401595384 for fix commit 3329b72 = 'completed success'; test job (ID 105782475779) all steps green including 'Unit tests' which logged '351 passed, 6 skipped, 2 warnings in 47.56s' (no collection error), plus Lint 'All checks passed!' and Compliance gate '46/46 PASSED'.\nuvicorn is declared in both dev dependency blocks, the scaffold error-contract test collects and passes under a plain pip install -e .[dev], the local suite is 357 passed with ruff and the count guard green, and the GitHub Actions run for the fix commit is green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T22:29:01.308304",
+  "evidence": {
+    "collected_at": "2026-09-18T22:29:01.327368+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1771,
+        "truncated": false,
+        "source": "git show 3329b729f722"
+      }
+    ],
+    "task_id": "df3-h3-shim-7"
+  }
+}
