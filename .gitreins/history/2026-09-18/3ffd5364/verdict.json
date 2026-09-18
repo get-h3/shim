@@ -1,0 +1,89 @@
+{
+  "task_id": "gap-041",
+  "task_title": "GAP-041: ruff format drift in two tracked markdown code fences (GAP-039 recurrence)",
+  "task_criteria": [
+    "ruff format --check . exits 0 across the whole repo",
+    "the only changed lines in docs/dogfood/2026-09-05-integration.md and skills/h3-shim-usage/SKILL.md are the reformatted code-fence lines (no prose edits)"
+  ],
+  "passed": false,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "9678ba303c1571d2006b43a754bd3073bca11ba6",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": false,
+      "any_failed": true,
+      "summary": "  \u2717 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": false,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T063544.227627Z.log\n\n\u26a0 DEGRADED PASS: lint=no staged files, tests=no staged files \u2014 these gates did not run, so this run is not \n  evidence the tree passes. Stage the files you want graded (git add), or \n  set guards.allow_skips: true in .gitreins/config.yaml to accept skips \n  on zero-work runs (gitreins init writes it for fresh repos).\n",
+          "error": "",
+          "data": {
+            "exit_code": 2,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T063544.227627Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 ruff format --check . exits 0 across the whole repo: Ran `ruff format --check .` \u2192 output '25 files already formatted', EXIT=0. Additionally verified the two markdown files are genuinely formatted: `ruff format --check --preview docs/dogfood/2026-09-05-integration.md skills/h3-shim-usage/SKILL.md` \u2192 '2 files already formatted', EXIT=0 (markdown formatting requires --preview; non-preview run covers only 25 .py files).\n  \u2713 the only changed lines in docs/dogfood/2026-09-05-integration.md and skills/h3-shim-usage/SKILL.md are the reformatted code-fence lines (no prose edits): `git show HEAD --format=\"\"` for both files yields exactly 12 changed lines, all code-fence lines: the two `llm_provider=lambda ...` lines re-wrapped into parenthesized multi-line form and the two `on_text=texts.append,` lines re-aligned. sed inspection confirms both regions sit inside ```python fences (docs/dogfood/2026-09-05-integration.md ~lines 47-63; skills/h3-shim-usage/SKILL.md ~lines 55-75). No prose lines modified.\nBoth criteria pass: ruff format --check . exits 0 and the diff is limited to reformatted code-fence lines with no prose edits.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 ruff format --check . exits 0 across the whole repo: Ran `ruff format --check .` \u2192 output '25 files already formatted', EXIT=0. Additionally verified the two markdown files are genuinely formatted: `ruff format --check --preview docs/dogfood/2026-09-05-integration.md skills/h3-shim-usage/SKILL.md` \u2192 '2 files already formatted', EXIT=0 (markdown formatting requires --preview; non-preview run covers only 25 .py files).\n  \u2713 the only changed lines in docs/dogfood/2026-09-05-integration.md and skills/h3-shim-usage/SKILL.md are the reformatted code-fence lines (no prose edits): `git show HEAD --format=\"\"` for both files yields exactly 12 changed lines, all code-fence lines: the two `llm_provider=lambda ...` lines re-wrapped into parenthesized multi-line form and the two `on_text=texts.append,` lines re-aligned. sed inspection confirms both regions sit inside ```python fences (docs/dogfood/2026-09-05-integration.md ~lines 47-63; skills/h3-shim-usage/SKILL.md ~lines 55-75). No prose lines modified.\nBoth criteria pass: ruff format --check . exits 0 and the diff is limited to reformatted code-fence lines with no prose edits.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "ruff format --check . exits 0 across the whole repo",
+                "status": "PASS",
+                "detail": "Ran `ruff format --check .` \u2192 output '25 files already formatted', EXIT=0. Additionally verified the two markdown files are genuinely formatted: `ruff format --check --preview docs/dogfood/2026-09-05-integration.md skills/h3-shim-usage/SKILL.md` \u2192 '2 files already formatted', EXIT=0 (markdown formatting requires --preview; non-preview run covers only 25 .py files)."
+              },
+              {
+                "criterion": "the only changed lines in docs/dogfood/2026-09-05-integration.md and skills/h3-shim-usage/SKILL.md are the reformatted code-fence lines (no prose edits)",
+                "status": "PASS",
+                "detail": "`git show HEAD --format=\"\"` for both files yields exactly 12 changed lines, all code-fence lines: the two `llm_provider=lambda ...` lines re-wrapped into parenthesized multi-line form and the two `on_text=texts.append,` lines re-aligned. sed inspection confirms both regions sit inside ```python fences (docs/dogfood/2026-09-05-integration.md ~lines 47-63; skills/h3-shim-usage/SKILL.md ~lines 55-75). No prose lines modified."
+              }
+            ],
+            "summary": "Both criteria pass: ruff format --check . exits 0 and the diff is limited to reformatted code-fence lines with no prose edits."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: gap-041\n\nStage tier1: FAIL\n    \u2717 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 ruff format --check . exits 0 across the whole repo: Ran `ruff format --check .` \u2192 output '25 files already formatted', EXIT=0. Additionally verified the two markdown files are genuinely formatted: `ruff format --check --preview docs/dogfood/2026-09-05-integration.md skills/h3-shim-usage/SKILL.md` \u2192 '2 files already formatted', EXIT=0 (markdown formatting requires --preview; non-preview run covers only 25 .py files).\n  \u2713 the only changed lines in docs/dogfood/2026-09-05-integration.md and skills/h3-shim-usage/SKILL.md are the reformatted code-fence lines (no prose edits): `git show HEAD --format=\"\"` for both files yields exactly 12 changed lines, all code-fence lines: the two `llm_provider=lambda ...` lines re-wrapped into parenthesized multi-line form and the two `on_text=texts.append,` lines re-aligned. sed inspection confirms both regions sit inside ```python fences (docs/dogfood/2026-09-05-integration.md ~lines 47-63; skills/h3-shim-usage/SKILL.md ~lines 55-75). No prose lines modified.\nBoth criteria pass: ruff format --check . exits 0 and the diff is limited to reformatted code-fence lines with no prose edits.\n\nOverall: FAIL \u2717",
+  "evaluated_at": "2026-09-18T06:36:09.654400",
+  "evidence": {
+    "collected_at": "2026-09-18T06:36:09.664961+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2687,
+        "truncated": false,
+        "source": "git show 9678ba303c15"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 1565,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "gap-041"
+  }
+}
