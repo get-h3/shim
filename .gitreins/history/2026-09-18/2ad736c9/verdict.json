@@ -1,0 +1,49 @@
+{
+  "task_id": "df3-h3-shim-5",
+  "task_title": "gitreins 0.13.0 DEGRADED (rc2) fails judge tier1 and blocks docs-only commits",
+  "task_criteria": [
+    "guards.allow_skips: true set in .gitreins/config.yaml; on a clean tree gitreins guard exits 0 (was rc=2 DEGRADED); a staged source diff still runs the tests gate (no 'no staged files' skip); a post-change gitreins task complete records tier1 PASS in verdict.json"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "32dcb7425131d480ad031a9eca9cb13acf8207fc",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T073547.081051Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T073547.081051Z.log"
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df3-h3-shim-5\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T07:35:47.121210",
+  "evidence": {
+    "collected_at": "2026-09-18T07:35:47.131990+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 1383,
+        "truncated": false,
+        "source": "git show 32dcb7425131"
+      }
+    ],
+    "task_id": "df3-h3-shim-5"
+  }
+}
