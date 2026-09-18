@@ -1,4 +1,4 @@
-"""H3 compliance test battery — 44 tests across 6 categories.
+"""H3 compliance test battery — 46 tests across 6 categories.
 
 This module is the single most important piece of the shim. It defines the
 :cclass:`H3TestBattery`, a black-box HTTP probe that exercises every public
@@ -28,7 +28,7 @@ import logging
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -199,15 +199,30 @@ class H3TestBattery:
 
     @staticmethod
     def _blank_context() -> dict[str, Any]:
-        """Minimal valid ``context`` payload."""
+        """Minimal valid ``context`` payload.
+
+        ``config`` and ``session_state`` are populated with the leaf
+        properties the authored schema requires (``common.json`` →
+        ``Config`` / ``SessionState``); an empty dict in either slot is a
+        schema-invalid request body.
+        """
         return {
             "history": [],
             "tools": [],
             "models": [],
             "memory": "",
             "skills": [],
-            "config": {},
-            "session_state": {},
+            "config": {
+                "max_iterations": 10,
+                "timeout_seconds": 300,
+            },
+            "session_state": {
+                "turn_count": 0,
+                "total_tool_calls": 0,
+                "total_llm_calls": 0,
+                "cost_so_far": 0.0,
+                "started_at": datetime.now(timezone.utc).isoformat(),
+            },
         }
 
     def _process_body(
@@ -231,8 +246,18 @@ class H3TestBattery:
         ctx["history"] = history
         return {
             "session_id": self._sid(label),
-            "message": {"role": "user", "content": content},
-            "identity": identity or {"platform": "test", "chat_id": "test-chat"},
+            "message": {
+                "role": "user",
+                "content": content,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+            "identity": identity
+            or {
+                "platform": "test",
+                "chat_id": "test-chat",
+                "user_name": "h3-test",
+                "user_id": "h3-test-user",
+            },
             "context": ctx,
         }
 
