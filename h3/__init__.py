@@ -94,6 +94,7 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
         "transport": "rest",
         "timeout_ms": 30000,
         "set_default": False,
+        "name_opt": None,
     },
     "verify": {"harness": None, "endpoint": None, "fallback": False},
     "scaffold": {"force": False, "lang": None, "output_dir": None},
@@ -162,7 +163,18 @@ def _setup(parser: argparse.ArgumentParser) -> None:
 
     p = sub.add_parser("install", help="Register a harness in the config.")
     _add_config_option(p)
-    p.add_argument("name", help="Harness name.")
+    p.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="Harness name (may also be given as --name; positional wins).",
+    )
+    p.add_argument(
+        "--name",
+        dest="name_opt",
+        default=None,
+        help="Harness name (alias for the positional NAME).",
+    )
     p.add_argument("--endpoint", required=True, help="Harness endpoint URL.")
     p.add_argument(
         "--transport",
@@ -274,7 +286,15 @@ def _argv_from_namespace(ns: argparse.Namespace) -> list[str]:
 
     ns_dict = vars(ns)
     for field in _POSITIONALS.get(cmd, ()):
-        argv.append(str(ns_dict[field]))
+        value = ns_dict.get(field)
+        if value is None:
+            # Optional positionals (``install NAME``) have a ``--<field>``
+            # alias; fall back to it so ``install --name X`` rebuilds the
+            # argv as the positional form.  An unresolved name is left out
+            # entirely so click reports the missing NAME.
+            value = ns_dict.get(f"{field}_opt")
+        if value is not None:
+            argv.append(str(value))
 
     defaults = _DEFAULTS.get(cmd, {})
     for field in _OPTIONS.get(cmd, ()):

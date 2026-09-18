@@ -161,3 +161,74 @@ def test_test_subcommand_with_config_and_flags(plugin: object) -> None:
     assert ns.h3_command == "test"
     assert ns.h3_config == CONFIG_PATH
     assert ns.as_json is True
+
+
+# ── DF-H3-3: install --name is an alias for the positional NAME ────────────
+# The plugin mirror must expose the same two surfaces as the click CLI.
+# Before the fix, ``hermes h3 install --name X --endpoint URL`` died in
+# argparse with ``unrecognized arguments: --name`` — the same mirror-drift
+# class as H3-GAP-091.
+
+INSTALL_ENDPOINT = "http://localhost:9191"
+
+
+def test_install_name_flag_parses(plugin: object) -> None:
+    """``hermes h3 install --name X`` reaches the namespace (no argparse error)."""
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(
+        ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT]
+    )
+    assert ns.h3_command == "install"
+    assert ns.name is None
+    assert ns.name_opt == "scout"
+    assert ns.endpoint == INSTALL_ENDPOINT
+
+
+def test_install_name_flag_rebuilds_positional_argv(plugin: object) -> None:
+    """``--name X`` rebuilds the byte-identical argv of ``install X``."""
+    parser = _new_parser(plugin)
+    flag_ns = parser.parse_args(
+        ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT]
+    )
+    pos_ns = parser.parse_args(["install", "scout", "--endpoint", INSTALL_ENDPOINT])
+    flag_argv = plugin._argv_from_namespace(flag_ns)  # type: ignore[attr-defined]
+    pos_argv = plugin._argv_from_namespace(pos_ns)  # type: ignore[attr-defined]
+    assert flag_argv == pos_argv == ["install", "scout", "--endpoint", INSTALL_ENDPOINT]
+    # An unset --name is omitted entirely (and an unset positional too), so
+    # click reports the missing NAME instead of installing an unnamed entry.
+    none_ns = parser.parse_args(["install", "--endpoint", INSTALL_ENDPOINT])
+    assert plugin._argv_from_namespace(none_ns) == [  # type: ignore[attr-defined]
+        "install",
+        "--endpoint",
+        INSTALL_ENDPOINT,
+    ]
+
+
+def test_install_flag_and_positional_behave_identically(
+    plugin: object, tmp_path: Path
+) -> None:
+    """Drive the real click group with both rebuilt argvs (behaviour parity)."""
+    import yaml
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    parser = _new_parser(plugin)
+    runner = CliRunner()
+    configs: dict[str, dict] = {}
+    for label, raw in (
+        (
+            "flag",
+            ["install", "--name", "scout", "--endpoint", INSTALL_ENDPOINT],
+        ),
+        ("positional", ["install", "scout", "--endpoint", INSTALL_ENDPOINT]),
+    ):
+        cfg = tmp_path / f"{label}.yaml"
+        ns = parser.parse_args([*raw, "--config", str(cfg)])
+        argv = plugin._argv_from_namespace(ns)  # type: ignore[attr-defined]
+        result = runner.invoke(hermes_h3, argv)
+        assert result.exit_code == 0, result.output
+        assert "installed harness 'scout'" in result.output
+        configs[label] = yaml.safe_load(cfg.read_text())
+    assert configs["flag"] == configs["positional"]
+    assert configs["flag"]["harnesses"]["scout"]["endpoint"] == INSTALL_ENDPOINT

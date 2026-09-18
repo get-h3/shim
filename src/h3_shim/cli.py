@@ -683,7 +683,13 @@ def _validate_transport(transport: str) -> None:
 
 @hermes_h3.command(help="Register a harness in the config.")
 @_config_option
-@click.argument("name")
+@click.argument("name", required=False)
+@click.option(
+    "--name",
+    "name_opt",
+    default=None,
+    help="Harness name (alias for the positional NAME).",
+)
 @click.option("--endpoint", required=True, help="Harness endpoint URL.")
 @click.option(
     "--transport",
@@ -707,27 +713,44 @@ def _validate_transport(transport: str) -> None:
 def install(
     ctx: click.Context,
     config_path: Path | None,
-    name: str,
+    name: str | None,
+    name_opt: str | None,
     endpoint: str,
     transport: str,
     timeout_ms: int,
     set_default: bool,
 ) -> None:
-    """Add or update a harness entry."""
+    """Add or update a harness entry.
+
+    NAME is an optional positional alias for ``--name``::
+
+        hermes-h3 install [NAME] [--name NAME] --endpoint URL [options]
+
+    Exactly one of NAME / **--name** must be given; with neither the
+    command fails loudly instead of installing an unnamed entry.  When
+    both are given, NAME wins.
+    """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
+    # Positional NAME wins over the --name flag (same rule as verify).
+    resolved = name if name is not None else name_opt
+    if resolved is None:
+        raise click.UsageError(
+            "install requires a harness name: pass it positionally "
+            "(install NAME ...) or with --name NAME"
+        )
     _validate_transport(transport)
     config = load_config(_config_path(ctx))
     harnesses = config.setdefault("harnesses", {})
-    harnesses[name] = {
+    harnesses[resolved] = {
         "endpoint": endpoint,
         "transport": transport,
         "timeout_ms": timeout_ms,
     }
     if set_default or not config.get("default_harness"):
-        config["default_harness"] = name
+        config["default_harness"] = resolved
     path = save_config(config, _config_path(ctx))
-    click.echo(f"installed harness {name!r} at {endpoint} ({transport})")
+    click.echo(f"installed harness {resolved!r} at {endpoint} ({transport})")
     click.echo(f"config: {path}")
 
 

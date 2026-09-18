@@ -444,6 +444,39 @@ class TestInstall:
         data = yaml.safe_load(cfg_path.read_text())
         assert data["harnesses"]["h"]["timeout_ms"] == 12345
 
+    def test_install_name_flag_alias(self, cfg_path, runner):
+        """DF-H3-3: ``--name`` is an alias for the positional NAME."""
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "--name", "flagharness", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code == 0
+        assert "installed harness 'flagharness'" in result.output
+        data = yaml.safe_load(cfg_path.read_text())
+        assert "flagharness" in data["harnesses"]
+        assert data["harnesses"]["flagharness"]["endpoint"] == "http://x:1"
+        assert data["default_harness"] == "flagharness"
+
+    def test_install_without_name_fails_loudly(self, cfg_path, runner):
+        """Neither NAME nor --name: fail loudly, never install unnamed."""
+        result = runner.invoke(hermes_h3, ["install", "--endpoint", "http://x:1"])
+        assert result.exit_code != 0
+        assert "requires a harness name" in result.output
+        # Nothing may be written — no phantom unnamed entry.
+        assert not cfg_path.exists()
+
+    def test_install_positional_wins_over_name_flag(self, cfg_path, runner):
+        """With both forms given, the positional NAME wins (verify's rule)."""
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "pos", "--name", "flag", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code == 0
+        data = yaml.safe_load(cfg_path.read_text())
+        assert "pos" in data["harnesses"]
+        assert "flag" not in data["harnesses"]
+        assert data["default_harness"] == "pos"
+
 
 # ── uninstall ──────────────────────────────────────────────────────────────
 
