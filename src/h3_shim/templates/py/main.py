@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
 from typing import Any
@@ -334,7 +335,7 @@ harness = EchoHarness()
 # purpose: the generated project must not import ``h3_shim`` at runtime.
 
 
-def _summarize_validation_errors(errors: list[dict[str, Any]]) -> str:
+def _summarize_validation_errors(errors: Sequence[Mapping[str, Any]]) -> str:
     """One short human-readable line describing a list of pydantic errors."""
     if not errors:
         return "Invalid request body"

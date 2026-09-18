@@ -18,7 +18,7 @@ back to the caller.
 import asyncio
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -98,7 +98,7 @@ class LoopError:
         return self.message
 
 
-def _format_pydantic_error(error: dict[str, Any]) -> str:
+def _format_pydantic_error(error: Mapping[str, Any]) -> str:
     """Render one pydantic error dict as a single diagnostic line.
 
     Mirrors pydantic's own field rendering (its ``input`` key is shown as
