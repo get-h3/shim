@@ -19,9 +19,11 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 
 from h3_shim.client import H3Client
 from h3_shim.protocol import (
@@ -39,6 +41,122 @@ from h3_shim.protocol import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class LoopError:
+    """Diagnostic for an error that terminated :meth:`H3ShimLoop.run`.
+
+    ``run`` returns only a sentinel string, so without this carrier a
+    harness author whose decision payload the shim's models reject sees
+    a bare ``"error"`` with zero diagnostic.  ``LoopError`` is a typed
+    carrier rather than a bare string so an embedding host can branch on
+    fields — e.g. treat a :attr:`is_validation` failure as a malformed
+    harness payload and anything else as infrastructure trouble.
+
+    Attributes
+    ----------
+    session_id:
+        The session the failing loop was driving.
+    decision_id:
+        ``decision_id`` of the harness decision being answered when the
+        failure happened.  ``None`` when the very first ``/v1/process``
+        response could not be parsed: no decision existed yet, and no
+        identifier is ever fabricated.
+    phase:
+        Where in the loop the failure happened — ``"process"`` (the
+        initial ``POST /v1/process``), ``"result"`` (a ``POST
+        /v1/result``), or ``"run"`` (anywhere else, e.g. a malformed
+        terminating END decision).
+    exception_type:
+        ``type(exc).__name__``.  ``"ValidationError"`` identifies a
+        malformed decision payload.
+    first_error_line:
+        The first pydantic error rendered as one line — ``<loc>: <msg>
+        [type=<type>, input_value=<value>]``, e.g. ``llm_call.model:
+        Input should be a valid string [type=string_type,
+        input_value=3]`` — or, for any other exception class, its own
+        first non-empty line.
+    message:
+        The full human-readable diagnostic; ``str(LoopError)`` returns
+        it.
+    """
+
+    session_id: str
+    decision_id: str | None
+    phase: str
+    exception_type: str
+    first_error_line: str
+    message: str
+
+    @property
+    def is_validation(self) -> bool:
+        """True when the harness sent a payload pydantic could not parse."""
+        return self.exception_type == ValidationError.__name__
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def _format_pydantic_error(error: dict[str, Any]) -> str:
+    """Render one pydantic error dict as a single diagnostic line.
+
+    Mirrors pydantic's own field rendering (its ``input`` key is shown as
+    ``input_value=``) collapsed onto one line, so the cause survives a
+    log line or a callback payload intact.  Verified against pydantic
+    2.13: ``Decision.model_validate({"llm_call": {"model": 3}})`` yields
+    ``llm_call.model: Input should be a valid string [type=string_type,
+    input_value=3]``.
+    """
+    loc = ".".join(str(part) for part in error.get("loc", ())) or "<model>"
+    rendered = (
+        f"{loc}: {error.get('msg', 'invalid value')} "
+        f"[type={error.get('type', 'unknown')}"
+    )
+    if "input" in error:
+        rendered += f", input_value={error['input']!r}"
+    return rendered + "]"
+
+
+def _first_error_line(exc: Exception) -> str:
+    """Return the single most informative line describing *exc*."""
+    if isinstance(exc, ValidationError):
+        errors = exc.errors()
+        if errors:
+            return _format_pydantic_error(errors[0])
+    text = str(exc).strip()
+    return text.splitlines()[0] if text else type(exc).__name__
+
+
+def _build_loop_error(
+    exc: Exception,
+    *,
+    session_id: str,
+    decision_id: str | None,
+    phase: str,
+) -> LoopError:
+    """Assemble a :class:`LoopError` from a fatal ``run()`` exception."""
+    exception_type = type(exc).__name__
+    first_error_line = _first_error_line(exc)
+    # The two classes must be tellable apart in the message text alone.
+    kind = (
+        "malformed decision payload"
+        if isinstance(exc, ValidationError)
+        else "unexpected shim loop error"
+    )
+    message = (
+        f"{kind}: {exception_type} "
+        f"(session={session_id}, decision_id={decision_id}, phase={phase}): "
+        f"{first_error_line}"
+    )
+    return LoopError(
+        session_id=session_id,
+        decision_id=decision_id,
+        phase=phase,
+        exception_type=exception_type,
+        first_error_line=first_error_line,
+        message=message,
+    )
 
 
 class H3ShimLoop:
@@ -67,6 +185,16 @@ class H3ShimLoop:
         decision, so the host can deliver assistant text to the user.
         ``run()`` returns the terminating ``EndReason`` string — text is
         delivered through this hook, not through the return value.
+    on_error:
+        Optional callback invoked with a :class:`LoopError` when
+        ``run()`` fails.  The return contract is unchanged — ``run()``
+        still returns the plain ``"error"`` sentinel — but the callback
+        (and :attr:`last_error`) carry the ``decision_id`` being
+        answered, the exception class name, and the first pydantic error
+        line, so an embedding host can see *why* it failed and not just
+        *that* it did.  Not invoked for ``asyncio.CancelledError``; an
+        ``on_error`` that itself raises is logged and swallowed so it
+        can never break the sentinel contract.
 
     The ``identity`` kwarg is forwarded on every ``/v1/process`` call;
     if omitted, a placeholder ``("unknown", session_id)`` identity is
@@ -83,6 +211,7 @@ class H3ShimLoop:
         identity: Identity | None = None,
         llm_provider: Callable[[str, dict[str, Any]], str] | None = None,
         on_text: Callable[[str], None] | None = None,
+        on_error: Callable[[LoopError], None] | None = None,
     ):
         self.client = client
         self.session_id = session_id
@@ -94,6 +223,11 @@ class H3ShimLoop:
         )
         self.llm_provider = llm_provider
         self.on_text = on_text
+        self.on_error = on_error
+        #: Diagnostic for the last fatal error in :meth:`run`, or ``None``
+        #: when the previous run did not fail.  Set even when no
+        #: ``on_error`` callback is registered.
+        self.last_error: LoopError | None = None
         self.iteration = 0
         self._available_tools: dict[str, Callable[..., object]] = {}
 
@@ -125,7 +259,20 @@ class H3ShimLoop:
         cancellation or unexpected errors a plain sentinel string is
         returned instead so callers can react without having to inspect
         exceptions.
+
+        A malformed harness payload (a decision the pydantic models
+        reject) still returns the ``"error"`` sentinel, but the cause is
+        recorded on :attr:`last_error` and handed to ``on_error`` when
+        one was registered — the return value alone stays opaque, so
+        existing callers are unaffected.
         """
+        self.last_error = None
+        # Diagnostic context: which decision were we answering, and where
+        # in the loop did we ask for it.  ``None`` means "no decision
+        # existed yet" (the first /v1/process response); an id is never
+        # fabricated.
+        current_decision_id: str | None = None
+        phase = "process"
         try:
             process_start = time.monotonic()
             decision: Decision = await self.client.process(
@@ -134,6 +281,8 @@ class H3ShimLoop:
                 self.identity,
                 self.context,
             )
+            current_decision_id = decision.decision_id
+            phase = "run"
             process_latency_ms = (time.monotonic() - process_start) * 1000
             logger.info(
                 "H3ShimLoop: process session=%s iteration=%d "
@@ -164,12 +313,15 @@ class H3ShimLoop:
                     result.duration_ms,
                 )
 
+                phase = "result"
                 result_start = time.monotonic()
                 decision = await self.client.result(
                     self.session_id,
                     decision.decision_id,
                     result,
                 )
+                current_decision_id = decision.decision_id
+                phase = "run"
                 result_latency_ms = (time.monotonic() - result_start) * 1000
                 logger.info(
                     "H3ShimLoop: result session=%s decision_id=%s "
@@ -196,10 +348,26 @@ class H3ShimLoop:
                 )
             return "cancelled"
 
-        except Exception:
-            logger.error(
-                "H3ShimLoop: error in session %s", self.session_id, exc_info=True
+        except Exception as exc:
+            diagnostic = _build_loop_error(
+                exc,
+                session_id=self.session_id,
+                decision_id=current_decision_id,
+                phase=phase,
             )
+            self.last_error = diagnostic
+            logger.error("H3ShimLoop: %s", diagnostic.message, exc_info=True)
+            if self.on_error is not None:
+                try:
+                    self.on_error(diagnostic)
+                except Exception:
+                    # A broken diagnostic hook must not change the
+                    # sentinel contract this method owes its callers.
+                    logger.warning(
+                        "H3ShimLoop: on_error callback raised for session %s",
+                        self.session_id,
+                        exc_info=True,
+                    )
             return "error"
 
     # ── dispatch ─────────────────────────────────────────────────────

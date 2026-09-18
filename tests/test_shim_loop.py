@@ -11,10 +11,14 @@ sentinels.
 
 import asyncio
 import logging
+from dataclasses import FrozenInstanceError
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
+from pydantic import ValidationError
 
+from h3_shim.client import H3Client
 from h3_shim.protocol import (
     Context,
     Decision,
@@ -30,7 +34,7 @@ from h3_shim.protocol import (
     ToolCall,
     Wait,
 )
-from h3_shim.shim_loop import H3ShimLoop
+from h3_shim.shim_loop import H3ShimLoop, LoopError
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -910,3 +914,248 @@ class TestExecuteDispatch:
                 data["end"] = End(reason=EndReason.TASK_COMPLETE, summary="ok")
             r = await loop._execute(Decision(**data))
             assert r.duration_ms >= 0.0, f"missing duration_ms for {dtype}"
+
+
+# ── run() error diagnostics (DF2-H3-SHIM-2) ─────────────────────────────────
+#
+# Before this change a malformed decision payload — one the pydantic models
+# reject, e.g. a non-string ``llm_call.model`` — collapsed into the bare
+# sentinel ``"error"``, with the cause visible only to a shim-side logger
+# that an embedding harness author typically does not have attached.  The
+# tests below drive the real ``H3Client`` parsing path wherever possible so
+# the ValidationError comes from production code rather than from an
+# injected mock, and they pin the diagnostic contract: decision_id +
+# exception class + first pydantic error line.
+
+
+def _bad_llm_call_payload(decision_id: str = "d_001") -> dict:
+    """A harness decision payload the pydantic models reject.
+
+    ``LLMCall.model`` is declared ``str``; this payload sends an int,
+    which is the shape the dogfood run hit live.
+    """
+    return {
+        "decision": "llm_call",
+        "decision_id": decision_id,
+        "llm_call": {"model": 3, "messages": []},
+    }
+
+
+#: Expected first pydantic error line for ``_bad_llm_call_payload``.
+BAD_LLM_CALL_FIRST_ERROR = (
+    "llm_call.model: Input should be a valid string [type=string_type, input_value=3]"
+)
+
+
+def _real_validation_error(payload: dict | None = None) -> ValidationError:
+    """Return a genuine pydantic ValidationError from a real H3 model.
+
+    Not a hand-built stand-in: the bad dict is validated through the same
+    ``Decision`` model ``H3Client.process`` / ``H3Client.result``
+    instantiate.
+    """
+    if payload is None:
+        payload = _bad_llm_call_payload()
+    with pytest.raises(ValidationError) as excinfo:
+        Decision.model_validate(payload)
+    return excinfo.value
+
+
+def _fake_response(json_payload: dict) -> MagicMock:
+    """A MagicMock that quacks like a 200 ``httpx.Response``."""
+    resp = MagicMock(spec=httpx.Response)
+    resp.status_code = 200
+    resp.json.return_value = json_payload
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
+def _real_client(payloads: list[dict]) -> H3Client:
+    """A real H3Client whose transport returns *payloads* in order.
+
+    ``H3Client``'s own parsing (``Decision(**resp.json())``) stays in the
+    path, so the ValidationError under test is raised by production code
+    instead of being injected as a mock side effect.
+    """
+    client = H3Client(endpoint="http://harness.test")
+    client._rest = MagicMock()
+    client._rest.post = AsyncMock(side_effect=[_fake_response(p) for p in payloads])
+    client._rest.aclose = AsyncMock()
+    return client
+
+
+class TestRunErrorDiagnostics:
+    @pytest.mark.asyncio
+    async def test_bad_result_payload_reports_decision_id_and_cause(self):
+        """AC1 — a malformed /v1/result payload through the real client."""
+        good = _decision(
+            DecisionType.TOOL_CALL,
+            decision_id="d_001",
+            tool_call=ToolCall(name="test_tool", params={}),
+        ).model_dump(mode="json")
+        client = _real_client([good, _bad_llm_call_payload("d_001")])
+        diagnostics: list[LoopError] = []
+        loop = _make_loop(client=client, on_error=diagnostics.append)
+        loop.register_tool("test_tool", lambda **kw: "ok")
+
+        reason = await loop.run(_msg())
+
+        # (d) the sentinel contract is unchanged.
+        assert reason == "error"
+        # (a) the callback fired — exactly once — with a typed carrier.
+        assert len(diagnostics) == 1
+        diag = diagnostics[0]
+        assert isinstance(diag, LoopError)
+        assert loop.last_error is diag
+        # (b) the decision being answered is named …
+        assert diag.decision_id == "d_001"
+        assert "d_001" in diag.message
+        # … and (c) the first pydantic error line is spelled out.
+        assert diag.first_error_line == BAD_LLM_CALL_FIRST_ERROR
+        assert BAD_LLM_CALL_FIRST_ERROR in diag.message
+        assert diag.exception_type == "ValidationError"
+        assert diag.is_validation is True
+        assert diag.phase == "result"
+        assert diag.session_id == "sess_test"
+        # Both round-trips ran: /v1/process ok, /v1/result malformed.
+        assert client._rest.post.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_bad_initial_process_payload_never_fabricates_an_id(self):
+        """The first /v1/process response has no prior decision id."""
+        payload = {
+            "decision": "wait",
+            # Present in the unparsed payload, but harvesting it would be
+            # fabrication: no Decision object exists to answer.
+            "decision_id": "d_should_not_be_used",
+            "wait": {"reason": 7},
+        }
+        client = _real_client([payload])
+        diagnostics: list[LoopError] = []
+        loop = _make_loop(client=client, on_error=diagnostics.append)
+
+        reason = await loop.run(_msg())
+
+        assert reason == "error"
+        assert len(diagnostics) == 1
+        diag = diagnostics[0]
+        assert diag.decision_id is None
+        assert "decision_id=None" in diag.message
+        assert "d_should_not_be_used" not in diag.message
+        assert diag.phase == "process"
+        assert diag.is_validation is True
+        assert diag.first_error_line == (
+            "wait.reason: Input should be a valid string "
+            "[type=string_type, input_value=7]"
+        )
+        assert diag.first_error_line in diag.message
+
+    @pytest.mark.asyncio
+    async def test_default_on_error_none_still_populates_last_error(self):
+        """AC2 — no callback registered: no raise, cause still readable."""
+        client = _mock_client()
+        client.process.side_effect = _real_validation_error()
+        loop = _make_loop(client=client)
+
+        assert loop.on_error is None
+        reason = await loop.run(_msg())
+
+        assert reason == "error"
+        assert isinstance(loop.last_error, LoopError)
+        assert loop.last_error.exception_type == "ValidationError"
+        assert loop.last_error.decision_id is None
+        assert "malformed decision payload" in loop.last_error.message
+
+    @pytest.mark.asyncio
+    async def test_on_error_not_invoked_for_cancelled_error(self):
+        """AC3 — cancellation keeps its own path (sentinel, no callback)."""
+        client = _mock_client()
+        client.process.side_effect = asyncio.CancelledError()
+        diagnostics: list[LoopError] = []
+        loop = _make_loop(client=client, on_error=diagnostics.append)
+
+        reason = await loop.run(_msg())
+
+        assert reason == "cancelled"
+        assert diagnostics == []
+        assert loop.last_error is None
+        client.cancel.assert_awaited_once_with("sess_test")
+
+    @pytest.mark.asyncio
+    async def test_validation_and_generic_failures_are_distinguishable(self):
+        """A malformed payload must not read like an infrastructure error."""
+        bad_client = _mock_client()
+        bad_client.process.side_effect = _real_validation_error()
+        other_client = _mock_client()
+        other_client.process.side_effect = RuntimeError("connection dropped")
+
+        bad: list[LoopError] = []
+        other: list[LoopError] = []
+        assert (
+            await _make_loop(client=bad_client, on_error=bad.append).run(_msg())
+            == "error"
+        )
+        assert (
+            await _make_loop(client=other_client, on_error=other.append).run(_msg())
+            == "error"
+        )
+
+        assert len(bad) == 1
+        assert len(other) == 1
+        assert bad[0].message.startswith("malformed decision payload:")
+        assert other[0].message.startswith("unexpected shim loop error:")
+        assert "malformed decision payload" not in other[0].message
+        assert bad[0].is_validation is True
+        assert other[0].is_validation is False
+        assert other[0].exception_type == "RuntimeError"
+        assert other[0].first_error_line == "connection dropped"
+        assert bad[0].message != other[0].message
+
+    @pytest.mark.asyncio
+    async def test_raising_on_error_callback_cannot_break_the_sentinel(self):
+        """A broken diagnostic hook is logged and swallowed, never raised."""
+        client = _mock_client()
+        client.process.side_effect = _real_validation_error()
+
+        def boom(_diag: LoopError) -> None:
+            raise RuntimeError("callback exploded")
+
+        loop = _make_loop(client=client, on_error=boom)
+        reason = await loop.run(_msg())
+
+        assert reason == "error"
+        assert isinstance(loop.last_error, LoopError)
+
+    @pytest.mark.asyncio
+    async def test_last_error_is_reset_by_a_subsequent_successful_run(self):
+        """No stale diagnostic survives into the next run()."""
+        client = _mock_client()
+        client.process.side_effect = [
+            _real_validation_error(),
+            _decision(
+                DecisionType.END,
+                end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
+            ),
+        ]
+        loop = _make_loop(client=client)
+
+        assert await loop.run(_msg()) == "error"
+        assert loop.last_error is not None
+
+        assert await loop.run(_msg()) == "task_complete"
+        assert loop.last_error is None
+
+    def test_loop_error_is_a_frozen_carrier(self):
+        """A frozen dataclass hands callers an immutable record."""
+        diag = LoopError(
+            session_id="s",
+            decision_id="d_001",
+            phase="result",
+            exception_type="ValidationError",
+            first_error_line="x: bad [type=string_type, input_value=3]",
+            message="the message",
+        )
+        assert str(diag) == "the message"
+        assert diag.is_validation is True
+        with pytest.raises(FrozenInstanceError):
+            diag.decision_id = "d_002"  # type: ignore[misc]

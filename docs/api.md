@@ -328,7 +328,7 @@ await loader.close()
 
 ## H3ShimLoop
 
-`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None, llm_provider=None, on_text=None)`
+`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None, llm_provider=None, on_text=None, on_error=None)`
 
 Drives one H3 session through the process / result loop. `client` is the
 `H3Client` talking to the harness, `session_id` is the stable session
@@ -366,6 +366,11 @@ reached. **Returns the `EndReason` string** of the terminating END decision
 (`"task_complete"`, `"error"`, `"timeout"`, …) — not the assistant text.
 Final assistant text is delivered incrementally through the `on_text`
 callback as the harness emits `TEXT` decisions.
+
+On the error path `run()` still returns the bare `"error"` sentinel, but the
+cause now reaches `on_error=callable` as a `LoopError` (also left on
+`loop.last_error`): the `decision_id` being answered, the exception class, and
+the first pydantic error line. Cancellation stays callback-free.
 
 ```python
 async def register_tool(...)  # see above
