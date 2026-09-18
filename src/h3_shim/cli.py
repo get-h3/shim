@@ -1027,9 +1027,7 @@ def route(
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
     if session is not None:
         if session not in sessions:
-            raise click.ClickException(
-                f"no session {session!r} in the routing table"
-            )
+            raise click.ClickException(f"no session {session!r} in the routing table")
         click.echo(f"{session} -> {_session_harness(sessions[session])}")
         return
     if not sessions:

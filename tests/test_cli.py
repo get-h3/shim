@@ -630,9 +630,7 @@ class TestRoute:
         assert result.exit_code != 0
         assert "nope" in result.output
 
-    def test_route_session_unknown_on_empty_config_fails_loudly(
-        self, cfg_path, runner
-    ):
+    def test_route_session_unknown_on_empty_config_fails_loudly(self, cfg_path, runner):
         # The pathological case this finding exists for: empty routing
         # table must not answer an unknown id with a zero exit.
         result = runner.invoke(hermes_h3, ["route", "--session", "nope"])
