@@ -989,26 +989,56 @@ def scaffold(
     click.echo("Run h3-test --endpoint http://localhost:9191 to verify")
 
 
+def _session_harness(binding: Any) -> str:
+    """Return the harness name a ``sessions`` entry points at.
+
+    Both binding shapes that exist in the wild are handled: the dict
+    form (``{"harness": "alpha"}``) and the bare-string form
+    (``"alpha"``, older configs).
+    """
+    if isinstance(binding, dict):
+        return str(binding.get("harness", "?"))
+    return str(binding)
+
+
 @hermes_h3.command(help="Show the session → harness routing table.")
 @_config_option
+@click.option(
+    "--session",
+    "session",
+    default=None,
+    help="Show only the binding for this session id.",
+)
 @click.pass_context
-def route(ctx: click.Context, config_path: Path | None) -> None:
-    """Pretty-print the ``sessions`` map from the config."""
+def route(
+    ctx: click.Context,
+    config_path: Path | None,
+    session: str | None,
+) -> None:
+    """Pretty-print the ``sessions`` map from the config.
+
+    With ``--session <id>`` only that session's binding is printed.  An
+    id that is not in the routing table fails loudly (fail-closed): a
+    silent empty answer is indistinguishable from a broken lookup.
+    """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
     config = load_config(_config_path(ctx))
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
+    if session is not None:
+        if session not in sessions:
+            raise click.ClickException(
+                f"no session {session!r} in the routing table"
+            )
+        click.echo(f"{session} -> {_session_harness(sessions[session])}")
+        return
     if not sessions:
         click.echo("no sessions configured")
         return
     click.echo(f"{'SESSION':40s} HARNESS")
     click.echo("-" * 60)
     for sid, binding in sessions.items():
-        if isinstance(binding, dict):
-            target = binding.get("harness", "?")
-        else:
-            target = str(binding)
-        click.echo(f"{sid:40s} {target}")
+        click.echo(f"{sid:40s} {_session_harness(binding)}")
 
 
 @hermes_h3.command(

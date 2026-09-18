@@ -579,6 +579,66 @@ class TestRoute:
         assert result.exit_code == 0
         assert "alpha" in result.output
 
+    # ── DF-H3-11: single-session lookup ──────────────────────────────────
+
+    def test_route_session_dict_binding(self, cfg_path, runner):
+        # ``route --session <id>`` answers the operator's actual question:
+        # which harness does THIS session use?
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {
+                        "telegram:1": {"harness": "alpha"},
+                        "discord:2": {"harness": "beta"},
+                    },
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route", "--session", "telegram:1"])
+        assert result.exit_code == 0
+        assert result.output.strip() == "telegram:1 -> alpha"
+
+    def test_route_session_string_binding(self, cfg_path, runner):
+        # Bare-string bindings (older config style) must resolve too.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"discord:2": "beta"},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route", "--session", "discord:2"])
+        assert result.exit_code == 0
+        assert result.output.strip() == "discord:2 -> beta"
+
+    def test_route_session_unknown_fails_loudly(self, cfg_path, runner):
+        # Fail-closed: an unknown id must never look like a clean answer.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"telegram:1": {"harness": "alpha"}},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route", "--session", "nope"])
+        assert result.exit_code != 0
+        assert "nope" in result.output
+
+    def test_route_session_unknown_on_empty_config_fails_loudly(
+        self, cfg_path, runner
+    ):
+        # The pathological case this finding exists for: empty routing
+        # table must not answer an unknown id with a zero exit.
+        result = runner.invoke(hermes_h3, ["route", "--session", "nope"])
+        assert result.exit_code != 0
+        assert "nope" in result.output
+
 
 # ── help output ────────────────────────────────────────────────────────────
 
