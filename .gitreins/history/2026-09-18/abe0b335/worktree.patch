@@ -1,0 +1,30 @@
+diff --git a/.vfs/graph/edges.jsonl b/.vfs/graph/edges.jsonl
+index fd20617..620e267 100644
+--- a/.vfs/graph/edges.jsonl
++++ b/.vfs/graph/edges.jsonl
+@@ -199,3 +199,25 @@
+ {"from":"tests/test_client.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+ {"from":"tests/test_client.py","to":"pkg:h3_shim.client","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+ {"from":"tests/test_client.py","to":"pkg:h3_shim.protocol","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"src/h3_shim/templates/go/main.go","to":"std:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:json","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:dataclasses","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:pathlib","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:unittest.mock","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:click","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:yaml","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:click.testing","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:h3_shim.cli","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:h3_shim.protocol","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:sys","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:h3_shim.test_battery","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_cli.py","to":"pkg:h3_shim","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:os","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:os","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:re","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:re","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:subprocess","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:subprocess","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:pathlib","rel":"imports","provenance":"ast_exact","confidence":1.0}
++{"from":"tests/test_count_guard.py","to":"pkg:pathlib","rel":"tested_by","provenance":"ast_exact","confidence":1.0}

@@ -1,0 +1,83 @@
+{
+  "task_id": "df-h3-shim-foreman-2-t378",
+  "task_title": "README ProcessRequest payload example",
+  "task_criteria": [
+    "README quickstart includes a valid ProcessRequest JSON payload with session_id, message role/content/timestamp, identity platform/chat_id/user_name/user_id, and context history/tools/models/config/session_state; tests or documented verification prove the fields are accurate."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "6ae77a6343ccdab79c947c5ac85cbc928d1d2762",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T214122.560447Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T214122.560447Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 README quickstart includes a valid ProcessRequest JSON payload with session_id, message role/content/timestamp, identity platform/chat_id/user_name/user_id, and context history/tools/models/config/session_state; tests or documented verification prove the fields are accurate.: README.md:58 '### Send a request' contains the payload at README.md:65-118. Extracted and parsed: top-level keys [session_id, message, identity, context]; message [role, content, timestamp]; identity [platform, chat_id, user_name, user_id]; context [history, tools, models, config, session_state]; config [max_iterations, timeout_seconds]; session_state [turn_count, total_tool_calls, total_llm_calls, cost_so_far, started_at]. Validated OK against Pydantic h3_shim.protocol.ProcessRequest.model_validate and against the canonical authored schema ../protocol/schemas/v1/process-request.json + common.json via Draft202012Validator ('README payload VALID against authored process-request.json schema'). README.md:62-63 documents the source of truth (get-h3/protocol -> schemas/v1/process-request.json and common.json) and README.md:120-124 correctly lists optional fields (message.attachments, identity.thread_id, context.memory, context.skills, context.config.* beyond the two required keys), matching the schema required lists exactly. Field accuracy is proven by tests/test_battery_payload_schema.py, which validates the identical field set against the same authored schemas (7 passed); full suite `.venv/bin/python -m pytest -x --tb=short -q` -> '352 passed in 17.31s' (exit 0).\nREADME quickstart includes a ProcessRequest payload that validates against both the Pydantic model and the canonical authored JSON schema, with field accuracy backed by the documented schema pointer and the passing schema-validation test suite.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 README quickstart includes a valid ProcessRequest JSON payload with session_id, message role/content/timestamp, identity platform/chat_id/user_name/user_id, and context history/tools/models/config/session_state; tests or documented verification prove the fields are accurate.: README.md:58 '### Send a request' contains the payload at README.md:65-118. Extracted and parsed: top-level keys [session_id, message, identity, context]; message [role, content, timestamp]; identity [platform, chat_id, user_name, user_id]; context [history, tools, models, config, session_state]; config [max_iterations, timeout_seconds]; session_state [turn_count, total_tool_calls, total_llm_calls, cost_so_far, started_at]. Validated OK against Pydantic h3_shim.protocol.ProcessRequest.model_validate and against the canonical authored schema ../protocol/schemas/v1/process-request.json + common.json via Draft202012Validator ('README payload VALID against authored process-request.json schema'). README.md:62-63 documents the source of truth (get-h3/protocol -> schemas/v1/process-request.json and common.json) and README.md:120-124 correctly lists optional fields (message.attachments, identity.thread_id, context.memory, context.skills, context.config.* beyond the two required keys), matching the schema required lists exactly. Field accuracy is proven by tests/test_battery_payload_schema.py, which validates the identical field set against the same authored schemas (7 passed); full suite `.venv/bin/python -m pytest -x --tb=short -q` -> '352 passed in 17.31s' (exit 0).\nREADME quickstart includes a ProcessRequest payload that validates against both the Pydantic model and the canonical authored JSON schema, with field accuracy backed by the documented schema pointer and the passing schema-validation test suite.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "README quickstart includes a valid ProcessRequest JSON payload with session_id, message role/content/timestamp, identity platform/chat_id/user_name/user_id, and context history/tools/models/config/session_state; tests or documented verification prove the fields are accurate.",
+                "status": "PASS",
+                "detail": "README.md:58 '### Send a request' contains the payload at README.md:65-118. Extracted and parsed: top-level keys [session_id, message, identity, context]; message [role, content, timestamp]; identity [platform, chat_id, user_name, user_id]; context [history, tools, models, config, session_state]; config [max_iterations, timeout_seconds]; session_state [turn_count, total_tool_calls, total_llm_calls, cost_so_far, started_at]. Validated OK against Pydantic h3_shim.protocol.ProcessRequest.model_validate and against the canonical authored schema ../protocol/schemas/v1/process-request.json + common.json via Draft202012Validator ('README payload VALID against authored process-request.json schema'). README.md:62-63 documents the source of truth (get-h3/protocol -> schemas/v1/process-request.json and common.json) and README.md:120-124 correctly lists optional fields (message.attachments, identity.thread_id, context.memory, context.skills, context.config.* beyond the two required keys), matching the schema required lists exactly. Field accuracy is proven by tests/test_battery_payload_schema.py, which validates the identical field set against the same authored schemas (7 passed); full suite `.venv/bin/python -m pytest -x --tb=short -q` -> '352 passed in 17.31s' (exit 0)."
+              }
+            ],
+            "summary": "README quickstart includes a ProcessRequest payload that validates against both the Pydantic model and the canonical authored JSON schema, with field accuracy backed by the documented schema pointer and the passing schema-validation test suite."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-h3-shim-foreman-2-t378\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 README quickstart includes a valid ProcessRequest JSON payload with session_id, message role/content/timestamp, identity platform/chat_id/user_name/user_id, and context history/tools/models/config/session_state; tests or documented verification prove the fields are accurate.: README.md:58 '### Send a request' contains the payload at README.md:65-118. Extracted and parsed: top-level keys [session_id, message, identity, context]; message [role, content, timestamp]; identity [platform, chat_id, user_name, user_id]; context [history, tools, models, config, session_state]; config [max_iterations, timeout_seconds]; session_state [turn_count, total_tool_calls, total_llm_calls, cost_so_far, started_at]. Validated OK against Pydantic h3_shim.protocol.ProcessRequest.model_validate and against the canonical authored schema ../protocol/schemas/v1/process-request.json + common.json via Draft202012Validator ('README payload VALID against authored process-request.json schema'). README.md:62-63 documents the source of truth (get-h3/protocol -> schemas/v1/process-request.json and common.json) and README.md:120-124 correctly lists optional fields (message.attachments, identity.thread_id, context.memory, context.skills, context.config.* beyond the two required keys), matching the schema required lists exactly. Field accuracy is proven by tests/test_battery_payload_schema.py, which validates the identical field set against the same authored schemas (7 passed); full suite `.venv/bin/python -m pytest -x --tb=short -q` -> '352 passed in 17.31s' (exit 0).\nREADME quickstart includes a ProcessRequest payload that validates against both the Pydantic model and the canonical authored JSON schema, with field accuracy backed by the documented schema pointer and the passing schema-validation test suite.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T21:43:02.022922",
+  "evidence": {
+    "collected_at": "2026-09-18T21:43:02.030774+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 3239,
+        "truncated": false,
+        "source": "git show 6ae77a6343cc"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 2998,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "df-h3-shim-foreman-2-t378"
+  }
+}
