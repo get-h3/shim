@@ -190,3 +190,12 @@
 {"from":"tests/test_scaffold_build.py","to":"pkg:h3_shim.cli","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_scaffold_build.py","to":"pkg:urllib.request","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_scaffold_build.py","to":"pkg:urllib.request","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:json","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:os","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:datetime","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:datetime","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:unittest.mock","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:httpx","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:h3_shim.client","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_client.py","to":"pkg:h3_shim.protocol","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
