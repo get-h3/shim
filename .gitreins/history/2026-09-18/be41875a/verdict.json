@@ -1,0 +1,60 @@
+{
+  "task_id": "h3-gap-082",
+  "task_title": "H3-GAP-082 \u2014 the compliance battery default /v1/process payload must satisfy the authoritative schemas",
+  "task_criteria": [
+    "At shim HEAD the default /v1/process body built by H3TestBattery._process_body() carries every schema-required property (message.role/content/timestamp, identity.platform/chat_id/user_name/user_id, context.config.max_iterations/timeout_seconds, context.session_state turn_count/total_tool_calls/total_llm_calls/cost_so_far/started_at) and validates against /home/kara/get-h3/protocol/schemas/v1/process-request.json; a regression test asserts that validation and the shim test suite plus the 46-test compliance battery exit 0"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "8ff893001048d8dea2c45f6eff664a3a335189d3",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 ok\n  \u2713 tests\n  \u001b[33mUpdate available: v0.14.0 \u2192 https://pypi.org/project/gitreins/\u001b[0m\n",
+          "error": "",
+          "data": {
+            "exit_code": 0
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 At shim HEAD the default /v1/process body built by H3TestBattery._process_body() carries every schema-required property (message.role/content/timestamp, identity.platform/chat_id/user_name/user_id, context.config.max_iterations/timeout_seconds, context.session_state turn_count/total_tool_calls/total_llm_calls/cost_so_far/started_at) and validates against /home/kara/get-h3/protocol/schemas/v1/process-request.json; a regression test asserts that validation and the shim test suite plus the 46-test compliance battery exit 0: src/h3_shim/test_battery.py:201-224 (_blank_context) now emits config{max_iterations:10,timeout_seconds:300} and session_state{turn_count,total_tool_calls,total_llm_calls,cost_so_far,started_at}; _process_body() (~lines 246-262) emits message{role:'user',content,timestamp} and identity{platform,chat_id,user_name,user_id}. Independent check (not relying on the new test): Draft202012Validator over /home/kara/get-h3/protocol/schemas/v1/process-request.json with common.json registered by $id returned `errors: []` -> VALID, and the printed body carries every required leaf. Regression test tests/test_battery_payload_schema.py asserts validation against the REAL authored schemas (registry-resolved relative $ref) plus control tests proving the validator is not a no-op: `.venv/bin/python -m pytest tests/test_battery_payload_schema.py -v` -> `7 passed in 0.12s`. Shim suite: `.venv/bin/python -m pytest -x --tb=short -q` -> `343 passed in 19.14s`, exit_code 0. 46-test compliance battery: `bash scripts/test_battery.sh` -> `TOTAL 46/46 PASSED`, `PASS: h3-test exit code 0`, `COMPLIANCE GATE PASSED - 46/46, exit 0`, EXIT=0 (EXPECTED_TEST_COUNT=46 at test_battery.py:104).\nThe default /v1/process payload now carries every schema-required leaf and validates cleanly against the authoritative process-request.json, with a 7-test regression suite, 343 passing shim tests, and the 46/46 compliance battery all exiting 0.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 At shim HEAD the default /v1/process body built by H3TestBattery._process_body() carries every schema-required property (message.role/content/timestamp, identity.platform/chat_id/user_name/user_id, context.config.max_iterations/timeout_seconds, context.session_state turn_count/total_tool_calls/total_llm_calls/cost_so_far/started_at) and validates against /home/kara/get-h3/protocol/schemas/v1/process-request.json; a regression test asserts that validation and the shim test suite plus the 46-test compliance battery exit 0: src/h3_shim/test_battery.py:201-224 (_blank_context) now emits config{max_iterations:10,timeout_seconds:300} and session_state{turn_count,total_tool_calls,total_llm_calls,cost_so_far,started_at}; _process_body() (~lines 246-262) emits message{role:'user',content,timestamp} and identity{platform,chat_id,user_name,user_id}. Independent check (not relying on the new test): Draft202012Validator over /home/kara/get-h3/protocol/schemas/v1/process-request.json with common.json registered by $id returned `errors: []` -> VALID, and the printed body carries every required leaf. Regression test tests/test_battery_payload_schema.py asserts validation against the REAL authored schemas (registry-resolved relative $ref) plus control tests proving the validator is not a no-op: `.venv/bin/python -m pytest tests/test_battery_payload_schema.py -v` -> `7 passed in 0.12s`. Shim suite: `.venv/bin/python -m pytest -x --tb=short -q` -> `343 passed in 19.14s`, exit_code 0. 46-test compliance battery: `bash scripts/test_battery.sh` -> `TOTAL 46/46 PASSED`, `PASS: h3-test exit code 0`, `COMPLIANCE GATE PASSED - 46/46, exit 0`, EXIT=0 (EXPECTED_TEST_COUNT=46 at test_battery.py:104).\nThe default /v1/process payload now carries every schema-required leaf and validates cleanly against the authoritative process-request.json, with a 7-test regression suite, 343 passing shim tests, and the 46/46 compliance battery all exiting 0.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "At shim HEAD the default /v1/process body built by H3TestBattery._process_body() carries every schema-required property (message.role/content/timestamp, identity.platform/chat_id/user_name/user_id, context.config.max_iterations/timeout_seconds, context.session_state turn_count/total_tool_calls/total_llm_calls/cost_so_far/started_at) and validates against /home/kara/get-h3/protocol/schemas/v1/process-request.json; a regression test asserts that validation and the shim test suite plus the 46-test compliance battery exit 0",
+                "status": "PASS",
+                "detail": "src/h3_shim/test_battery.py:201-224 (_blank_context) now emits config{max_iterations:10,timeout_seconds:300} and session_state{turn_count,total_tool_calls,total_llm_calls,cost_so_far,started_at}; _process_body() (~lines 246-262) emits message{role:'user',content,timestamp} and identity{platform,chat_id,user_name,user_id}. Independent check (not relying on the new test): Draft202012Validator over /home/kara/get-h3/protocol/schemas/v1/process-request.json with common.json registered by $id returned `errors: []` -> VALID, and the printed body carries every required leaf. Regression test tests/test_battery_payload_schema.py asserts validation against the REAL authored schemas (registry-resolved relative $ref) plus control tests proving the validator is not a no-op: `.venv/bin/python -m pytest tests/test_battery_payload_schema.py -v` -> `7 passed in 0.12s`. Shim suite: `.venv/bin/python -m pytest -x --tb=short -q` -> `343 passed in 19.14s`, exit_code 0. 46-test compliance battery: `bash scripts/test_battery.sh` -> `TOTAL 46/46 PASSED`, `PASS: h3-test exit code 0`, `COMPLIANCE GATE PASSED - 46/46, exit 0`, EXIT=0 (EXPECTED_TEST_COUNT=46 at test_battery.py:104)."
+              }
+            ],
+            "summary": "The default /v1/process payload now carries every schema-required leaf and validates cleanly against the authoritative process-request.json, with a 7-test regression suite, 343 passing shim tests, and the 46/46 compliance battery all exiting 0."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: h3-gap-082\n\nStage tier1: PASS\n    \u2713 guard: Tier 1 Guards: PASS  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean\n  \u2713 lint \u2014 o\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 At shim HEAD the default /v1/process body built by H3TestBattery._process_body() carries every schema-required property (message.role/content/timestamp, identity.platform/chat_id/user_name/user_id, context.config.max_iterations/timeout_seconds, context.session_state turn_count/total_tool_calls/total_llm_calls/cost_so_far/started_at) and validates against /home/kara/get-h3/protocol/schemas/v1/process-request.json; a regression test asserts that validation and the shim test suite plus the 46-test compliance battery exit 0: src/h3_shim/test_battery.py:201-224 (_blank_context) now emits config{max_iterations:10,timeout_seconds:300} and session_state{turn_count,total_tool_calls,total_llm_calls,cost_so_far,started_at}; _process_body() (~lines 246-262) emits message{role:'user',content,timestamp} and identity{platform,chat_id,user_name,user_id}. Independent check (not relying on the new test): Draft202012Validator over /home/kara/get-h3/protocol/schemas/v1/process-request.json with common.json registered by $id returned `errors: []` -> VALID, and the printed body carries every required leaf. Regression test tests/test_battery_payload_schema.py asserts validation against the REAL authored schemas (registry-resolved relative $ref) plus control tests proving the validator is not a no-op: `.venv/bin/python -m pytest tests/test_battery_payload_schema.py -v` -> `7 passed in 0.12s`. Shim suite: `.venv/bin/python -m pytest -x --tb=short -q` -> `343 passed in 19.14s`, exit_code 0. 46-test compliance battery: `bash scripts/test_battery.sh` -> `TOTAL 46/46 PASSED`, `PASS: h3-test exit code 0`, `COMPLIANCE GATE PASSED - 46/46, exit 0`, EXIT=0 (EXPECTED_TEST_COUNT=46 at test_battery.py:104).\nThe default /v1/process payload now carries every schema-required leaf and validates cleanly against the authoritative process-request.json, with a 7-test regression suite, 343 passing shim tests, and the 46/46 compliance battery all exiting 0.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T17:31:37.141961"
+}
