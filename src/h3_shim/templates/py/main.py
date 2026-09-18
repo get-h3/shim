@@ -34,7 +34,10 @@ from enum import Enum
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 # ── Protocol Models ──────────────────────────────────────────────────────────
@@ -314,6 +317,63 @@ class EchoHarness:
 
 app = FastAPI(title="h3-harness (py)", version=EchoHarness.VERSION)
 harness = EchoHarness()
+
+
+# ── Error Envelope ───────────────────────────────────────────────────────────
+# The H3 protocol (protocol/h3-protocol.yaml, ``x-h3-errors``) requires a
+# rejected request to answer with the standard error-response envelope:
+#
+#     {"error": {"code": "INVALID_REQUEST",
+#                "message": "<human-readable summary>",
+#                "details": {"errors": [ ...pydantic errors... ]}}}
+#
+# FastAPI's default answer for a malformed or schema-invalid body is HTTP 422
+# with ``{"detail": [...]}``, which is NOT the H3 contract — the compliance
+# battery accepts any 4xx, so the drift is invisible to it. The handler below
+# replaces that default on the request-validation path only. It is inlined on
+# purpose: the generated project must not import ``h3_shim`` at runtime.
+
+
+def _summarize_validation_errors(errors: list[dict[str, Any]]) -> str:
+    """One short human-readable line describing a list of pydantic errors."""
+    if not errors:
+        return "Invalid request body"
+    first = errors[0]
+    where = ".".join(str(part) for part in first.get("loc", ())) or "body"
+    msg = str(first.get("msg", "invalid value"))
+    if len(errors) == 1:
+        return f"Invalid request body: {where}: {msg}"
+    return (
+        f"Invalid request body: {len(errors)} validation errors, "
+        f"first at {where}: {msg}"
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def invalid_request_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Answer malformed / schema-invalid bodies with the H3 error envelope.
+
+    FastAPI raises ``RequestValidationError`` both for a body that does not
+    parse as JSON (a ``json_invalid`` entry) and for one that parses but fails
+    the pydantic model, so this single handler covers every case the protocol
+    names under ``INVALID_REQUEST`` ("Malformed JSON or missing required
+    fields"). The deliberate 4xx paths elsewhere in this harness (404 "Session
+    not found" from ``on_cancel`` / ``get_session``) raise ``HTTPException``,
+    which is untouched by this handler and keeps its existing response.
+    """
+    errors = exc.errors()
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": {
+                "code": "INVALID_REQUEST",
+                "message": _summarize_validation_errors(errors),
+                "details": {"errors": jsonable_encoder(errors)},
+            }
+        },
+    )
 
 
 @app.get("/v1/health", response_model=HealthResponse)
