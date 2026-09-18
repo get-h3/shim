@@ -1,0 +1,40 @@
+commit f9a722ba8c3fc5e20e0cd14a07a6f869aceb7c95
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 17:22:11 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 17:22:11 2026 -0500
+
+    chore(test): drop non-portable absolute path from the scaffold error-contract test
+    
+    The only /home/kara literal in the tracked tree was the third schema-lookup candidate added with 553620a. This repo is public, so a personal absolute path does not belong in it: the two portable candidates (H3_PROTOCOL_DIR override, sibling ../protocol checkout) already cover the local and CI layouts, and the test skips when neither is present.
+    
+    Addresses DF-H3-SHIM-FOREMAN-3
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ tests/test_scaffold_errors.py | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/tests/test_scaffold_errors.py b/tests/test_scaffold_errors.py
+index 37bdfe5..18e0a5a 100644
+--- a/tests/test_scaffold_errors.py
++++ b/tests/test_scaffold_errors.py
+@@ -28,8 +28,8 @@ from h3_shim.templates.py import main
+ _REPO_ROOT = Path(__file__).resolve().parents[1]
+ 
+ # The protocol repo is a sibling checkout (get-h3/{shim,protocol}). Resolve it
+-# from this file first, allow an explicit override, and only then fall back to
+-# the canonical absolute path.
++# from this file first, then allow an explicit override — the test skips when
++# neither is present (e.g. a CI checkout of this repo alone).
+ _PROTOCOL_SCHEMA = Path("schemas") / "v1" / "error-response.json"
+ 
+ 
+@@ -40,7 +40,6 @@ def _protocol_schema_path() -> Path | None:
+     if override:
+         candidates.append(Path(override) / _PROTOCOL_SCHEMA)
+     candidates.append(_REPO_ROOT.parent / "protocol" / _PROTOCOL_SCHEMA)
+-    candidates.append(Path("/home/kara/get-h3/protocol") / _PROTOCOL_SCHEMA)
+     for candidate in candidates:
+         if candidate.is_file():
+             return candidate

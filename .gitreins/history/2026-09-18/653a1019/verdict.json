@@ -1,0 +1,83 @@
+{
+  "task_id": "df-h3-shim-foreman-3",
+  "task_title": "py scaffold error-contract drift (422 detail -> protocol 400 INVALID_REQUEST envelope)",
+  "task_criteria": [
+    "src/h3_shim/templates/py/main.py returns HTTP 400 with body {\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":...}} for malformed-JSON and schema-invalid request bodies (no top-level \"detail\", no 422); tests/test_scaffold_errors.py proves the 400 envelope for both cases plus a 200 for a valid request; py scaffold's intentional 404s unchanged; test_battery.py and the canonical compliance count (46) untouched; pytest + ruff check + ruff format --check + scripts/check-test-count.sh all green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "f9a722ba8c3fc5e20e0cd14a07a6f869aceb7c95",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T222216.298039Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T222216.298039Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 src/h3_shim/templates/py/main.py returns HTTP 400 with body {\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":...}} for malformed-JSON and schema-invalid request bodies (no top-level \"detail\", no 422); tests/test_scaffold_errors.py proves the 400 envelope for both cases plus a 200 for a valid request; py scaffold's intentional 404s unchanged; test_battery.py and the canonical compliance count (46) untouched; pytest + ruff check + ruff format --check + scripts/check-test-count.sh all green: main.py:319-378 registers @app.exception_handler(RequestValidationError) returning JSONResponse(status_code=400, content={\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":_summarize_validation_errors(errors),\"details\":{\"errors\":jsonable_encoder(errors)}}}). Live probe via TestClient(main.app): POST /v1/process json={} -> 400 {'error': {'code': 'INVALID_REQUEST', 'message': 'Invalid request body: 4 validation errors, first at body.session_id: Field required', ...}}; POST content=b\"{not json\" -> 400 same envelope with errors[0].type=='json_invalid'; neither response has a top-level \"detail\" and neither is 422. 404s unchanged: main.py:292 and :306 still raise HTTPException(status_code=404, detail=\"Session not found\"); probe POST /v1/cancel -> 404 {'detail': 'Session not found'}; `git diff 8e6de10 HEAD --name-only` = only src/h3_shim/templates/py/main.py + tests/test_scaffold_errors.py, so test_battery.py is untouched. tests/test_scaffold_errors.py:5 tests all PASSED (test_missing_required_fields_is_400_invalid_request, test_malformed_json_is_400_invalid_request, test_valid_process_request_still_200_text_decision asserting 200 + decision=='text' + 'Echo: hello', test_deliberate_404_is_untouched, test_400_body_matches_protocol_error_response_schema). Gates run fresh: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 19.51s' exit_code=0; `.venv/bin/ruff check .` -> 'All checks passed!' exit_code=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' exit_code=0; `sh scripts/check-test-count.sh` -> 'check-test-count: PASS \u2014 canonical compliance-test count is 46; current-state prose agrees' exit_code=0 (scripts/test-count.txt=46, src/h3_shim/test_battery.py:104 EXPECTED_TEST_COUNT = 46).\n",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 src/h3_shim/templates/py/main.py returns HTTP 400 with body {\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":...}} for malformed-JSON and schema-invalid request bodies (no top-level \"detail\", no 422); tests/test_scaffold_errors.py proves the 400 envelope for both cases plus a 200 for a valid request; py scaffold's intentional 404s unchanged; test_battery.py and the canonical compliance count (46) untouched; pytest + ruff check + ruff format --check + scripts/check-test-count.sh all green: main.py:319-378 registers @app.exception_handler(RequestValidationError) returning JSONResponse(status_code=400, content={\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":_summarize_validation_errors(errors),\"details\":{\"errors\":jsonable_encoder(errors)}}}). Live probe via TestClient(main.app): POST /v1/process json={} -> 400 {'error': {'code': 'INVALID_REQUEST', 'message': 'Invalid request body: 4 validation errors, first at body.session_id: Field required', ...}}; POST content=b\"{not json\" -> 400 same envelope with errors[0].type=='json_invalid'; neither response has a top-level \"detail\" and neither is 422. 404s unchanged: main.py:292 and :306 still raise HTTPException(status_code=404, detail=\"Session not found\"); probe POST /v1/cancel -> 404 {'detail': 'Session not found'}; `git diff 8e6de10 HEAD --name-only` = only src/h3_shim/templates/py/main.py + tests/test_scaffold_errors.py, so test_battery.py is untouched. tests/test_scaffold_errors.py:5 tests all PASSED (test_missing_required_fields_is_400_invalid_request, test_malformed_json_is_400_invalid_request, test_valid_process_request_still_200_text_decision asserting 200 + decision=='text' + 'Echo: hello', test_deliberate_404_is_untouched, test_400_body_matches_protocol_error_response_schema). Gates run fresh: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 19.51s' exit_code=0; `.venv/bin/ruff check .` -> 'All checks passed!' exit_code=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' exit_code=0; `sh scripts/check-test-count.sh` -> 'check-test-count: PASS \u2014 canonical compliance-test count is 46; current-state prose agrees' exit_code=0 (scripts/test-count.txt=46, src/h3_shim/test_battery.py:104 EXPECTED_TEST_COUNT = 46).\n",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "src/h3_shim/templates/py/main.py returns HTTP 400 with body {\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":...}} for malformed-JSON and schema-invalid request bodies (no top-level \"detail\", no 422); tests/test_scaffold_errors.py proves the 400 envelope for both cases plus a 200 for a valid request; py scaffold's intentional 404s unchanged; test_battery.py and the canonical compliance count (46) untouched; pytest + ruff check + ruff format --check + scripts/check-test-count.sh all green",
+                "status": "PASS",
+                "detail": "main.py:319-378 registers @app.exception_handler(RequestValidationError) returning JSONResponse(status_code=400, content={\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":_summarize_validation_errors(errors),\"details\":{\"errors\":jsonable_encoder(errors)}}}). Live probe via TestClient(main.app): POST /v1/process json={} -> 400 {'error': {'code': 'INVALID_REQUEST', 'message': 'Invalid request body: 4 validation errors, first at body.session_id: Field required', ...}}; POST content=b\"{not json\" -> 400 same envelope with errors[0].type=='json_invalid'; neither response has a top-level \"detail\" and neither is 422. 404s unchanged: main.py:292 and :306 still raise HTTPException(status_code=404, detail=\"Session not found\"); probe POST /v1/cancel -> 404 {'detail': 'Session not found'}; `git diff 8e6de10 HEAD --name-only` = only src/h3_shim/templates/py/main.py + tests/test_scaffold_errors.py, so test_battery.py is untouched. tests/test_scaffold_errors.py:5 tests all PASSED (test_missing_required_fields_is_400_invalid_request, test_malformed_json_is_400_invalid_request, test_valid_process_request_still_200_text_decision asserting 200 + decision=='text' + 'Echo: hello', test_deliberate_404_is_untouched, test_400_body_matches_protocol_error_response_schema). Gates run fresh: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 19.51s' exit_code=0; `.venv/bin/ruff check .` -> 'All checks passed!' exit_code=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' exit_code=0; `sh scripts/check-test-count.sh` -> 'check-test-count: PASS \u2014 canonical compliance-test count is 46; current-state prose agrees' exit_code=0 (scripts/test-count.txt=46, src/h3_shim/test_battery.py:104 EXPECTED_TEST_COUNT = 46)."
+              }
+            ],
+            "summary": ""
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df-h3-shim-foreman-3\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 src/h3_shim/templates/py/main.py returns HTTP 400 with body {\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":...}} for malformed-JSON and schema-invalid request bodies (no top-level \"detail\", no 422); tests/test_scaffold_errors.py proves the 400 envelope for both cases plus a 200 for a valid request; py scaffold's intentional 404s unchanged; test_battery.py and the canonical compliance count (46) untouched; pytest + ruff check + ruff format --check + scripts/check-test-count.sh all green: main.py:319-378 registers @app.exception_handler(RequestValidationError) returning JSONResponse(status_code=400, content={\"error\":{\"code\":\"INVALID_REQUEST\",\"message\":_summarize_validation_errors(errors),\"details\":{\"errors\":jsonable_encoder(errors)}}}). Live probe via TestClient(main.app): POST /v1/process json={} -> 400 {'error': {'code': 'INVALID_REQUEST', 'message': 'Invalid request body: 4 validation errors, first at body.session_id: Field required', ...}}; POST content=b\"{not json\" -> 400 same envelope with errors[0].type=='json_invalid'; neither response has a top-level \"detail\" and neither is 422. 404s unchanged: main.py:292 and :306 still raise HTTPException(status_code=404, detail=\"Session not found\"); probe POST /v1/cancel -> 404 {'detail': 'Session not found'}; `git diff 8e6de10 HEAD --name-only` = only src/h3_shim/templates/py/main.py + tests/test_scaffold_errors.py, so test_battery.py is untouched. tests/test_scaffold_errors.py:5 tests all PASSED (test_missing_required_fields_is_400_invalid_request, test_malformed_json_is_400_invalid_request, test_valid_process_request_still_200_text_decision asserting 200 + decision=='text' + 'Echo: hello', test_deliberate_404_is_untouched, test_400_body_matches_protocol_error_response_schema). Gates run fresh: `.venv/bin/python -m pytest -x --tb=short -q` -> '357 passed, 4 warnings in 19.51s' exit_code=0; `.venv/bin/ruff check .` -> 'All checks passed!' exit_code=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' exit_code=0; `sh scripts/check-test-count.sh` -> 'check-test-count: PASS \u2014 canonical compliance-test count is 46; current-state prose agrees' exit_code=0 (scripts/test-count.txt=46, src/h3_shim/test_battery.py:104 EXPECTED_TEST_COUNT = 46).\n\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T22:23:00.802070",
+  "evidence": {
+    "collected_at": "2026-09-18T22:23:00.811479+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 2005,
+        "truncated": false,
+        "source": "git show f9a722ba8c3f"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 5102,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "df-h3-shim-foreman-3"
+  }
+}
