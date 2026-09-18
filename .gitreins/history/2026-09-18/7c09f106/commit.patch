@@ -1,0 +1,614 @@
+commit 8adce0e17d49f2e410b8986d80eab712882742b5
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 18:07:05 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 18:08:11 2026 -0500
+
+    fix(shim_loop): DF2-H3-SHIM-2 — surface decision_id + pydantic cause on malformed decision payloads
+    
+    H3ShimLoop.run() funnelled every exception into the bare sentinel "error", so a
+    harness author whose decision payload the pydantic models rejected (bad
+    llm_call.model, bad wait.reason shape) saw FINAL: error with zero diagnostic —
+    the real cause existed only in a shim-side logger the embedder usually has no
+    handler attached to.
+    
+    Additive only; the return contract is unchanged ("error" / "cancelled"):
+    
+    * LoopError — frozen dataclass carrier holding session_id, decision_id, phase
+      (process/result/run), exception_type, first_error_line and the composed
+      message. A typed carrier rather than a bare string so a host can branch on
+      fields (is_validation -> malformed harness payload vs infrastructure error).
+    * on_error=callable — new __init__ kwarg, default None, so every existing
+      caller and every existing test keeps working unchanged. Not invoked for
+      asyncio.CancelledError; a raising on_error is logged and swallowed so a
+      broken diagnostic hook can never break the sentinel contract.
+    * last_error — the same carrier on the instance (reset at the start of each
+      run) for hosts that register no callback.
+    * decision_id context is tracked at the await points. The first /v1/process
+      response has no prior decision, so it reports None rather than harvesting or
+      fabricating an id from an unparsed payload. ValidationError diagnostics carry
+      the "malformed decision payload" prefix plus the first pydantic error line
+      rendered as "<loc>: <msg> [type=..., input_value=...]"; every other exception
+      gets the "unexpected shim loop error" prefix, so the two classes are tellable
+      apart from the message text alone.
+    
+    Tests (tests/test_shim_loop.py, +8): the headline case drives a REAL H3Client
+    whose transport answers a good /v1/process payload and then a malformed
+    /v1/result payload, so Decision(**resp.json()) raises the ValidationError in
+    production code rather than from an injected mock side effect; it asserts the
+    callback fired, the decision_id being answered is named, the exact first
+    pydantic error line is present, and run() still returned "error". Also covered:
+    the first-process case (decision_id None, no id harvested), default on_error
+    None with last_error still populated, CancelledError not invoking the callback,
+    validation-vs-generic distinguishability, a raising callback, last_error reset
+    between runs, and the frozen carrier.
+    
+    RED-proved before commit: against the pre-fix source the new tests fail at
+    collection (ImportError: cannot import name 'LoopError'); with the carrier
+    present but the run() wiring crippled, 6 of the 8 new tests fail.
+    
+    Gates: .venv/bin/python -m pytest -q -> 369 passed (baseline at HEAD: 361);
+    .venv/bin/ruff check . rc=0; .venv/bin/ruff format --check . rc=0. No new
+    runtime dependency (stdlib dataclasses + the already-declared pydantic>=2.0).
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ docs/api.md              |   7 +-
+ src/h3_shim/shim_loop.py | 174 +++++++++++++++++++++++++++++++-
+ tests/test_shim_loop.py  | 251 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 3 files changed, 427 insertions(+), 5 deletions(-)
+
+diff --git a/docs/api.md b/docs/api.md
+index f0b7dea..4bc3762 100644
+--- a/docs/api.md
++++ b/docs/api.md
+@@ -328,7 +328,7 @@ await loader.close()
+ 
+ ## H3ShimLoop
+ 
+-`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None, llm_provider=None, on_text=None)`
++`H3ShimLoop(client, session_id, context, max_iterations=50, identity=None, llm_provider=None, on_text=None, on_error=None)`
+ 
+ Drives one H3 session through the process / result loop. `client` is the
+ `H3Client` talking to the harness, `session_id` is the stable session
+@@ -367,6 +367,11 @@ reached. **Returns the `EndReason` string** of the terminating END decision
+ Final assistant text is delivered incrementally through the `on_text`
+ callback as the harness emits `TEXT` decisions.
+ 
++On the error path `run()` still returns the bare `"error"` sentinel, but the
++cause now reaches `on_error=callable` as a `LoopError` (also left on
++`loop.last_error`): the `decision_id` being answered, the exception class, and
++the first pydantic error line. Cancellation stays callback-free.
++
+ ```python
+ async def register_tool(...)  # see above
+ ```
+diff --git a/src/h3_shim/shim_loop.py b/src/h3_shim/shim_loop.py
+index 4c31f70..1e62fa5 100644
+--- a/src/h3_shim/shim_loop.py
++++ b/src/h3_shim/shim_loop.py
+@@ -19,9 +19,11 @@ import asyncio
+ import logging
+ import time
+ from collections.abc import Callable
++from dataclasses import dataclass
+ from typing import Any
+ 
+ import httpx
++from pydantic import ValidationError
+ 
+ from h3_shim.client import H3Client
+ from h3_shim.protocol import (
+@@ -41,6 +43,122 @@ from h3_shim.protocol import (
+ logger = logging.getLogger(__name__)
+ 
+ 
++@dataclass(frozen=True)
++class LoopError:
++    """Diagnostic for an error that terminated :meth:`H3ShimLoop.run`.
++
++    ``run`` returns only a sentinel string, so without this carrier a
++    harness author whose decision payload the shim's models reject sees
++    a bare ``"error"`` with zero diagnostic.  ``LoopError`` is a typed
++    carrier rather than a bare string so an embedding host can branch on
++    fields — e.g. treat a :attr:`is_validation` failure as a malformed
++    harness payload and anything else as infrastructure trouble.
++
++    Attributes
++    ----------
++    session_id:
++        The session the failing loop was driving.
++    decision_id:
++        ``decision_id`` of the harness decision being answered when the
++        failure happened.  ``None`` when the very first ``/v1/process``
++        response could not be parsed: no decision existed yet, and no
++        identifier is ever fabricated.
++    phase:
++        Where in the loop the failure happened — ``"process"`` (the
++        initial ``POST /v1/process``), ``"result"`` (a ``POST
++        /v1/result``), or ``"run"`` (anywhere else, e.g. a malformed
++        terminating END decision).
++    exception_type:
++        ``type(exc).__name__``.  ``"ValidationError"`` identifies a
++        malformed decision payload.
++    first_error_line:
++        The first pydantic error rendered as one line — ``<loc>: <msg>
++        [type=<type>, input_value=<value>]``, e.g. ``llm_call.model:
++        Input should be a valid string [type=string_type,
++        input_value=3]`` — or, for any other exception class, its own
++        first non-empty line.
++    message:
++        The full human-readable diagnostic; ``str(LoopError)`` returns
++        it.
++    """
++
++    session_id: str
++    decision_id: str | None
++    phase: str
++    exception_type: str
++    first_error_line: str
++    message: str
++
++    @property
++    def is_validation(self) -> bool:
++        """True when the harness sent a payload pydantic could not parse."""
++        return self.exception_type == ValidationError.__name__
++
++    def __str__(self) -> str:
++        return self.message
++
++
++def _format_pydantic_error(error: dict[str, Any]) -> str:
++    """Render one pydantic error dict as a single diagnostic line.
++
++    Mirrors pydantic's own field rendering (its ``input`` key is shown as
++    ``input_value=``) collapsed onto one line, so the cause survives a
++    log line or a callback payload intact.  Verified against pydantic
++    2.13: ``Decision.model_validate({"llm_call": {"model": 3}})`` yields
++    ``llm_call.model: Input should be a valid string [type=string_type,
++    input_value=3]``.
++    """
++    loc = ".".join(str(part) for part in error.get("loc", ())) or "<model>"
++    rendered = (
++        f"{loc}: {error.get('msg', 'invalid value')} "
++        f"[type={error.get('type', 'unknown')}"
++    )
++    if "input" in error:
++        rendered += f", input_value={error['input']!r}"
++    return rendered + "]"
++
++
++def _first_error_line(exc: Exception) -> str:
++    """Return the single most informative line describing *exc*."""
++    if isinstance(exc, ValidationError):
++        errors = exc.errors()
++        if errors:
++            return _format_pydantic_error(errors[0])
++    text = str(exc).strip()
++    return text.splitlines()[0] if text else type(exc).__name__
++
++
++def _build_loop_error(
++    exc: Exception,
++    *,
++    session_id: str,
++    decision_id: str | None,
++    phase: str,
++) -> LoopError:
++    """Assemble a :class:`LoopError` from a fatal ``run()`` exception."""
++    exception_type = type(exc).__name__
++    first_error_line = _first_error_line(exc)
++    # The two classes must be tellable apart in the message text alone.
++    kind = (
++        "malformed decision payload"
++        if isinstance(exc, ValidationError)
++        else "unexpected shim loop error"
++    )
++    message = (
++        f"{kind}: {exception_type} "
++        f"(session={session_id}, decision_id={decision_id}, phase={phase}): "
++        f"{first_error_line}"
++    )
++    return LoopError(
++        session_id=session_id,
++        decision_id=decision_id,
++        phase=phase,
++        exception_type=exception_type,
++        first_error_line=first_error_line,
++        message=message,
++    )
++
++
+ class H3ShimLoop:
+     """Drive a single H3 session through a process / result loop.
+ 
+@@ -67,6 +185,16 @@ class H3ShimLoop:
+         decision, so the host can deliver assistant text to the user.
+         ``run()`` returns the terminating ``EndReason`` string — text is
+         delivered through this hook, not through the return value.
++    on_error:
++        Optional callback invoked with a :class:`LoopError` when
++        ``run()`` fails.  The return contract is unchanged — ``run()``
++        still returns the plain ``"error"`` sentinel — but the callback
++        (and :attr:`last_error`) carry the ``decision_id`` being
++        answered, the exception class name, and the first pydantic error
++        line, so an embedding host can see *why* it failed and not just
++        *that* it did.  Not invoked for ``asyncio.CancelledError``; an
++        ``on_error`` that itself raises is logged and swallowed so it
++        can never break the sentinel contract.
+ 
+     The ``identity`` kwarg is forwarded on every ``/v1/process`` call;
+     if omitted, a placeholder ``("unknown", session_id)`` identity is
+@@ -83,6 +211,7 @@ class H3ShimLoop:
+         identity: Identity | None = None,
+         llm_provider: Callable[[str, dict[str, Any]], str] | None = None,
+         on_text: Callable[[str], None] | None = None,
++        on_error: Callable[[LoopError], None] | None = None,
+     ):
+         self.client = client
+         self.session_id = session_id
+@@ -94,6 +223,11 @@ class H3ShimLoop:
+         )
+         self.llm_provider = llm_provider
+         self.on_text = on_text
++        self.on_error = on_error
++        #: Diagnostic for the last fatal error in :meth:`run`, or ``None``
++        #: when the previous run did not fail.  Set even when no
++        #: ``on_error`` callback is registered.
++        self.last_error: LoopError | None = None
+         self.iteration = 0
+         self._available_tools: dict[str, Callable[..., object]] = {}
+ 
+@@ -125,7 +259,20 @@ class H3ShimLoop:
+         cancellation or unexpected errors a plain sentinel string is
+         returned instead so callers can react without having to inspect
+         exceptions.
++
++        A malformed harness payload (a decision the pydantic models
++        reject) still returns the ``"error"`` sentinel, but the cause is
++        recorded on :attr:`last_error` and handed to ``on_error`` when
++        one was registered — the return value alone stays opaque, so
++        existing callers are unaffected.
+         """
++        self.last_error = None
++        # Diagnostic context: which decision were we answering, and where
++        # in the loop did we ask for it.  ``None`` means "no decision
++        # existed yet" (the first /v1/process response); an id is never
++        # fabricated.
++        current_decision_id: str | None = None
++        phase = "process"
+         try:
+             process_start = time.monotonic()
+             decision: Decision = await self.client.process(
+@@ -134,6 +281,8 @@ class H3ShimLoop:
+                 self.identity,
+                 self.context,
+             )
++            current_decision_id = decision.decision_id
++            phase = "run"
+             process_latency_ms = (time.monotonic() - process_start) * 1000
+             logger.info(
+                 "H3ShimLoop: process session=%s iteration=%d "
+@@ -164,12 +313,15 @@ class H3ShimLoop:
+                     result.duration_ms,
+                 )
+ 
++                phase = "result"
+                 result_start = time.monotonic()
+                 decision = await self.client.result(
+                     self.session_id,
+                     decision.decision_id,
+                     result,
+                 )
++                current_decision_id = decision.decision_id
++                phase = "run"
+                 result_latency_ms = (time.monotonic() - result_start) * 1000
+                 logger.info(
+                     "H3ShimLoop: result session=%s decision_id=%s "
+@@ -196,10 +348,26 @@ class H3ShimLoop:
+                 )
+             return "cancelled"
+ 
+-        except Exception:
+-            logger.error(
+-                "H3ShimLoop: error in session %s", self.session_id, exc_info=True
++        except Exception as exc:
++            diagnostic = _build_loop_error(
++                exc,
++                session_id=self.session_id,
++                decision_id=current_decision_id,
++                phase=phase,
+             )
++            self.last_error = diagnostic
++            logger.error("H3ShimLoop: %s", diagnostic.message, exc_info=True)
++            if self.on_error is not None:
++                try:
++                    self.on_error(diagnostic)
++                except Exception:
++                    # A broken diagnostic hook must not change the
++                    # sentinel contract this method owes its callers.
++                    logger.warning(
++                        "H3ShimLoop: on_error callback raised for session %s",
++                        self.session_id,
++                        exc_info=True,
++                    )
+             return "error"
+ 
+     # ── dispatch ─────────────────────────────────────────────────────
+diff --git a/tests/test_shim_loop.py b/tests/test_shim_loop.py
+index 1a2afb3..7daf43b 100644
+--- a/tests/test_shim_loop.py
++++ b/tests/test_shim_loop.py
+@@ -11,10 +11,14 @@ sentinels.
+ 
+ import asyncio
+ import logging
++from dataclasses import FrozenInstanceError
+ from unittest.mock import AsyncMock, MagicMock
+ 
++import httpx
+ import pytest
++from pydantic import ValidationError
+ 
++from h3_shim.client import H3Client
+ from h3_shim.protocol import (
+     Context,
+     Decision,
+@@ -30,7 +34,7 @@ from h3_shim.protocol import (
+     ToolCall,
+     Wait,
+ )
+-from h3_shim.shim_loop import H3ShimLoop
++from h3_shim.shim_loop import H3ShimLoop, LoopError
+ 
+ # ── helpers ─────────────────────────────────────────────────────────────────
+ 
+@@ -910,3 +914,248 @@ class TestExecuteDispatch:
+                 data["end"] = End(reason=EndReason.TASK_COMPLETE, summary="ok")
+             r = await loop._execute(Decision(**data))
+             assert r.duration_ms >= 0.0, f"missing duration_ms for {dtype}"
++
++
++# ── run() error diagnostics (DF2-H3-SHIM-2) ─────────────────────────────────
++#
++# Before this change a malformed decision payload — one the pydantic models
++# reject, e.g. a non-string ``llm_call.model`` — collapsed into the bare
++# sentinel ``"error"``, with the cause visible only to a shim-side logger
++# that an embedding harness author typically does not have attached.  The
++# tests below drive the real ``H3Client`` parsing path wherever possible so
++# the ValidationError comes from production code rather than from an
++# injected mock, and they pin the diagnostic contract: decision_id +
++# exception class + first pydantic error line.
++
++
++def _bad_llm_call_payload(decision_id: str = "d_001") -> dict:
++    """A harness decision payload the pydantic models reject.
++
++    ``LLMCall.model`` is declared ``str``; this payload sends an int,
++    which is the shape the dogfood run hit live.
++    """
++    return {
++        "decision": "llm_call",
++        "decision_id": decision_id,
++        "llm_call": {"model": 3, "messages": []},
++    }
++
++
++#: Expected first pydantic error line for ``_bad_llm_call_payload``.
++BAD_LLM_CALL_FIRST_ERROR = (
++    "llm_call.model: Input should be a valid string [type=string_type, input_value=3]"
++)
++
++
++def _real_validation_error(payload: dict | None = None) -> ValidationError:
++    """Return a genuine pydantic ValidationError from a real H3 model.
++
++    Not a hand-built stand-in: the bad dict is validated through the same
++    ``Decision`` model ``H3Client.process`` / ``H3Client.result``
++    instantiate.
++    """
++    if payload is None:
++        payload = _bad_llm_call_payload()
++    with pytest.raises(ValidationError) as excinfo:
++        Decision.model_validate(payload)
++    return excinfo.value
++
++
++def _fake_response(json_payload: dict) -> MagicMock:
++    """A MagicMock that quacks like a 200 ``httpx.Response``."""
++    resp = MagicMock(spec=httpx.Response)
++    resp.status_code = 200
++    resp.json.return_value = json_payload
++    resp.raise_for_status = MagicMock()
++    return resp
++
++
++def _real_client(payloads: list[dict]) -> H3Client:
++    """A real H3Client whose transport returns *payloads* in order.
++
++    ``H3Client``'s own parsing (``Decision(**resp.json())``) stays in the
++    path, so the ValidationError under test is raised by production code
++    instead of being injected as a mock side effect.
++    """
++    client = H3Client(endpoint="http://harness.test")
++    client._rest = MagicMock()
++    client._rest.post = AsyncMock(side_effect=[_fake_response(p) for p in payloads])
++    client._rest.aclose = AsyncMock()
++    return client
++
++
++class TestRunErrorDiagnostics:
++    @pytest.mark.asyncio
++    async def test_bad_result_payload_reports_decision_id_and_cause(self):
++        """AC1 — a malformed /v1/result payload through the real client."""
++        good = _decision(
++            DecisionType.TOOL_CALL,
++            decision_id="d_001",
++            tool_call=ToolCall(name="test_tool", params={}),
++        ).model_dump(mode="json")
++        client = _real_client([good, _bad_llm_call_payload("d_001")])
++        diagnostics: list[LoopError] = []
++        loop = _make_loop(client=client, on_error=diagnostics.append)
++        loop.register_tool("test_tool", lambda **kw: "ok")
++
++        reason = await loop.run(_msg())
++
++        # (d) the sentinel contract is unchanged.
++        assert reason == "error"
++        # (a) the callback fired — exactly once — with a typed carrier.
++        assert len(diagnostics) == 1
++        diag = diagnostics[0]
++        assert isinstance(diag, LoopError)
++        assert loop.last_error is diag
++        # (b) the decision being answered is named …
++        assert diag.decision_id == "d_001"
++        assert "d_001" in diag.message
++        # … and (c) the first pydantic error line is spelled out.
++        assert diag.first_error_line == BAD_LLM_CALL_FIRST_ERROR
++        assert BAD_LLM_CALL_FIRST_ERROR in diag.message
++        assert diag.exception_type == "ValidationError"
++        assert diag.is_validation is True
++        assert diag.phase == "result"
++        assert diag.session_id == "sess_test"
++        # Both round-trips ran: /v1/process ok, /v1/result malformed.
++        assert client._rest.post.await_count == 2
++
++    @pytest.mark.asyncio
++    async def test_bad_initial_process_payload_never_fabricates_an_id(self):
++        """The first /v1/process response has no prior decision id."""
++        payload = {
++            "decision": "wait",
++            # Present in the unparsed payload, but harvesting it would be
++            # fabrication: no Decision object exists to answer.
++            "decision_id": "d_should_not_be_used",
++            "wait": {"reason": 7},
++        }
++        client = _real_client([payload])
++        diagnostics: list[LoopError] = []
++        loop = _make_loop(client=client, on_error=diagnostics.append)
++
++        reason = await loop.run(_msg())
++
++        assert reason == "error"
++        assert len(diagnostics) == 1
++        diag = diagnostics[0]
++        assert diag.decision_id is None
++        assert "decision_id=None" in diag.message
++        assert "d_should_not_be_used" not in diag.message
++        assert diag.phase == "process"
++        assert diag.is_validation is True
++        assert diag.first_error_line == (
++            "wait.reason: Input should be a valid string "
++            "[type=string_type, input_value=7]"
++        )
++        assert diag.first_error_line in diag.message
++
++    @pytest.mark.asyncio
++    async def test_default_on_error_none_still_populates_last_error(self):
++        """AC2 — no callback registered: no raise, cause still readable."""
++        client = _mock_client()
++        client.process.side_effect = _real_validation_error()
++        loop = _make_loop(client=client)
++
++        assert loop.on_error is None
++        reason = await loop.run(_msg())
++
++        assert reason == "error"
++        assert isinstance(loop.last_error, LoopError)
++        assert loop.last_error.exception_type == "ValidationError"
++        assert loop.last_error.decision_id is None
++        assert "malformed decision payload" in loop.last_error.message
++
++    @pytest.mark.asyncio
++    async def test_on_error_not_invoked_for_cancelled_error(self):
++        """AC3 — cancellation keeps its own path (sentinel, no callback)."""
++        client = _mock_client()
++        client.process.side_effect = asyncio.CancelledError()
++        diagnostics: list[LoopError] = []
++        loop = _make_loop(client=client, on_error=diagnostics.append)
++
++        reason = await loop.run(_msg())
++
++        assert reason == "cancelled"
++        assert diagnostics == []
++        assert loop.last_error is None
++        client.cancel.assert_awaited_once_with("sess_test")
++
++    @pytest.mark.asyncio
++    async def test_validation_and_generic_failures_are_distinguishable(self):
++        """A malformed payload must not read like an infrastructure error."""
++        bad_client = _mock_client()
++        bad_client.process.side_effect = _real_validation_error()
++        other_client = _mock_client()
++        other_client.process.side_effect = RuntimeError("connection dropped")
++
++        bad: list[LoopError] = []
++        other: list[LoopError] = []
++        assert (
++            await _make_loop(client=bad_client, on_error=bad.append).run(_msg())
++            == "error"
++        )
++        assert (
++            await _make_loop(client=other_client, on_error=other.append).run(_msg())
++            == "error"
++        )
++
++        assert len(bad) == 1
++        assert len(other) == 1
++        assert bad[0].message.startswith("malformed decision payload:")
++        assert other[0].message.startswith("unexpected shim loop error:")
++        assert "malformed decision payload" not in other[0].message
++        assert bad[0].is_validation is True
++        assert other[0].is_validation is False
++        assert other[0].exception_type == "RuntimeError"
++        assert other[0].first_error_line == "connection dropped"
++        assert bad[0].message != other[0].message
++
++    @pytest.mark.asyncio
++    async def test_raising_on_error_callback_cannot_break_the_sentinel(self):
++        """A broken diagnostic hook is logged and swallowed, never raised."""
++        client = _mock_client()
++        client.process.side_effect = _real_validation_error()
++
++        def boom(_diag: LoopError) -> None:
++            raise RuntimeError("callback exploded")
++
++        loop = _make_loop(client=client, on_error=boom)
++        reason = await loop.run(_msg())
++
++        assert reason == "error"
++        assert isinstance(loop.last_error, LoopError)
++
++    @pytest.mark.asyncio
++    async def test_last_error_is_reset_by_a_subsequent_successful_run(self):
++        """No stale diagnostic survives into the next run()."""
++        client = _mock_client()
++        client.process.side_effect = [
++            _real_validation_error(),
++            _decision(
++                DecisionType.END,
++                end=End(reason=EndReason.TASK_COMPLETE, summary="ok"),
++            ),
++        ]
++        loop = _make_loop(client=client)
++
++        assert await loop.run(_msg()) == "error"
++        assert loop.last_error is not None
++
++        assert await loop.run(_msg()) == "task_complete"
++        assert loop.last_error is None
++
++    def test_loop_error_is_a_frozen_carrier(self):
++        """A frozen dataclass hands callers an immutable record."""
++        diag = LoopError(
++            session_id="s",
++            decision_id="d_001",
++            phase="result",
++            exception_type="ValidationError",
++            first_error_line="x: bad [type=string_type, input_value=3]",
++            message="the message",
++        )
++        assert str(diag) == "the message"
++        assert diag.is_validation is True
++        with pytest.raises(FrozenInstanceError):
++            diag.decision_id = "d_002"  # type: ignore[misc]

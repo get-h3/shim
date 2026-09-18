@@ -1,0 +1,83 @@
+{
+  "task_id": "df2-h3-shim-2",
+  "task_title": "DF2-H3-SHIM-2: surface decision_id + first pydantic error line when a malformed harness decision payload is rejected",
+  "task_criteria": [
+    "H3ShimLoop accepts an optional on_error callback (default None) and exposes last_error; a real pydantic ValidationError during process/result parsing produces a diagnostic carrying the decision_id and the first pydantic error line, is delivered to the callback, and run() STILL returns the 'error' sentinel; CancelledError does not invoke on_error; existing tests unmodified; pytest + ruff check + ruff format --check all green"
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "8adce0e17d49f2e410b8986d80eab712882742b5",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260918T230955.129448Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260918T230955.129448Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 H3ShimLoop accepts an optional on_error callback (default None) and exposes last_error; a real pydantic ValidationError during process/result parsing produces a diagnostic carrying the decision_id and the first pydantic error line, is delivered to the callback, and run() STILL returns the 'error' sentinel; CancelledError does not invoke on_error; existing tests unmodified; pytest + ruff check + ruff format --check all green: src/h3_shim/shim_loop.py:214 adds `on_error: Callable[[LoopError], None] | None = None` (inspect.signature confirms default None); :227 exposes `self.last_error: LoopError | None = None`, reset at run() start. Independent script driving a REAL H3Client (client.result -> Decision(**resp.json())) produced a genuine pydantic ValidationError and the diagnostic: 'malformed decision payload: ValidationError (session=sess_test, decision_id=d_001, phase=result): llm_call.model: Input should be a valid string [type=string_type, input_value=3]' with diag.decision_id=='d_001', exact first_error_line, is_validation True, len(diags)==1, loop.last_error is diag, and run() returned 'error'. CancelledError path: reason=='cancelled', diags==[], last_error None. Existing tests unmodified: the only removed line in the tests/test_shim_loop.py diff is the import statement (extended to add LoopError); no test bodies changed. Gates run fresh: `.venv/bin/python -m pytest -q` -> '369 passed, 4 warnings in 19.53s'; `.venv/bin/ruff check .` -> 'All checks passed!' rc=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' rc=0. LSP diagnostics: 0 findings.\nAll required behaviors (on_error default None, last_error, real pydantic ValidationError diagnostic with decision_id + first error line, callback delivery, 'error' sentinel preserved, CancelledError not invoking on_error, unmodified existing tests) are implemented and verified, with pytest (369 passed), ruff check, and ruff format --check all green.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 H3ShimLoop accepts an optional on_error callback (default None) and exposes last_error; a real pydantic ValidationError during process/result parsing produces a diagnostic carrying the decision_id and the first pydantic error line, is delivered to the callback, and run() STILL returns the 'error' sentinel; CancelledError does not invoke on_error; existing tests unmodified; pytest + ruff check + ruff format --check all green: src/h3_shim/shim_loop.py:214 adds `on_error: Callable[[LoopError], None] | None = None` (inspect.signature confirms default None); :227 exposes `self.last_error: LoopError | None = None`, reset at run() start. Independent script driving a REAL H3Client (client.result -> Decision(**resp.json())) produced a genuine pydantic ValidationError and the diagnostic: 'malformed decision payload: ValidationError (session=sess_test, decision_id=d_001, phase=result): llm_call.model: Input should be a valid string [type=string_type, input_value=3]' with diag.decision_id=='d_001', exact first_error_line, is_validation True, len(diags)==1, loop.last_error is diag, and run() returned 'error'. CancelledError path: reason=='cancelled', diags==[], last_error None. Existing tests unmodified: the only removed line in the tests/test_shim_loop.py diff is the import statement (extended to add LoopError); no test bodies changed. Gates run fresh: `.venv/bin/python -m pytest -q` -> '369 passed, 4 warnings in 19.53s'; `.venv/bin/ruff check .` -> 'All checks passed!' rc=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' rc=0. LSP diagnostics: 0 findings.\nAll required behaviors (on_error default None, last_error, real pydantic ValidationError diagnostic with decision_id + first error line, callback delivery, 'error' sentinel preserved, CancelledError not invoking on_error, unmodified existing tests) are implemented and verified, with pytest (369 passed), ruff check, and ruff format --check all green.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "H3ShimLoop accepts an optional on_error callback (default None) and exposes last_error; a real pydantic ValidationError during process/result parsing produces a diagnostic carrying the decision_id and the first pydantic error line, is delivered to the callback, and run() STILL returns the 'error' sentinel; CancelledError does not invoke on_error; existing tests unmodified; pytest + ruff check + ruff format --check all green",
+                "status": "PASS",
+                "detail": "src/h3_shim/shim_loop.py:214 adds `on_error: Callable[[LoopError], None] | None = None` (inspect.signature confirms default None); :227 exposes `self.last_error: LoopError | None = None`, reset at run() start. Independent script driving a REAL H3Client (client.result -> Decision(**resp.json())) produced a genuine pydantic ValidationError and the diagnostic: 'malformed decision payload: ValidationError (session=sess_test, decision_id=d_001, phase=result): llm_call.model: Input should be a valid string [type=string_type, input_value=3]' with diag.decision_id=='d_001', exact first_error_line, is_validation True, len(diags)==1, loop.last_error is diag, and run() returned 'error'. CancelledError path: reason=='cancelled', diags==[], last_error None. Existing tests unmodified: the only removed line in the tests/test_shim_loop.py diff is the import statement (extended to add LoopError); no test bodies changed. Gates run fresh: `.venv/bin/python -m pytest -q` -> '369 passed, 4 warnings in 19.53s'; `.venv/bin/ruff check .` -> 'All checks passed!' rc=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' rc=0. LSP diagnostics: 0 findings."
+              }
+            ],
+            "summary": "All required behaviors (on_error default None, last_error, real pydantic ValidationError diagnostic with decision_id + first error line, callback delivery, 'error' sentinel preserved, CancelledError not invoking on_error, unmodified existing tests) are implemented and verified, with pytest (369 passed), ruff check, and ruff format --check all green."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: df2-h3-shim-2\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 H3ShimLoop accepts an optional on_error callback (default None) and exposes last_error; a real pydantic ValidationError during process/result parsing produces a diagnostic carrying the decision_id and the first pydantic error line, is delivered to the callback, and run() STILL returns the 'error' sentinel; CancelledError does not invoke on_error; existing tests unmodified; pytest + ruff check + ruff format --check all green: src/h3_shim/shim_loop.py:214 adds `on_error: Callable[[LoopError], None] | None = None` (inspect.signature confirms default None); :227 exposes `self.last_error: LoopError | None = None`, reset at run() start. Independent script driving a REAL H3Client (client.result -> Decision(**resp.json())) produced a genuine pydantic ValidationError and the diagnostic: 'malformed decision payload: ValidationError (session=sess_test, decision_id=d_001, phase=result): llm_call.model: Input should be a valid string [type=string_type, input_value=3]' with diag.decision_id=='d_001', exact first_error_line, is_validation True, len(diags)==1, loop.last_error is diag, and run() returned 'error'. CancelledError path: reason=='cancelled', diags==[], last_error None. Existing tests unmodified: the only removed line in the tests/test_shim_loop.py diff is the import statement (extended to add LoopError); no test bodies changed. Gates run fresh: `.venv/bin/python -m pytest -q` -> '369 passed, 4 warnings in 19.53s'; `.venv/bin/ruff check .` -> 'All checks passed!' rc=0; `.venv/bin/ruff format --check .` -> '48 files already formatted' rc=0. LSP diagnostics: 0 findings.\nAll required behaviors (on_error default None, last_error, real pydantic ValidationError diagnostic with decision_id + first error line, callback delivery, 'error' sentinel preserved, CancelledError not invoking on_error, unmodified existing tests) are implemented and verified, with pytest (369 passed), ruff check, and ruff format --check all green.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-18T23:10:56.924479",
+  "evidence": {
+    "collected_at": "2026-09-18T23:10:56.936799+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 26089,
+        "truncated": false,
+        "source": "git show 8adce0e17d49"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 2552,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "df2-h3-shim-2"
+  }
+}
