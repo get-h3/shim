@@ -12,13 +12,13 @@ dumps — read this to understand the system, not to replay a session.
   `/v1/sessions/{id}`), `loader.py` (config discovery, 30s health-check loop,
   circuit breaker, most-specific-first session routing), `shim_loop.py`
   (process → execute decision → result → loop, hard cap 50 iterations),
-  `test_battery.py` (the 44-test gate), `cli.py` (both CLIs), and
+  `test_battery.py` (the 46-test gate), `cli.py` (both CLIs), and
   `templates/{go,py,ts}/` for scaffolding.
 - **Packaging:** hatchling wheel from `packages = ["src/h3_shim"]`, two
   console scripts (`h3-test`, `hermes-h3`). NOT on PyPI yet — install from
   git/source. The `h3/` directory is an optional Hermes Core plugin that
   registers an `h3` command group delegating to the same CLI.
-- **The battery:** 44 tests / 6 categories, E2E region-style. Runs a
+- **The battery:** 46 tests / 6 categories, E2E region-style. Runs a
   pre-flight `probe()` that raises `NotH3EndpointError` (non-JSON, foreign
   shape, 401, or connection error) → CLI prints a warning to stderr and
   exits 2. Each category is a coroutine on `H3TestBattery`; results carry
@@ -76,7 +76,7 @@ dumps — read this to understand the system, not to replay a session.
 
 ### 4. What works (the right way to use it)
 
-- `h3-test` full battery: 44/44 in ~0.3s, exit 0; JSON mode
+- `h3-test` full battery: 46/46, exit 0; JSON mode
   (`--json`) gives `total/passed/failed/latency/results`; wrong-server
   detection exits 2 with a clear stderr warning (GAP-003 fix — verified
   against both a plain http.server 404 and an unreachable port).
@@ -148,8 +148,8 @@ delegate" — reality):
 
 The Go scaffold's first run failed with `bind: address already in use`
 (py harness still on :9191) — and the battery against :9191 still reported
-44/44 against the *py* harness. For real verification, kill the previous
-harness (or use a distinct port) before starting a new one. Worth a
+a full-marks pass against the *py* harness. For real verification, kill the
+previous harness (or use a distinct port) before starting a new one. Worth a
 troubleshooting line in integration.md: "if the battery passes but you're
 not sure which server answered, check `lsof -i :9191`."
 
@@ -220,8 +220,8 @@ Board events 315-325 (09-01 → 09-05): the shim foreman picked
 DF-H3-SHIM-FOREMAN-1 nine times. Verdict trajectory: dispatched+guard
 pass → REJECTED → NO_CHANGES → worker dry-run with `verdict: null`,
 then dry-run repeats. Zero commits. Meanwhile the finding is
-hand-reproducible in minutes (405 + 45/45 PASS). Reading: the task as
-scoped ("battery overstates compliance") is a *diagnosis*, not *work* —
+hand-reproducible in minutes (a 405 plus a full-marks PASS). Reading: the
+task as scoped ("battery overstates compliance") is a *diagnosis*, not *work* —
 the foreman has no concrete failing test to add, and its battery
 integration likely re-runs the green gate, concluding "nothing to do".
 Fix direction recorded as DF2-H3-SHIM-4: re-scope P1s into

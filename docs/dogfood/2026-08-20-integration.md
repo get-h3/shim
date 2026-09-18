@@ -1,5 +1,8 @@
 # H3 Shim — Real Integration Report (2026-08-20)
 
+> **Historical (2026-08-20):** the compliance battery stood at 44 tests on this
+> date; the current count is 46 (`scripts/test-count.txt`).
+
 Follow-up dogfood run. The 2026-08-07 run found 8 gaps (GAP-005..009 + stand-in
 GAP-010..032); this run verifies every fix against a fresh wheel-built venv and
 drives the **shim loop itself** — the actual brain-swap — which no previous run

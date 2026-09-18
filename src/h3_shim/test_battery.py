@@ -1697,10 +1697,11 @@ class H3TestBattery:
         Regression for DF-H3-SHIM-FOREMAN-1: the battery blessed a scaffolded
         harness whose GET /v1/sessions/{session_id} 405'd — test_5_10 accepts
         405 as "endpoint absent — close enough", so a harness missing a
-        documented path still scored 45/45. A session that just accepted a
-        process call must be retrievable: 200, the sent session_id echoed, and
-        an ISO-8601 ``started_at``. Harnesses without the route (405) or that
-        forget the session (404) fail here.
+        documented path still scored 45/45 (count-ok-historical: an era score,
+        not today's). A session that just accepted a process call must be
+        retrievable: 200, the sent session_id echoed, and an ISO-8601
+        ``started_at``. Harnesses without the route (405) or that forget the
+        session (404) fail here.
         """
         cat = CATEGORIES["errors"]
         done = self._timed("session_get_after_process", cat)

@@ -192,7 +192,7 @@ const app = new Hono();
 // Shadow GET /v1/sessions/:session_id BEFORE mounting the SDK router so
 // the scaffolded harness emits its own lifecycle status (active →
 // completed once the loop ends). The SDK router's session GET leaves
-// status pinned to "active" for ended sessions, which the 45-test battery
+// status pinned to "active" for ended sessions, which the 46-test battery
 // rejects (session_status_completed). Unknown sessions still 404 with the
 // SESSION_NOT_FOUND error shape.
 app.get('/v1/sessions/:session_id', (c) => {

@@ -400,7 +400,7 @@ async def run_all(self) -> TestReport
 
 Run every category sequentially and assemble a `TestReport` (see
 `TestResult` / `TestReport` below; `report.all_passing` tells you whether
-all 45 passed).
+all 46 passed).
 
 ### Result types
 
@@ -436,7 +436,7 @@ compliant, 1 = compliance failure, 2 = not an H3 endpoint).
 ## Notes
 
 - The battery is THE gate for this package: the 3 SDK echo examples
-  (Go / Python / TypeScript) must all pass 45/45 before release.
+  (Go / Python / TypeScript) must all pass 46/46 before release.
 - Request/response types (`Message`, `Identity`, `Context`, `Decision`,
   `ExecutionResult`, `HealthResponse`, `CancelResponse`) are Pydantic models
   in `h3_shim.protocol` — see `docs/integration.md` for the CLI/plugin

@@ -1,5 +1,8 @@
 # H3 Shim — Real Integration Report (2026-08-07)
 
+> **Historical (2026-08-07):** the compliance battery stood at 44 tests on this
+> date; the current count is 46 (`scripts/test-count.txt`).
+
 How a real user gets from zero to a verified, battery-passing H3 harness.
 Written from an actual dogfood run (2026-08-07): every command below was
 executed against a fresh venv in `/tmp/dogfood-h3-shim`, with a scratch

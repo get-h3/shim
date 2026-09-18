@@ -23,6 +23,12 @@ jobs:
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install -e '.[dev]'
 
+      # H3-GAP-079 — the shim polices its own prose: scripts/test-count.txt
+      # (canonical) → EXPECTED_TEST_COUNT parity → no retired count literals in
+      # tracked current-state surfaces. Exit 1 (drift) / 2 (misconfigured) fail.
+      - name: Compliance-test count guard
+        run: bash scripts/check-test-count.sh
+
       - name: Lint
         run: .venv/bin/python -m ruff check src/ tests/
 

@@ -130,7 +130,9 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    `default_harness` or un-routed sessions resolve to `"native"` and
    `harnesses["native"]` KeyErrors.
 12. **Battery is now 46 tests** (test_5_12 session GET, commit 5762d6f):
-   any doc saying 44 or 45 is stale (DF3-H3-SHIM-3 tracks the sweep).
+   `scripts/test-count.txt` is the single source; `make verify-counts`
+   (`scripts/check-test-count.sh`) fails the build if any current-state
+   surface quotes a retired count (H3-GAP-079).
 
 ## Doing verification tasks (the gate)
 

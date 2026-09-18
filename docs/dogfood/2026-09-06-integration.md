@@ -1,5 +1,8 @@
 # 2026-09-06 — Deep integration: custom harness + embedding host, from docs alone
 
+> **Historical (2026-09-06):** the compliance battery stood at 46 tests on this
+> date; the current count is 46 (`scripts/test-count.txt`).
+
 **Verdict: SHIPPABLE (again).** The two 09-05 P1s were **fixed by the foreman and
 verified live this cycle** — first cycle in this project's history where the board
 loop actually closed its own dogfood findings.

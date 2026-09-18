@@ -1,4 +1,4 @@
-.PHONY: install build test test-battery lint typecheck fmt clean
+.PHONY: install build test test-battery verify-counts lint typecheck fmt clean
 
 VENV := .venv
 PYTHON := $(VENV)/bin/python
@@ -17,12 +17,18 @@ test:
 	$(PYTHON) -m pytest -x --tb=short -q
 	bash scripts/test_battery.sh
 
-# GAP-043 — THE GATE: 45-test compliance battery against a live scaffolded
+# GAP-043 — THE GATE: 46-test compliance battery against a live scaffolded
 # harness (self-contained: scaffolds from the shim's own py template, no
 # external sdk-go checkout). Fails the build on exit 1 (compliance) or 2
 # (unreachable/not-H3) — never silently green.
 test-battery:
 	bash scripts/test_battery.sh
+
+# H3-GAP-079 — the shim polices its own prose: canonical count
+# (scripts/test-count.txt) → battery parity → stale-literal sweep over tracked
+# current-state surfaces. Exit 0 pass / 1 drift / 2 guard misconfigured.
+verify-counts:
+	sh scripts/check-test-count.sh
 
 test-full:
 	$(PYTHON) -m pytest -x -v
@@ -54,4 +60,4 @@ build-dist:
 smoke-test:
 	bash scripts/smoke_test.sh
 
-all: install lint build test
+all: verify-counts install lint build test

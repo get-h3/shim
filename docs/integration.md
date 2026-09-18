@@ -284,7 +284,7 @@ is required**:
 3. The harness starts on a free port (auto-scanned from 9191) and is
    health-checked at `/v1/health`.
 4. `h3-test --endpoint` runs the battery; the script asserts **exit 0
-   AND `TOTAL 45/45 PASSED`**. Exit 1 (compliance) or 2 (unreachable /
+   AND `TOTAL 46/46 PASSED`**. Exit 1 (compliance) or 2 (unreachable /
    not-H3) both fail the build.
 
 The endpoint defaults to the loader config

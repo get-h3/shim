@@ -1,5 +1,8 @@
 # H3 Shim — Integration Report (2026-09-05)
 
+> **Historical (2026-09-05):** the compliance battery stood at 45 tests on this
+> date; the current count is 46 (`scripts/test-count.txt`).
+
 Fourth dogfood cycle. First cycle to prove **install-from-scratch on a
 clean machine** (ephemeral bunker container) and to drive **every H3
 decision type** (tool_call → llm_call → wait → delegate → text → end)
