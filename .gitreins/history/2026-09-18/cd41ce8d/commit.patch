@@ -1,0 +1,56 @@
+commit 9678ba303c1571d2006b43a754bd3073bca11ba6
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 01:35:05 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 01:35:05 2026 -0500
+
+    fix(docs): GAP-041 — ruff format drift in two tracked markdown code fences
+    
+    Ruff 0.16.0 formats code fences inside tracked markdown, so `ruff format
+    --check .` failed on two files: skills/h3-shim-usage/SKILL.md (re-drifted by
+    the dogfood commit 98c1d84, one tick after the GAP-039 fix e4eaef2) and
+    docs/dogfood/2026-09-05-integration.md (from dogfood commit 2829548).
+    
+    Mechanical `ruff format` only — the two embedded multi-line lambdas are
+    re-wrapped; no prose, no code semantics, no test-count changes.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ docs/dogfood/2026-09-05-integration.md | 6 ++++--
+ skills/h3-shim-usage/SKILL.md          | 6 ++++--
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/docs/dogfood/2026-09-05-integration.md b/docs/dogfood/2026-09-05-integration.md
+index 0d7562c..9fe1dc6 100644
+--- a/docs/dogfood/2026-09-05-integration.md
++++ b/docs/dogfood/2026-09-05-integration.md
+@@ -50,8 +50,10 @@ loop = H3ShimLoop(
+     client,
+     session_id="tour-1",
+     context=Context(),
+-    llm_provider=lambda prompt, kw: f"LLM-SAYS({prompt[:30]})",  # NEW: makes LLM_CALL executable
+-    on_text=texts.append,                                        # NEW: text delivery hook
++    llm_provider=lambda prompt, kw: (
++        f"LLM-SAYS({prompt[:30]})"
++    ),  # NEW: makes LLM_CALL executable
++    on_text=texts.append,  # NEW: text delivery hook
+ )
+ loop.register_tool("get_time", get_time)
+ final = await loop.run(Message(role="user", content="tour every decision"))
+diff --git a/skills/h3-shim-usage/SKILL.md b/skills/h3-shim-usage/SKILL.md
+index 663c6a9..b1f1454 100644
+--- a/skills/h3-shim-usage/SKILL.md
++++ b/skills/h3-shim-usage/SKILL.md
+@@ -64,8 +64,10 @@ loop = H3ShimLoop(
+     session_id="s1",
+     context=Context(),
+     identity=Identity(platform="telegram", chat_id="-100"),
+-    llm_provider=lambda prompt, kw: f"model text for: {prompt[:40]}",  # makes LLM_CALL executable
+-    on_text=texts.append,          # every TEXT decision's content lands here
++    llm_provider=lambda prompt, kw: (
++        f"model text for: {prompt[:40]}"
++    ),  # makes LLM_CALL executable
++    on_text=texts.append,  # every TEXT decision's content lands here
+ )
+ loop.register_tool("get_weather", lambda city: f"sunny, 24C in {city}")
+ result = await loop.run(Message(role="user", content="weather in Berlin?"))
