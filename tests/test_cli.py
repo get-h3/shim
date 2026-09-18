@@ -22,10 +22,13 @@ import yaml
 from click.testing import CliRunner
 
 from h3_shim.cli import (
+    CONFIG_PATH,
+    CONFIG_PATH_ENV,
     _empty_config,
     _format_human,
     _latency_stats,
     _run_battery,
+    default_config_path,
     hermes_h3,
     load_config,
     main,
@@ -126,6 +129,18 @@ def cfg_path(tmp_path: Path, monkeypatch) -> Path:
 @pytest.fixture
 def runner() -> CliRunner:
     return CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def _clean_config_env(monkeypatch):
+    """Keep every test independent of an ambient ``$HERMES_H3_CONFIG``.
+
+    The config path now honors that variable (DF-H3-10), so a developer
+    or judge shell with it exported would otherwise silently repoint
+    every un-``--config``'d invocation away from the patched
+    ``CONFIG_PATH``.
+    """
+    monkeypatch.delenv(CONFIG_PATH_ENV, raising=False)
 
 
 # ── hermes-h3 list ──────────────────────────────────────────────────────────
@@ -627,6 +642,168 @@ class TestConfigHelpers:
         assert cfg["default_harness"] is None
         assert cfg["harnesses"] == {}
         assert cfg["sessions"] == {}
+
+
+# ── HERMES_H3_CONFIG override (DF-H3-10) ────────────────────────────────────
+
+
+class TestConfigPathEnvOverride:
+    """``$HERMES_H3_CONFIG`` overrides the default config path (DF-H3-10).
+
+    Precedence, highest first: subcommand ``--config`` > group
+    ``--config`` > ``$HERMES_H3_CONFIG`` > ``CONFIG_PATH``.
+    """
+
+    def _seed(self, path: Path, harness: str) -> Path:
+        """Write a one-harness config at *path*; return the path."""
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": harness,
+                    "harnesses": {
+                        harness: {
+                            "endpoint": "http://e:1",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
+        return path
+
+    # ── the resolver itself ────────────────────────────────────────────
+
+    def test_default_config_path_honors_env(self, tmp_path, monkeypatch):
+        env_cfg = tmp_path / "env-config.yaml"
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        assert default_config_path() == env_cfg
+
+    def test_default_config_path_expands_user(self, monkeypatch):
+        monkeypatch.setenv(CONFIG_PATH_ENV, "~/h3-scratch/config.yaml")
+        assert default_config_path() == Path.home() / "h3-scratch" / "config.yaml"
+
+    def test_default_config_path_strips_whitespace(self, tmp_path, monkeypatch):
+        env_cfg = tmp_path / "env-config.yaml"
+        monkeypatch.setenv(CONFIG_PATH_ENV, f"  {env_cfg}  ")
+        assert default_config_path() == env_cfg
+
+    @pytest.mark.parametrize("value", ["", "   "])
+    def test_blank_env_falls_back_to_default(self, value, monkeypatch):
+        monkeypatch.setenv(CONFIG_PATH_ENV, value)
+        assert default_config_path() == CONFIG_PATH
+
+    # ── read path ──────────────────────────────────────────────────────
+
+    def test_env_var_alone_drives_list(self, tmp_path, runner, monkeypatch):
+        """A read command uses the env-var config, not the home default."""
+        home_default = self._seed(tmp_path / "home-default.yaml", "home-harness")
+        monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", home_default)
+        env_cfg = self._seed(tmp_path / "env-config.yaml", "env-harness")
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+
+        result = runner.invoke(hermes_h3, ["list"])
+
+        assert result.exit_code == 0
+        assert "env-harness" in result.output
+        assert "home-harness" not in result.output
+
+    def test_empty_env_var_falls_back_to_home_default(
+        self, tmp_path, runner, monkeypatch
+    ):
+        home_default = self._seed(tmp_path / "home-default.yaml", "home-harness")
+        monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", home_default)
+        monkeypatch.setenv(CONFIG_PATH_ENV, "")
+
+        result = runner.invoke(hermes_h3, ["list"])
+
+        assert result.exit_code == 0
+        assert "home-harness" in result.output
+
+    def test_load_config_uses_env_path(self, tmp_path, monkeypatch):
+        env_cfg = self._seed(tmp_path / "env-config.yaml", "env-harness")
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        assert load_config()["default_harness"] == "env-harness"
+
+    # ── explicit --config still wins ───────────────────────────────────
+
+    def test_group_config_beats_env(self, tmp_path, runner, monkeypatch):
+        env_cfg = self._seed(tmp_path / "env-config.yaml", "env-harness")
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        explicit = self._seed(tmp_path / "explicit.yaml", "explicit-harness")
+
+        result = runner.invoke(hermes_h3, ["--config", str(explicit), "list"])
+
+        assert result.exit_code == 0
+        assert "explicit-harness" in result.output
+        assert "env-harness" not in result.output
+
+    def test_subcommand_config_beats_env(self, tmp_path, runner, monkeypatch):
+        env_cfg = self._seed(tmp_path / "env-config.yaml", "env-harness")
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        explicit = self._seed(tmp_path / "explicit.yaml", "explicit-harness")
+
+        result = runner.invoke(hermes_h3, ["list", "--config", str(explicit)])
+
+        assert result.exit_code == 0
+        assert "explicit-harness" in result.output
+        assert "env-harness" not in result.output
+
+    def test_subcommand_config_beats_group_and_env(self, tmp_path, runner, monkeypatch):
+        env_cfg = self._seed(tmp_path / "env-config.yaml", "env-harness")
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        group_cfg = self._seed(tmp_path / "group.yaml", "group-harness")
+        sub_cfg = self._seed(tmp_path / "sub.yaml", "sub-harness")
+
+        result = runner.invoke(
+            hermes_h3,
+            ["--config", str(group_cfg), "list", "--config", str(sub_cfg)],
+        )
+
+        assert result.exit_code == 0
+        assert "sub-harness" in result.output
+        assert "group-harness" not in result.output
+        assert "env-harness" not in result.output
+
+    # ── write paths ────────────────────────────────────────────────────
+
+    def test_save_config_uses_env_path(self, tmp_path, monkeypatch):
+        env_cfg = tmp_path / "nested" / "env-config.yaml"
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        assert save_config(_empty_config()) == env_cfg
+        assert env_cfg.exists()
+
+    def test_scaffold_writes_to_env_path(self, tmp_path, runner, monkeypatch):
+        home_default = tmp_path / "home-default.yaml"
+        monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", home_default)
+        env_cfg = tmp_path / "env-config.yaml"
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+
+        result = runner.invoke(hermes_h3, ["scaffold"])
+
+        assert result.exit_code == 0
+        assert env_cfg.exists()
+        assert str(env_cfg) in result.output
+        assert not home_default.exists()
+
+    def test_install_writes_to_env_path(self, tmp_path, runner, monkeypatch):
+        home_default = tmp_path / "home-default.yaml"
+        monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", home_default)
+        env_cfg = tmp_path / "env-config.yaml"
+        monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "probe", "--endpoint", "http://127.0.0.1:9191"],
+        )
+
+        assert result.exit_code == 0
+        assert not home_default.exists()
+        data = yaml.safe_load(env_cfg.read_text())
+        assert data["harnesses"]["probe"]["endpoint"] == "http://127.0.0.1:9191"
+        assert data["default_harness"] == "probe"
 
 
 # ── resolve_harness ────────────────────────────────────────────────────────

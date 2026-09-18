@@ -26,6 +26,7 @@ import argparse
 import asyncio
 import json
 import math
+import os
 import sys
 from collections import OrderedDict
 from dataclasses import asdict
@@ -48,6 +49,28 @@ from h3_shim.test_battery import (
 # ---------------------------------------------------------------------------
 
 CONFIG_PATH = Path.home() / ".hermes" / "h3" / "config.yaml"
+
+# Environment variable that overrides the default config location
+# (DF-H3-10). Resolution order, highest first:
+#   ``--config`` (subcommand) > ``--config`` (group) >
+#   ``$HERMES_H3_CONFIG`` > ``CONFIG_PATH``.
+CONFIG_PATH_ENV = "HERMES_H3_CONFIG"
+
+
+def default_config_path() -> Path:
+    """Return the default config path, honoring ``$HERMES_H3_CONFIG``.
+
+    The environment variable (when set to a non-blank value) wins over
+    the static :data:`CONFIG_PATH` default, so a user can point the CLI
+    at a scratch config instead of the real ``~/.hermes/h3/config.yaml``.
+    Callers that patch ``CONFIG_PATH`` (tests, embedders) keep working:
+    the constant is read at call time, not captured at import time.
+    """
+    env = os.environ.get(CONFIG_PATH_ENV, "")
+    if env.strip():
+        return Path(env.strip()).expanduser()
+    return CONFIG_PATH
+
 
 # Templates directory shipped with the package. Each language gets its
 # own subdirectory under ``templates/<lang>/``.
@@ -78,7 +101,7 @@ def _empty_config() -> dict[str, Any]:
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
     """Read config from disk; return an empty skeleton if absent."""
-    p = path or CONFIG_PATH
+    p = path or default_config_path()
     if not p.exists():
         return _empty_config()
     try:
@@ -100,7 +123,7 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
 
 def save_config(data: dict[str, Any], path: Path | None = None) -> Path:
     """Persist config to disk; creates parent dirs. Returns the path."""
-    p = path or CONFIG_PATH
+    p = path or default_config_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
@@ -517,7 +540,7 @@ def main() -> None:
     "config_path",
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
-    help=f"Override config path (default: {CONFIG_PATH})",
+    help=f"Override config path (default: ${CONFIG_PATH_ENV} or {CONFIG_PATH})",
 )
 @click.option(
     "--version",
@@ -542,7 +565,13 @@ def hermes_h3(
 
 
 def _config_path(ctx: click.Context) -> Path:
-    return ctx.obj.get("config_path") or CONFIG_PATH
+    """Resolve the config path for *ctx*.
+
+    Precedence: the subcommand's ``--config`` (stored on ``ctx.obj`` by
+    each command) > the group ``--config`` (same key, set earlier) >
+    ``$HERMES_H3_CONFIG`` > :data:`CONFIG_PATH`.
+    """
+    return ctx.obj.get("config_path") or default_config_path()
 
 
 def _config_option(func):
@@ -556,7 +585,7 @@ def _config_option(func):
         "config_path",
         type=click.Path(dir_okay=False, path_type=Path),
         default=None,
-        help=f"Override config path (default: {CONFIG_PATH}).",
+        help=(f"Override config path (default: ${CONFIG_PATH_ENV} or {CONFIG_PATH})."),
     )(func)
 
 
@@ -887,7 +916,7 @@ def _report_fallback(  # noqa: PLR0912
     "config_path",
     type=click.Path(dir_okay=False, path_type=Path),
     default=None,
-    help=f"Override config path (default: {CONFIG_PATH}).",
+    help=(f"Override config path (default: ${CONFIG_PATH_ENV} or {CONFIG_PATH})."),
 )
 @click.option(
     "--force",
@@ -929,8 +958,8 @@ def scaffold(
 
     Without ``--lang``:
         Create ``~/.hermes/h3/config.yaml`` (or the path supplied via
-        ``--config``) if it doesn't already exist. Existing files are
-        preserved unless ``--force`` is passed.
+        ``--config`` / ``$HERMES_H3_CONFIG``) if it doesn't already
+        exist. Existing files are preserved unless ``--force`` is passed.
 
     With ``--lang <go|py|ts>``:
         Render the corresponding template tree into

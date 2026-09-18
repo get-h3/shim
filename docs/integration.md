@@ -44,6 +44,27 @@ The CLI never requires the file to pre-exist — `load_config()` in
 Every `hermes-h3` command accepts `--config <path>` to point at a
 different file.
 
+The config path is resolved in this order, highest first:
+
+```text
+--config <path>            (before or after the subcommand)
+$HERMES_H3_CONFIG          (environment variable; ~ is expanded)
+~/.hermes/h3/config.yaml   (default)
+```
+
+Exports are enough to redirect a whole session — every command that
+reads or writes config honors it:
+
+```bash
+export HERMES_H3_CONFIG=/tmp/mine.yaml
+hermes-h3 scaffold          # creates /tmp/mine.yaml, not the home path
+hermes-h3 list              # reads /tmp/mine.yaml
+```
+
+A blank value (`HERMES_H3_CONFIG=""` or whitespace) falls back to the
+default path, as does an unset variable. `pre-update-check` uses the
+same order.
+
 ## 2. Register a harness
 
 ```bash

@@ -18,6 +18,7 @@ Usage::
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -323,9 +324,22 @@ def pre_update_check(
 DEFAULT_CONFIG_PATH = Path.home() / ".hermes" / "h3" / "config.yaml"
 
 
+def _default_config_path() -> Path:
+    """Resolve the H3 config path, honoring ``$HERMES_H3_CONFIG``.
+
+    Mirrors ``h3_shim.cli.default_config_path`` (subcommand/group
+    ``--config`` > ``$HERMES_H3_CONFIG`` > :data:`DEFAULT_CONFIG_PATH`)
+    without importing Click — this module is deliberately Click-free.
+    """
+    env = os.environ.get("HERMES_H3_CONFIG", "")
+    if env.strip():
+        return Path(env.strip()).expanduser()
+    return DEFAULT_CONFIG_PATH
+
+
 def _load_config(path: Path | None = None) -> dict[str, Any]:
     """Load H3 config from disk, returning empty skeleton on failure."""
-    p = path or DEFAULT_CONFIG_PATH
+    p = path or _default_config_path()
     if not p.exists():
         return _empty_config()
     try:

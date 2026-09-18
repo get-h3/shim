@@ -55,6 +55,18 @@ so CI can distinguish a real compliance failure from a wrong server:
 
 See `docs/integration.md` for the full troubleshooting matrix.
 
+## Configuration
+
+`hermes-h3` keeps its harness/session state in one YAML file
+(`~/.hermes/h3/config.yaml` by default). The path is resolved in this
+order, highest first: `--config <path>` (accepted before **or** after a
+subcommand) → `$HERMES_H3_CONFIG` → `~/.hermes/h3/config.yaml`. So
+`HERMES_H3_CONFIG=/tmp/mine.yaml hermes-h3 list` reads the override
+instead of your real config, and every command that writes the file
+(`install`, `use`, `scaffold`, `uninstall`) writes it there too. An
+unset or blank `$HERMES_H3_CONFIG` falls back to the default path. See
+`docs/integration.md` for details.
+
 ## Components
 
 - `protocol.py` — Pydantic models (generated from get-h3/protocol)
