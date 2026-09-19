@@ -221,6 +221,13 @@ cd h3-harness-go
 go mod tidy && go run .          # listens on http://localhost:9191
 ```
 
+The first `go mod tidy` downloads the scaffold's pinned dependency
+(`github.com/get-h3/sdk-go`) from proxy.golang.org.  On a cold module
+cache that fetch can take several minutes, and the only output while it
+runs is a `go: downloading ...` line — it has not hung and has not
+failed, so let it finish.  Later runs reuse the module cache and start
+in seconds.
+
 …or run one of the SDK echo examples (battery-passing reference
 implementations):
 
