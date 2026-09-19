@@ -232,3 +232,198 @@ def test_install_flag_and_positional_behave_identically(
         configs[label] = yaml.safe_load(cfg.read_text())
     assert configs["flag"] == configs["positional"]
     assert configs["flag"]["harnesses"]["scout"]["endpoint"] == INSTALL_ENDPOINT
+
+
+# ── H3-GAP-092: verify NAME positional in the plugin mirror ────────────────
+# ``hermes-h3 verify [NAME]`` accepts an optional positional alias for
+# ``--harness``, but the plugin mirror declared only ``--harness/-H``, so
+# ``hermes h3 verify myharness`` died in argparse with
+# ``unrecognized arguments: myharness`` while the click command's own help
+# advertised ``[NAME]``.  Mirror drift again — the same class as GAP-009 /
+# DF-H3-3.  These tests drive the REAL plugin reconstruction and the real
+# click group (helpers are only plumbing; every assertion consumes the
+# rebuilt argv or the click invocation it produces).
+
+VERIFY_ENDPOINT_A = "http://a:1"
+VERIFY_ENDPOINT_B = "http://b:2"
+
+
+def _write_two_harness_config(path: Path) -> None:
+    """Config with default ``alpha`` plus a second harness ``beta``."""
+    import yaml
+
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "default_harness": "alpha",
+                "harnesses": {
+                    "alpha": {
+                        "endpoint": VERIFY_ENDPOINT_A,
+                        "transport": "rest",
+                        "timeout_ms": 5000,
+                    },
+                    "beta": {
+                        "endpoint": VERIFY_ENDPOINT_B,
+                        "transport": "rest",
+                        "timeout_ms": 5000,
+                    },
+                },
+                "sessions": {},
+            }
+        )
+    )
+
+
+def _stub_healthy_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch the lazily-imported ``H3Client`` in its source module."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from h3_shim.protocol import HealthResponse, HealthStatus
+
+    fake_client = MagicMock()
+    instance = MagicMock()
+    instance.health = AsyncMock(
+        return_value=HealthResponse(
+            status=HealthStatus.OK,
+            version="1.2.3",
+            capabilities=["foo", "bar"],
+        ),
+    )
+    instance.close = AsyncMock()
+    fake_client.return_value = instance
+    monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
+
+
+def _rebuild_and_invoke(
+    plugin: object,
+    argv: list[str],
+    config_path: Path,
+):
+    """Parse ``argv`` with the plugin, rebuild the click argv, invoke it.
+
+    Returns ``(rebuilt_argv, click_result)`` — the rebuilt argv is produced
+    by the plugin's own ``_argv_from_namespace`` (no hand-written argv), and
+    the invocation runs the real ``hermes-h3`` click group.
+    """
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    parser = _new_parser(plugin)
+    ns = parser.parse_args([*argv, "--config", str(config_path)])
+    rebuilt = plugin._argv_from_namespace(ns)  # type: ignore[attr-defined]
+    result = CliRunner().invoke(hermes_h3, rebuilt)
+    return rebuilt, result
+
+
+def test_verify_positional_name_parses(plugin: object) -> None:
+    """``hermes h3 verify myharness`` parses (was exit 2: unrecognized args)."""
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["verify", "myharness"])
+    assert ns.h3_command == "verify"
+    assert ns.name == "myharness"
+    assert ns.harness is None
+    assert plugin._argv_from_namespace(ns) == [  # type: ignore[attr-defined]
+        "verify",
+        "myharness",
+    ]
+
+
+def test_verify_argv_rebuild_preserves_all_three_forms(plugin: object) -> None:
+    """Positional / bare / --harness rebuild to distinct, faithful argvs."""
+    parser = _new_parser(plugin)
+    expected = {
+        ("verify", "myharness"): ["verify", "myharness"],
+        ("verify",): ["verify"],
+        ("verify", "--harness", "beta"): ["verify", "--harness", "beta"],
+    }
+    for raw, want in expected.items():
+        ns = parser.parse_args(list(raw))
+        assert plugin._argv_from_namespace(ns) == want  # type: ignore[attr-defined]
+
+
+def test_verify_positional_name_matches_direct_click(
+    plugin: object, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``hermes h3 verify NAME`` reaches the same command path as ``hermes-h3``.
+
+    Parity is asserted on the click OUTPUT, not just the argv shape: the
+    plugin-reconstructed invocation and the direct click invocation must
+    render identically.
+    """
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    cfg = tmp_path / "config.yaml"
+    _write_two_harness_config(cfg)
+    _stub_healthy_client(monkeypatch)
+
+    rebuilt, plugin_result = _rebuild_and_invoke(plugin, ["verify", "beta"], cfg)
+    assert rebuilt == ["--config", str(cfg), "verify", "beta"]
+
+    direct = CliRunner().invoke(hermes_h3, ["verify", "beta", "--config", str(cfg)])
+    assert plugin_result.exit_code == direct.exit_code == 0
+    assert plugin_result.output == direct.output
+    assert "harness: beta" in plugin_result.output
+    assert f"endpoint: {VERIFY_ENDPOINT_B}" in plugin_result.output
+
+
+def test_verify_no_name_behavior_unchanged(
+    plugin: object, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``hermes h3 verify`` with no NAME still resolves default_harness."""
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    cfg = tmp_path / "config.yaml"
+    _write_two_harness_config(cfg)
+    _stub_healthy_client(monkeypatch)
+
+    rebuilt, result = _rebuild_and_invoke(plugin, ["verify"], cfg)
+    assert rebuilt == ["--config", str(cfg), "verify"]
+    assert result.exit_code == 0
+    assert "harness: alpha" in result.output
+    assert f"endpoint: {VERIFY_ENDPOINT_A}" in result.output
+
+    direct = CliRunner().invoke(hermes_h3, ["verify", "--config", str(cfg)])
+    assert direct.exit_code == 0
+    assert result.output == direct.output
+
+
+def test_verify_harness_flag_path_unchanged(
+    plugin: object, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``hermes h3 verify --harness NAME`` keeps its existing behaviour."""
+    cfg = tmp_path / "config.yaml"
+    _write_two_harness_config(cfg)
+    _stub_healthy_client(monkeypatch)
+
+    rebuilt, result = _rebuild_and_invoke(plugin, ["verify", "--harness", "beta"], cfg)
+    assert rebuilt == ["--config", str(cfg), "verify", "--harness", "beta"]
+    assert result.exit_code == 0
+    assert "harness: beta" in result.output
+    assert f"endpoint: {VERIFY_ENDPOINT_B}" in result.output
+
+
+def test_verify_positional_wins_over_harness_flag(
+    plugin: object, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Both given → the click command's own rule applies (NAME wins).
+
+    The mirror forwards both tokens and lets click resolve them, so no new
+    precedence rule is invented in the plugin.
+    """
+    cfg = tmp_path / "config.yaml"
+    _write_two_harness_config(cfg)
+    _stub_healthy_client(monkeypatch)
+
+    rebuilt, result = _rebuild_and_invoke(
+        plugin, ["verify", "alpha", "--harness", "beta"], cfg
+    )
+    assert rebuilt == ["--config", str(cfg), "verify", "alpha", "--harness", "beta"]
+    assert result.exit_code == 0
+    assert "harness: alpha" in result.output
+    assert f"endpoint: {VERIFY_ENDPOINT_A}" in result.output
+    assert "harness: beta" not in result.output

@@ -74,6 +74,8 @@ _POSITIONALS: dict[str, tuple[str, ...]] = {
     "uninstall": ("name",),
     "use": ("name",),
     "pre-update-check": ("target_version",),
+    # ``verify [NAME]`` — optional positional alias for ``--harness``.
+    "verify": ("name",),
 }
 
 # value options declared by the mirror per subcommand
@@ -207,6 +209,12 @@ def _setup(parser: argparse.ArgumentParser) -> None:
 
     p = sub.add_parser("verify", help="Health-check a harness via the H3 REST client.")
     _add_config_option(p)
+    p.add_argument(
+        "name",
+        nargs="?",
+        default=None,
+        help="Named harness from config (alias for --harness; positional wins).",
+    )
     p.add_argument(
         "--harness",
         "-H",
