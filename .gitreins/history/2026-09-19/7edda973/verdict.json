@@ -1,0 +1,83 @@
+{
+  "task_id": "h3-gap-092",
+  "task_title": "H3-GAP-092 verify positional NAME plugin mirror",
+  "task_criteria": [
+    "Expose optional positional NAME for hermes h3 verify, preserve existing no-NAME and --harness behavior, add real plugin tests, pytest and ruff green, and commit the change."
+  ],
+  "passed": true,
+  "worktree": "/home/kara/get-h3/shim",
+  "branch": "main",
+  "commit": "53e834fbc3ded123f82c0b875b563fbdcacc8cb7",
+  "items": [],
+  "stages": {
+    "tier1": {
+      "id": "tier1",
+      "passed": true,
+      "any_failed": false,
+      "summary": "  \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s",
+      "steps": [
+        {
+          "id": "guard",
+          "type": "script",
+          "passed": true,
+          "output": "Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full suite \u2014 safety trigger)\n  \u2713 secrets \u2014 clean (gitleaks + builtin cross-check)\n  ~ lint \u2014 skipped (no staged files)\n  ~ tests \u2014 skipped (no staged files)\n  guard log: /home/kara/get-h3/shim/.gitreins/logs/guard-20260919T002621.740795Z.log\n",
+          "error": "",
+          "data": {
+            "exit_code": 0,
+            "guard_log": "/home/kara/get-h3/shim/.gitreins/logs/guard-20260919T002621.740795Z.log"
+          }
+        }
+      ]
+    },
+    "tier2": {
+      "id": "tier2",
+      "passed": true,
+      "any_failed": false,
+      "summary": "COMPLETE\n  \u2713 Expose optional positional NAME for hermes h3 verify, preserve existing no-NAME and --harness behavior, add real plugin tests, pytest and ruff green, and commit the change.: h3/__init__.py:78 adds \"verify\": (\"name\",) to _POSITIONALS and h3/__init__.py:212-217 declares p.add_argument(\"name\", nargs=\"?\", default=None) on the verify subparser. _argv_from_namespace (h3/__init__.py:296-305) omits None positionals, so no-NAME rebuilds to [\"verify\"] unchanged. Manual verification: ['verify','myharness']->['verify','myharness'], ['verify']->['verify'], ['verify','--harness','beta']->['verify','--harness','beta'], ['verify','alpha','--harness','beta']->['verify','alpha','--harness','beta']. Real plugin tests added (tests/test_h3_plugin.py +195 lines) driving plugin _setup/_argv_from_namespace plus the real click group via CliRunner with output-parity assertions. Test evidence: `.venv/bin/python -m pytest tests/test_h3_plugin.py -q` -> '26 passed in 0.29s'; full `.venv/bin/python -m pytest -q` -> '381 passed, 4 warnings in 27.54s'. Ruff evidence: `.venv/bin/python -m ruff check src tests h3` -> 'All checks passed!' exit_code=0; `ruff format --check h3/__init__.py tests/test_h3_plugin.py` -> '2 files already formatted'. RED proof: restoring pre-change h3/__init__.py (HEAD~1) makes 4 verify tests FAIL with 'hermes h3: error: unrecognized arguments: alpha' / SystemExit: 2 while the 3 unchanged-behavior tests pass. Committed as 53e834f 'fix(plugin): H3-GAP-092 - verify accepts positional NAME' (h3/__init__.py +8, tests/test_h3_plugin.py +195).\nOptional positional NAME is exposed on the h3 verify plugin mirror with no-NAME and --harness behavior preserved, backed by real plugin tests, green pytest (381 passed) and ruff, and committed as 53e834f.",
+      "steps": [
+        {
+          "id": "tier2",
+          "type": "ai_eval",
+          "passed": true,
+          "output": "COMPLETE\n  \u2713 Expose optional positional NAME for hermes h3 verify, preserve existing no-NAME and --harness behavior, add real plugin tests, pytest and ruff green, and commit the change.: h3/__init__.py:78 adds \"verify\": (\"name\",) to _POSITIONALS and h3/__init__.py:212-217 declares p.add_argument(\"name\", nargs=\"?\", default=None) on the verify subparser. _argv_from_namespace (h3/__init__.py:296-305) omits None positionals, so no-NAME rebuilds to [\"verify\"] unchanged. Manual verification: ['verify','myharness']->['verify','myharness'], ['verify']->['verify'], ['verify','--harness','beta']->['verify','--harness','beta'], ['verify','alpha','--harness','beta']->['verify','alpha','--harness','beta']. Real plugin tests added (tests/test_h3_plugin.py +195 lines) driving plugin _setup/_argv_from_namespace plus the real click group via CliRunner with output-parity assertions. Test evidence: `.venv/bin/python -m pytest tests/test_h3_plugin.py -q` -> '26 passed in 0.29s'; full `.venv/bin/python -m pytest -q` -> '381 passed, 4 warnings in 27.54s'. Ruff evidence: `.venv/bin/python -m ruff check src tests h3` -> 'All checks passed!' exit_code=0; `ruff format --check h3/__init__.py tests/test_h3_plugin.py` -> '2 files already formatted'. RED proof: restoring pre-change h3/__init__.py (HEAD~1) makes 4 verify tests FAIL with 'hermes h3: error: unrecognized arguments: alpha' / SystemExit: 2 while the 3 unchanged-behavior tests pass. Committed as 53e834f 'fix(plugin): H3-GAP-092 - verify accepts positional NAME' (h3/__init__.py +8, tests/test_h3_plugin.py +195).\nOptional positional NAME is exposed on the h3 verify plugin mirror with no-NAME and --harness behavior preserved, backed by real plugin tests, green pytest (381 passed) and ruff, and committed as 53e834f.",
+          "error": "",
+          "data": {
+            "verdict": "COMPLETE",
+            "items": [
+              {
+                "criterion": "Expose optional positional NAME for hermes h3 verify, preserve existing no-NAME and --harness behavior, add real plugin tests, pytest and ruff green, and commit the change.",
+                "status": "PASS",
+                "detail": "h3/__init__.py:78 adds \"verify\": (\"name\",) to _POSITIONALS and h3/__init__.py:212-217 declares p.add_argument(\"name\", nargs=\"?\", default=None) on the verify subparser. _argv_from_namespace (h3/__init__.py:296-305) omits None positionals, so no-NAME rebuilds to [\"verify\"] unchanged. Manual verification: ['verify','myharness']->['verify','myharness'], ['verify']->['verify'], ['verify','--harness','beta']->['verify','--harness','beta'], ['verify','alpha','--harness','beta']->['verify','alpha','--harness','beta']. Real plugin tests added (tests/test_h3_plugin.py +195 lines) driving plugin _setup/_argv_from_namespace plus the real click group via CliRunner with output-parity assertions. Test evidence: `.venv/bin/python -m pytest tests/test_h3_plugin.py -q` -> '26 passed in 0.29s'; full `.venv/bin/python -m pytest -q` -> '381 passed, 4 warnings in 27.54s'. Ruff evidence: `.venv/bin/python -m ruff check src tests h3` -> 'All checks passed!' exit_code=0; `ruff format --check h3/__init__.py tests/test_h3_plugin.py` -> '2 files already formatted'. RED proof: restoring pre-change h3/__init__.py (HEAD~1) makes 4 verify tests FAIL with 'hermes h3: error: unrecognized arguments: alpha' / SystemExit: 2 while the 3 unchanged-behavior tests pass. Committed as 53e834f 'fix(plugin): H3-GAP-092 - verify accepts positional NAME' (h3/__init__.py +8, tests/test_h3_plugin.py +195)."
+              }
+            ],
+            "summary": "Optional positional NAME is exposed on the h3 verify plugin mirror with no-NAME and --harness behavior preserved, backed by real plugin tests, green pytest (381 passed) and ruff, and committed as 53e834f."
+          }
+        }
+      ]
+    }
+  },
+  "summary": "Judge Result: h3-gap-092\n\nStage tier1: PASS\n    \u2713 guard: Tier 1: DEGRADED PASS (skips: lint=no staged files, tests=no staged files)  (test mode: diff, full s\n\nStage tier2: PASS\n  COMPLETE\n  \u2713 Expose optional positional NAME for hermes h3 verify, preserve existing no-NAME and --harness behavior, add real plugin tests, pytest and ruff green, and commit the change.: h3/__init__.py:78 adds \"verify\": (\"name\",) to _POSITIONALS and h3/__init__.py:212-217 declares p.add_argument(\"name\", nargs=\"?\", default=None) on the verify subparser. _argv_from_namespace (h3/__init__.py:296-305) omits None positionals, so no-NAME rebuilds to [\"verify\"] unchanged. Manual verification: ['verify','myharness']->['verify','myharness'], ['verify']->['verify'], ['verify','--harness','beta']->['verify','--harness','beta'], ['verify','alpha','--harness','beta']->['verify','alpha','--harness','beta']. Real plugin tests added (tests/test_h3_plugin.py +195 lines) driving plugin _setup/_argv_from_namespace plus the real click group via CliRunner with output-parity assertions. Test evidence: `.venv/bin/python -m pytest tests/test_h3_plugin.py -q` -> '26 passed in 0.29s'; full `.venv/bin/python -m pytest -q` -> '381 passed, 4 warnings in 27.54s'. Ruff evidence: `.venv/bin/python -m ruff check src tests h3` -> 'All checks passed!' exit_code=0; `ruff format --check h3/__init__.py tests/test_h3_plugin.py` -> '2 files already formatted'. RED proof: restoring pre-change h3/__init__.py (HEAD~1) makes 4 verify tests FAIL with 'hermes h3: error: unrecognized arguments: alpha' / SystemExit: 2 while the 3 unchanged-behavior tests pass. Committed as 53e834f 'fix(plugin): H3-GAP-092 - verify accepts positional NAME' (h3/__init__.py +8, tests/test_h3_plugin.py +195).\nOptional positional NAME is exposed on the h3 verify plugin mirror with no-NAME and --harness behavior preserved, backed by real plugin tests, green pytest (381 passed) and ruff, and committed as 53e834f.\n\nOverall: PASS \u2713",
+  "evaluated_at": "2026-09-19T00:27:22.417713",
+  "evidence": {
+    "collected_at": "2026-09-19T00:27:22.429733+00:00",
+    "items": [
+      {
+        "name": "patch",
+        "label": "Landed commit patch",
+        "file": "commit.patch",
+        "bytes": 12018,
+        "truncated": false,
+        "source": "git show 53e834fbc3de"
+      },
+      {
+        "name": "worktree",
+        "label": "Working-tree diff (graded)",
+        "file": "worktree.patch",
+        "bytes": 2200,
+        "truncated": false,
+        "source": "git diff HEAD (working tree)"
+      }
+    ],
+    "task_id": "h3-gap-092"
+  }
+}
