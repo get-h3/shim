@@ -278,3 +278,13 @@
 {"from":"tests/test_upgrade_check.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_upgrade_check.py","to":"pkg:yaml","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_upgrade_check.py","to":"pkg:h3_shim.upgrade_check","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:threading","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:threading","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:uuid","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:uuid","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:fastapi","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:fastapi","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:fastapi.testclient","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:fastapi.testclient","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:h3_shim.templates.py","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_scaffold_build.py","to":"pkg:h3_shim.templates.py","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
