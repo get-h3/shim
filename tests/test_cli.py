@@ -1710,6 +1710,27 @@ class TestPreUpdateCheck:
         assert result.exit_code == 1
         assert "too old" in result.output
 
+    def test_unknown_version_names_matrix_and_supported(self, runner, tmp_path):
+        """DF-H3-SHIM-FOREMAN-4 — an unlisted Hermes version must not dead-end.
+
+        Exit stays 1 (BLOCK), but the message now names the versions.yaml
+        that was consulted and lists the Hermes versions it supports.
+        """
+        from h3_shim.upgrade_check import VERSIONS_YAML_PATH
+
+        cfg = self._write_config(tmp_path)
+        result = runner.invoke(
+            hermes_h3,
+            ["pre-update-check", "0.99.0", "--config", str(cfg)],
+        )
+        assert result.exit_code == 1, result.output
+        assert str(VERSIONS_YAML_PATH) in result.output
+        assert "no compatibility data" in result.output.lower()
+        assert "Supported Hermes versions:" in result.output
+        assert "0.17.0" in result.output
+        assert "0.20.0" in result.output
+        assert "--versions-yaml" in result.output
+
 
 # ── GAP-008 regression: template files must exist in source ─────────────────
 

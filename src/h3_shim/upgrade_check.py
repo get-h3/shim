@@ -87,11 +87,26 @@ class UpgradeCheckResult:
 # ---------------------------------------------------------------------------
 
 
+def _effective_versions_yaml_path(versions_yaml_path: Path | None = None) -> Path:
+    """Return the matrix path this check actually consults.
+
+    An explicit ``versions_yaml_path`` wins; otherwise the module-level
+    :data:`VERSIONS_YAML_PATH` (bundled package data first, dev tree
+    fallback — GAP-011).  BLOCK messages name this path so a user can see
+    which matrix produced the verdict.
+    """
+    if versions_yaml_path is not None:
+        return versions_yaml_path
+    return VERSIONS_YAML_PATH
+
+
 def _load_version_matrix(path: Path | None = None) -> list[dict[str, Any]]:
     """Load the Hermes→H3 compatibility matrix from versions.yaml.
 
     Returns the ``hermes_versions`` list, or an empty list if the file
-    is missing / unreadable.
+    is missing / unreadable / malformed.  Never raises: a YAML file whose
+    top level is not a mapping (or whose ``hermes_versions`` is not a list
+    of mappings) reads as an empty matrix.
     """
     p = path or VERSIONS_YAML_PATH
     if not p.exists():
@@ -103,7 +118,74 @@ def _load_version_matrix(path: Path | None = None) -> list[dict[str, Any]]:
     except (yaml.YAMLError, OSError) as exc:
         logger.warning("failed to read versions.yaml: %s", exc)
         return []
-    return data.get("hermes_versions", [])
+    if not isinstance(data, dict):
+        logger.warning("versions.yaml at %s is not a mapping", p)
+        return []
+    versions = data.get("hermes_versions", [])
+    if not isinstance(versions, list):
+        logger.warning("versions.yaml at %s has a non-list hermes_versions", p)
+        return []
+    return [entry for entry in versions if isinstance(entry, dict)]
+
+
+def _supported_hermes_versions(matrix: list[dict[str, Any]]) -> list[str]:
+    """Supported Hermes version strings from *matrix*, sorted ascending.
+
+    Ordering uses :func:`_parse_version`; the original strings from the
+    matrix are preserved in the returned list.
+    """
+    versions = [str(entry["hermes"]) for entry in matrix if entry.get("hermes")]
+    return sorted(versions, key=_parse_version)
+
+
+def _unsupported_hermes_message(
+    target_hermes_version: str,
+    matrix: list[dict[str, Any]],
+    matrix_path: Path,
+) -> str:
+    """Build the BLOCK message for a target with no compatibility entry.
+
+    Two distinct cases, both BLOCK:
+
+    * empty / unreadable matrix — name the path, say it was missing or
+      unreadable, and say how to supply one;
+    * non-empty matrix that does not list the target — name the path and
+      list the supported Hermes versions in ascending order, adding
+      whether the target is newer or older than the whole range.
+    """
+    hint = (
+        "Point the check at another matrix with --versions-yaml <path> "
+        "(API: versions_yaml_path=)."
+    )
+    supported = _supported_hermes_versions(matrix)
+    if not supported:
+        return "\n".join(
+            [
+                f"H3 has no compatibility data for Hermes {target_hermes_version}: "
+                f"the compatibility matrix is empty.",
+                f"Matrix consulted: {matrix_path} — missing, unreadable, "
+                f"or lists no Hermes versions.",
+                hint,
+            ]
+        )
+
+    target = _parse_version(target_hermes_version)
+    oldest, newest = supported[0], supported[-1]
+    if target > _parse_version(newest):
+        position = f" (newer than the newest supported version, {newest})"
+    elif target < _parse_version(oldest):
+        position = f" (older than the oldest supported version, {oldest})"
+    else:
+        position = ""
+    return "\n".join(
+        [
+            f"H3 has no compatibility data for Hermes {target_hermes_version}"
+            f"{position}.",
+            f"Matrix consulted: {matrix_path}",
+            f"Supported Hermes versions: {', '.join(supported)}",
+            hint,
+        ]
+    )
 
 
 def _find_compat_entry(
@@ -198,15 +280,14 @@ def pre_update_check(
     # ------------------------------------------------------------------
     # 1. Protocol compatibility (versions.yaml)
     # ------------------------------------------------------------------
-    matrix = _load_version_matrix(versions_yaml_path)
+    matrix_path = _effective_versions_yaml_path(versions_yaml_path)
+    matrix = _load_version_matrix(matrix_path)
     compat = _find_compat_entry(target_hermes_version, matrix)
     if not compat:
         return UpgradeCheckResult(
             severity="BLOCK",
-            message=(
-                f"H3 has no compatibility data for Hermes "
-                f"{target_hermes_version}. "
-                f"Check versions.yaml for supported versions."
+            message=_unsupported_hermes_message(
+                target_hermes_version, matrix, matrix_path
             ),
         )
 

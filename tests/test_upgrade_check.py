@@ -239,6 +239,129 @@ def test_blocks_on_unknown_version(sample_versions_yaml: Path) -> None:
     assert "no compatibility data" in result.message.lower()
 
 
+# ---------------------------------------------------------------------------
+# DF-H3-SHIM-FOREMAN-4 — the unknown-version BLOCK must name the matrix it
+# read and list the supported versions instead of dead-ending.
+# ---------------------------------------------------------------------------
+
+
+def test_unknown_version_names_matrix_and_supported_versions(
+    sample_versions_yaml: Path,
+) -> None:
+    """Effective path + ascending supported versions, legacy phrase intact."""
+    result = pre_update_check("0.99.0", versions_yaml_path=sample_versions_yaml)
+    assert result.severity == "BLOCK"
+    assert result.blocked
+    # The phrase the CLI docs / smoke test grep for must survive.
+    assert "no compatibility data" in result.message.lower()
+    # The path actually consulted, not a generic "versions.yaml".
+    assert f"Matrix consulted: {sample_versions_yaml}" in result.message
+    # Original strings, ascending with the sample matrix's own rows.
+    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
+    # Actionable pointer for both surfaces.
+    assert "--versions-yaml" in result.message
+    assert "versions_yaml_path=" in result.message
+    # Tight: no traceback, no wall of text.
+    assert len(result.message.splitlines()) <= 5
+    assert "Traceback" not in result.message
+    # The empty-matrix wording is reserved for the empty-matrix case.
+    assert "the compatibility matrix is empty" not in result.message
+
+
+def test_unknown_version_newer_than_newest_says_so(
+    sample_versions_yaml: Path,
+) -> None:
+    result = pre_update_check("99.0.0", versions_yaml_path=sample_versions_yaml)
+    assert result.severity == "BLOCK"
+    assert "newer than the newest supported version" in result.message
+    # ... and names the newest supported version it compared against.
+    assert "0.20.0" in result.message
+
+
+def test_unknown_version_older_than_oldest_says_so(
+    sample_versions_yaml: Path,
+) -> None:
+    result = pre_update_check("0.1.0", versions_yaml_path=sample_versions_yaml)
+    assert result.severity == "BLOCK"
+    assert "older than the oldest supported version" in result.message
+    assert "0.18.0" in result.message
+
+
+def test_supported_versions_listed_ascending_regardless_of_row_order(
+    tmp_path: Path,
+) -> None:
+    """Ordering uses _parse_version, not the YAML row order."""
+    data = {
+        "hermes_versions": [
+            {"hermes": "0.20.0", "h3_shim": "2.0.0", "min_h3": "2.0.0"},
+            {"hermes": "0.18.0", "h3_shim": "1.0.0", "min_h3": "1.0.0"},
+            {"hermes": "0.19.0", "h3_shim": "1.1.0", "min_h3": "1.0.0"},
+        ]
+    }
+    p = tmp_path / "scrambled-versions.yaml"
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(data, fh)
+
+    result = pre_update_check("0.99.0", versions_yaml_path=p)
+    assert result.severity == "BLOCK"
+    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
+
+
+def test_default_matrix_path_named_when_no_explicit_path(
+    sample_versions_yaml: Path,
+) -> None:
+    """Without versions_yaml_path the resolved VERSIONS_YAML_PATH is named."""
+    with patch("h3_shim.upgrade_check.VERSIONS_YAML_PATH", sample_versions_yaml):
+        result = pre_update_check("0.99.0")
+    assert result.severity == "BLOCK"
+    assert f"Matrix consulted: {sample_versions_yaml}" in result.message
+    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
+
+
+def test_missing_matrix_reports_missing_path_not_version_list(
+    tmp_path: Path,
+) -> None:
+    """A missing matrix gets its own distinct, actionable BLOCK message."""
+    missing = tmp_path / "no-such-versions.yaml"
+    assert not missing.exists()
+
+    result = pre_update_check("0.99.0", versions_yaml_path=missing)
+    assert result.severity == "BLOCK"
+    assert "no compatibility data" in result.message.lower()
+    assert str(missing) in result.message
+    assert "missing" in result.message.lower()
+    assert "unreadable" in result.message.lower()
+    assert "--versions-yaml" in result.message
+    # Never render an empty supported-version list.
+    assert "Supported Hermes versions" not in result.message
+    assert len(result.message.splitlines()) <= 5
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "",
+        "# only a comment\n",
+        "hermes_versions: [unclosed",
+        "- just\n- a\n- list\n",
+        "hermes_versions: not-a-list\n",
+    ],
+)
+def test_empty_or_malformed_matrix_blocks_without_crashing(
+    tmp_path: Path, content: str
+) -> None:
+    """Empty/malformed YAML → distinct BLOCK message, no exception."""
+    p = tmp_path / "versions.yaml"
+    p.write_text(content, encoding="utf-8")
+
+    result = pre_update_check("0.99.0", versions_yaml_path=p)
+    assert result.severity == "BLOCK"
+    assert result.blocked
+    assert str(p) in result.message
+    assert "--versions-yaml" in result.message
+    assert "Supported Hermes versions" not in result.message
+
+
 def test_blocks_on_shim_too_old(sample_versions_yaml: Path) -> None:
     """Current shim is 0.1.0 — older than min_h3: 1.0.0."""
     result = pre_update_check("0.18.0", versions_yaml_path=sample_versions_yaml)
