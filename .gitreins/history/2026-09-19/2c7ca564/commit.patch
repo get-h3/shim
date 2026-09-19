@@ -1,0 +1,332 @@
+commit a55d30f92703b651fd6d49cb3147fd9d15de5311
+Author:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+AuthorDate: Fri Sep 18 19:42:44 2026 -0500
+Commit:     totalwindupflightsystems <totalwindupflightsystems@gmail.com>
+CommitDate: Fri Sep 18 19:42:44 2026 -0500
+
+    fix(cli): DF-H3-SHIM-FOREMAN-4 — pre-update-check names the matrix and lists supported versions
+    
+    The "no compatibility data for Hermes X" BLOCK was a dead end: it never named
+    the versions.yaml that was consulted, never listed the Hermes versions that
+    matrix supports, and said nothing at all when the matrix itself was empty.
+    
+    upgrade_check now resolves the effective matrix path once (an explicit
+    versions_yaml_path when the caller passed one, else the module-level
+    VERSIONS_YAML_PATH — bundled package data, dev-tree fallback) and builds the
+    BLOCK message from that resolution: the consulted path is echoed as-is, the
+    supported Hermes versions are listed ascending (ordered with the existing
+    _parse_version helper, original strings preserved), and the target is annotated
+    as newer than the newest / older than the oldest supported version when it falls
+    outside the supported range. An empty, missing or unreadable matrix gets its own
+    distinct message naming the path and the --versions-yaml / versions_yaml_path=
+    escape hatch instead of printing an empty version list, and _load_version_matrix
+    now reads a non-mapping YAML document or a non-list hermes_versions as an empty
+    matrix instead of raising AttributeError.
+    
+    severity stays BLOCK for both cases and cli.py is untouched (it echoes
+    result.message verbatim and still exits 1); the legacy lowercase phrase
+    "no compatibility data" is preserved for scripts/smoke_test.sh.
+    
+    Addresses DF-H3-SHIM-FOREMAN-4.
+    
+    Co-authored-by: Alexis Okuwa <wojonstech@gmail.com>
+---
+ src/h3_shim/upgrade_check.py |  95 ++++++++++++++++++++++++++++++---
+ tests/test_cli.py            |  21 ++++++++
+ tests/test_upgrade_check.py  | 123 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 232 insertions(+), 7 deletions(-)
+
+diff --git a/src/h3_shim/upgrade_check.py b/src/h3_shim/upgrade_check.py
+index a0cb5c9..b85bd99 100644
+--- a/src/h3_shim/upgrade_check.py
++++ b/src/h3_shim/upgrade_check.py
+@@ -87,11 +87,26 @@ class UpgradeCheckResult:
+ # ---------------------------------------------------------------------------
+ 
+ 
++def _effective_versions_yaml_path(versions_yaml_path: Path | None = None) -> Path:
++    """Return the matrix path this check actually consults.
++
++    An explicit ``versions_yaml_path`` wins; otherwise the module-level
++    :data:`VERSIONS_YAML_PATH` (bundled package data first, dev tree
++    fallback — GAP-011).  BLOCK messages name this path so a user can see
++    which matrix produced the verdict.
++    """
++    if versions_yaml_path is not None:
++        return versions_yaml_path
++    return VERSIONS_YAML_PATH
++
++
+ def _load_version_matrix(path: Path | None = None) -> list[dict[str, Any]]:
+     """Load the Hermes→H3 compatibility matrix from versions.yaml.
+ 
+     Returns the ``hermes_versions`` list, or an empty list if the file
+-    is missing / unreadable.
++    is missing / unreadable / malformed.  Never raises: a YAML file whose
++    top level is not a mapping (or whose ``hermes_versions`` is not a list
++    of mappings) reads as an empty matrix.
+     """
+     p = path or VERSIONS_YAML_PATH
+     if not p.exists():
+@@ -103,7 +118,74 @@ def _load_version_matrix(path: Path | None = None) -> list[dict[str, Any]]:
+     except (yaml.YAMLError, OSError) as exc:
+         logger.warning("failed to read versions.yaml: %s", exc)
+         return []
+-    return data.get("hermes_versions", [])
++    if not isinstance(data, dict):
++        logger.warning("versions.yaml at %s is not a mapping", p)
++        return []
++    versions = data.get("hermes_versions", [])
++    if not isinstance(versions, list):
++        logger.warning("versions.yaml at %s has a non-list hermes_versions", p)
++        return []
++    return [entry for entry in versions if isinstance(entry, dict)]
++
++
++def _supported_hermes_versions(matrix: list[dict[str, Any]]) -> list[str]:
++    """Supported Hermes version strings from *matrix*, sorted ascending.
++
++    Ordering uses :func:`_parse_version`; the original strings from the
++    matrix are preserved in the returned list.
++    """
++    versions = [str(entry["hermes"]) for entry in matrix if entry.get("hermes")]
++    return sorted(versions, key=_parse_version)
++
++
++def _unsupported_hermes_message(
++    target_hermes_version: str,
++    matrix: list[dict[str, Any]],
++    matrix_path: Path,
++) -> str:
++    """Build the BLOCK message for a target with no compatibility entry.
++
++    Two distinct cases, both BLOCK:
++
++    * empty / unreadable matrix — name the path, say it was missing or
++      unreadable, and say how to supply one;
++    * non-empty matrix that does not list the target — name the path and
++      list the supported Hermes versions in ascending order, adding
++      whether the target is newer or older than the whole range.
++    """
++    hint = (
++        "Point the check at another matrix with --versions-yaml <path> "
++        "(API: versions_yaml_path=)."
++    )
++    supported = _supported_hermes_versions(matrix)
++    if not supported:
++        return "\n".join(
++            [
++                f"H3 has no compatibility data for Hermes {target_hermes_version}: "
++                f"the compatibility matrix is empty.",
++                f"Matrix consulted: {matrix_path} — missing, unreadable, "
++                f"or lists no Hermes versions.",
++                hint,
++            ]
++        )
++
++    target = _parse_version(target_hermes_version)
++    oldest, newest = supported[0], supported[-1]
++    if target > _parse_version(newest):
++        position = f" (newer than the newest supported version, {newest})"
++    elif target < _parse_version(oldest):
++        position = f" (older than the oldest supported version, {oldest})"
++    else:
++        position = ""
++    return "\n".join(
++        [
++            f"H3 has no compatibility data for Hermes {target_hermes_version}"
++            f"{position}.",
++            f"Matrix consulted: {matrix_path}",
++            f"Supported Hermes versions: {', '.join(supported)}",
++            hint,
++        ]
++    )
+ 
+ 
+ def _find_compat_entry(
+@@ -198,15 +280,14 @@ def pre_update_check(
+     # ------------------------------------------------------------------
+     # 1. Protocol compatibility (versions.yaml)
+     # ------------------------------------------------------------------
+-    matrix = _load_version_matrix(versions_yaml_path)
++    matrix_path = _effective_versions_yaml_path(versions_yaml_path)
++    matrix = _load_version_matrix(matrix_path)
+     compat = _find_compat_entry(target_hermes_version, matrix)
+     if not compat:
+         return UpgradeCheckResult(
+             severity="BLOCK",
+-            message=(
+-                f"H3 has no compatibility data for Hermes "
+-                f"{target_hermes_version}. "
+-                f"Check versions.yaml for supported versions."
++            message=_unsupported_hermes_message(
++                target_hermes_version, matrix, matrix_path
+             ),
+         )
+ 
+diff --git a/tests/test_cli.py b/tests/test_cli.py
+index 607ed90..3624e52 100644
+--- a/tests/test_cli.py
++++ b/tests/test_cli.py
+@@ -1710,6 +1710,27 @@ class TestPreUpdateCheck:
+         assert result.exit_code == 1
+         assert "too old" in result.output
+ 
++    def test_unknown_version_names_matrix_and_supported(self, runner, tmp_path):
++        """DF-H3-SHIM-FOREMAN-4 — an unlisted Hermes version must not dead-end.
++
++        Exit stays 1 (BLOCK), but the message now names the versions.yaml
++        that was consulted and lists the Hermes versions it supports.
++        """
++        from h3_shim.upgrade_check import VERSIONS_YAML_PATH
++
++        cfg = self._write_config(tmp_path)
++        result = runner.invoke(
++            hermes_h3,
++            ["pre-update-check", "0.99.0", "--config", str(cfg)],
++        )
++        assert result.exit_code == 1, result.output
++        assert str(VERSIONS_YAML_PATH) in result.output
++        assert "no compatibility data" in result.output.lower()
++        assert "Supported Hermes versions:" in result.output
++        assert "0.17.0" in result.output
++        assert "0.20.0" in result.output
++        assert "--versions-yaml" in result.output
++
+ 
+ # ── GAP-008 regression: template files must exist in source ─────────────────
+ 
+diff --git a/tests/test_upgrade_check.py b/tests/test_upgrade_check.py
+index e7df8ac..897b59f 100644
+--- a/tests/test_upgrade_check.py
++++ b/tests/test_upgrade_check.py
+@@ -239,6 +239,129 @@ def test_blocks_on_unknown_version(sample_versions_yaml: Path) -> None:
+     assert "no compatibility data" in result.message.lower()
+ 
+ 
++# ---------------------------------------------------------------------------
++# DF-H3-SHIM-FOREMAN-4 — the unknown-version BLOCK must name the matrix it
++# read and list the supported versions instead of dead-ending.
++# ---------------------------------------------------------------------------
++
++
++def test_unknown_version_names_matrix_and_supported_versions(
++    sample_versions_yaml: Path,
++) -> None:
++    """Effective path + ascending supported versions, legacy phrase intact."""
++    result = pre_update_check("0.99.0", versions_yaml_path=sample_versions_yaml)
++    assert result.severity == "BLOCK"
++    assert result.blocked
++    # The phrase the CLI docs / smoke test grep for must survive.
++    assert "no compatibility data" in result.message.lower()
++    # The path actually consulted, not a generic "versions.yaml".
++    assert f"Matrix consulted: {sample_versions_yaml}" in result.message
++    # Original strings, ascending with the sample matrix's own rows.
++    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
++    # Actionable pointer for both surfaces.
++    assert "--versions-yaml" in result.message
++    assert "versions_yaml_path=" in result.message
++    # Tight: no traceback, no wall of text.
++    assert len(result.message.splitlines()) <= 5
++    assert "Traceback" not in result.message
++    # The empty-matrix wording is reserved for the empty-matrix case.
++    assert "the compatibility matrix is empty" not in result.message
++
++
++def test_unknown_version_newer_than_newest_says_so(
++    sample_versions_yaml: Path,
++) -> None:
++    result = pre_update_check("99.0.0", versions_yaml_path=sample_versions_yaml)
++    assert result.severity == "BLOCK"
++    assert "newer than the newest supported version" in result.message
++    # ... and names the newest supported version it compared against.
++    assert "0.20.0" in result.message
++
++
++def test_unknown_version_older_than_oldest_says_so(
++    sample_versions_yaml: Path,
++) -> None:
++    result = pre_update_check("0.1.0", versions_yaml_path=sample_versions_yaml)
++    assert result.severity == "BLOCK"
++    assert "older than the oldest supported version" in result.message
++    assert "0.18.0" in result.message
++
++
++def test_supported_versions_listed_ascending_regardless_of_row_order(
++    tmp_path: Path,
++) -> None:
++    """Ordering uses _parse_version, not the YAML row order."""
++    data = {
++        "hermes_versions": [
++            {"hermes": "0.20.0", "h3_shim": "2.0.0", "min_h3": "2.0.0"},
++            {"hermes": "0.18.0", "h3_shim": "1.0.0", "min_h3": "1.0.0"},
++            {"hermes": "0.19.0", "h3_shim": "1.1.0", "min_h3": "1.0.0"},
++        ]
++    }
++    p = tmp_path / "scrambled-versions.yaml"
++    with p.open("w", encoding="utf-8") as fh:
++        yaml.safe_dump(data, fh)
++
++    result = pre_update_check("0.99.0", versions_yaml_path=p)
++    assert result.severity == "BLOCK"
++    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
++
++
++def test_default_matrix_path_named_when_no_explicit_path(
++    sample_versions_yaml: Path,
++) -> None:
++    """Without versions_yaml_path the resolved VERSIONS_YAML_PATH is named."""
++    with patch("h3_shim.upgrade_check.VERSIONS_YAML_PATH", sample_versions_yaml):
++        result = pre_update_check("0.99.0")
++    assert result.severity == "BLOCK"
++    assert f"Matrix consulted: {sample_versions_yaml}" in result.message
++    assert "Supported Hermes versions: 0.18.0, 0.19.0, 0.20.0" in result.message
++
++
++def test_missing_matrix_reports_missing_path_not_version_list(
++    tmp_path: Path,
++) -> None:
++    """A missing matrix gets its own distinct, actionable BLOCK message."""
++    missing = tmp_path / "no-such-versions.yaml"
++    assert not missing.exists()
++
++    result = pre_update_check("0.99.0", versions_yaml_path=missing)
++    assert result.severity == "BLOCK"
++    assert "no compatibility data" in result.message.lower()
++    assert str(missing) in result.message
++    assert "missing" in result.message.lower()
++    assert "unreadable" in result.message.lower()
++    assert "--versions-yaml" in result.message
++    # Never render an empty supported-version list.
++    assert "Supported Hermes versions" not in result.message
++    assert len(result.message.splitlines()) <= 5
++
++
++@pytest.mark.parametrize(
++    "content",
++    [
++        "",
++        "# only a comment\n",
++        "hermes_versions: [unclosed",
++        "- just\n- a\n- list\n",
++        "hermes_versions: not-a-list\n",
++    ],
++)
++def test_empty_or_malformed_matrix_blocks_without_crashing(
++    tmp_path: Path, content: str
++) -> None:
++    """Empty/malformed YAML → distinct BLOCK message, no exception."""
++    p = tmp_path / "versions.yaml"
++    p.write_text(content, encoding="utf-8")
++
++    result = pre_update_check("0.99.0", versions_yaml_path=p)
++    assert result.severity == "BLOCK"
++    assert result.blocked
++    assert str(p) in result.message
++    assert "--versions-yaml" in result.message
++    assert "Supported Hermes versions" not in result.message
++
++
+ def test_blocks_on_shim_too_old(sample_versions_yaml: Path) -> None:
+     """Current shim is 0.1.0 — older than min_h3: 1.0.0."""
+     result = pre_update_check("0.18.0", versions_yaml_path=sample_versions_yaml)
