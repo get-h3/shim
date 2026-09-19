@@ -1024,6 +1024,48 @@ def _session_harness(binding: Any) -> str:
     return str(binding)
 
 
+def _empty_route_help(config_path: Path) -> str:
+    """Return the actionable empty-state text for ``hermes-h3 route``.
+
+    An empty ``sessions`` map is the normal state before anything has
+    been routed, so the old bare "no sessions configured" left a
+    CLI-only user with no idea where routes come from or how to add
+    one.  The text names the resolved config file, shows the exact YAML
+    to write, and explains why the table can fill up without any manual
+    edit (the plugin/loader/shim loop pins routes in memory at runtime,
+    and those pins are never persisted back to the config).
+    """
+    return "\n".join(
+        (
+            "no sessions configured — the routing table is empty.",
+            "",
+            f"Config file: {config_path}",
+            "",
+            "Session routes come from the `sessions:` map in that file.  A",
+            "running shim or embedder can also pin routes at runtime via",
+            "H3Loader.route_session(...); those pins live in memory for that",
+            "run and are never written back to the config, so this table",
+            "stays empty until a route is pinned at runtime or added here by",
+            "hand.",
+            "",
+            "Add a route by hand — under `sessions:` in the config file:",
+            "",
+            "  harnesses:",
+            "    my-harness:",
+            "      endpoint: http://localhost:9191",
+            "  sessions:",
+            '    "telegram:-1001234567890": my-harness   # bare string = name',
+            '    "telegram:-1001234567890:42":',
+            "      harness: my-harness                   # or {harness: name}",
+            "",
+            "Then re-run `hermes-h3 route` to confirm it appears.  Matching",
+            "is most-specific-first: platform:chat_id:thread_id ->",
+            "platform:chat_id -> platform -> default_harness; sessions with",
+            "no match use default_harness.",
+        )
+    )
+
+
 @hermes_h3.command(help="Show the session → harness routing table.")
 @_config_option
 @click.option(
@@ -1043,10 +1085,15 @@ def route(
     With ``--session <id>`` only that session's binding is printed.  An
     id that is not in the routing table fails loudly (fail-closed): a
     silent empty answer is indistinguishable from a broken lookup.
+
+    With no routes configured, the command exits 0 and prints where the
+    routes come from (config ``sessions:`` map, plus runtime pins by the
+    plugin/loader/shim loop) and a minimal YAML example to copy.
     """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
-    config = load_config(_config_path(ctx))
+    path = _config_path(ctx)
+    config = load_config(path)
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
     if session is not None:
         if session not in sessions:
@@ -1054,7 +1101,7 @@ def route(
         click.echo(f"{session} -> {_session_harness(sessions[session])}")
         return
     if not sessions:
-        click.echo("no sessions configured")
+        click.echo(_empty_route_help(path))
         return
     click.echo(f"{'SESSION':40s} HARNESS")
     click.echo("-" * 60)

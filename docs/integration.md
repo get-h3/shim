@@ -97,7 +97,9 @@ hermes-h3 install NAME --endpoint URL [--transport rest]
   with `--lang go|py|ts` it generates a complete harness project in a new
   `h3-harness-<lang>/` subdirectory (rendered from
   `src/h3_shim/templates/<lang>/`).
-- `hermes-h3 route` prints the current session → harness routing table.
+- `hermes-h3 route` prints the current session → harness routing table.  With
+  no routes configured it exits 0 and prints where routes come from plus a
+  minimal `sessions:` YAML example (see §4.4).
 
 ## 3. Configure Hermes routing
 
@@ -310,12 +312,41 @@ server will exit 2, not 1.
 
 ```bash
 hermes-h3 route                          # shows the session → harness table
+hermes-h3 route --session telegram:-100:42   # one row, fail-closed if absent
 ```
 
-Add a route in `~/.hermes/h3/config.yaml` under `sessions` and confirm it
-appears in the table.  The loader applies most-specific-first matching
-(§3.2), and the native loop is always the fallback when a harness is
-unreachable.
+**If the table is empty** (`no sessions configured — the routing table is
+empty.`), the command exits 0 and prints the resolved config path, the YAML
+to add, and why an empty table is normal:
+
+```yaml
+harnesses:
+  my-harness:
+    endpoint: http://localhost:9191
+sessions:
+  "telegram:-1001234567890": my-harness        # bare string = harness name
+  "telegram:-1001234567890:42":
+    harness: my-harness                        # or {harness: <name>}
+```
+
+Put that under `sessions:` in the config file the command names (default
+`~/.hermes/h3/config.yaml`; override with `--config <path>` or
+`$HERMES_H3_CONFIG`), then re-run `hermes-h3 route` and confirm the row
+appears.  The loader applies most-specific-first matching (§3.2), and the
+native loop is always the fallback when a harness is unreachable.
+
+**Why it can be empty even though routing "works".**  The table above is
+read from the config file only.  Routes can *also* be pinned in memory at
+runtime — `H3Loader.route_session(session_id, harness_name)` fills the
+loader's run-scoped route map (read back with
+`get_session_harness(session_id)`; the loader also rewrites it when a harness
+fails), typically by an embedder or the shim loop.  Those runtime pins are
+**never written back** to the config, so `hermes-h3 route` (a separate
+process, reading the file) can legitimately show no sessions while a running
+shim is routing them.  Adding a route to `sessions:` is what makes it visible
+here and persistent across runs; the in-code pin is the programmatic
+alternative.  Note the fallback order is independent: a session with no
+`resolve()` match uses `default_harness`.
 
 ## Troubleshooting
 
@@ -325,5 +356,6 @@ unreachable.
 | `Error: no harness specified and no default_harness set` | No harness registered — `hermes-h3 install <name> --endpoint <url> --set-default`. |
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
 | `verify failed for 'x': ...` | Harness not running or wrong endpoint — check it is up on the port you registered. |
+| `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add a route under `sessions:` in the config path the message names (default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |
 | Battery exits non-zero | Check the exit code: **0** = compliant, **1** = real compliance failure (run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference), **2** = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) — NOT a protocol regression. See [Exit codes](#exit-codes). |
 | `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — re-copy `h3/` from this repo to `~/.hermes/plugins/h3/`. |

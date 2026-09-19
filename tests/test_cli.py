@@ -578,6 +578,92 @@ class TestRoute:
         assert result.exit_code == 0
         assert "no sessions configured" in result.output
 
+    # ── DF-H3-SHIM-FOREMAN-5: actionable empty state ─────────────────────
+
+    def test_route_empty_explains_how_to_add_a_route(self, cfg_path, runner):
+        # An empty table must not be a dead end: the message has to name the
+        # resolved config file, the `sessions:` key, and show a concrete
+        # session → harness example a CLI-only user can copy.
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0
+        out = result.output
+        assert str(cfg_path) in out
+        assert "sessions:" in out
+        assert "telegram:-1001234567890" in out
+        assert "harness: my-harness" in out
+        # …and it must say why the table can be empty without a manual edit:
+        # the loader/shim can pin routes programmatically at runtime.
+        assert "route_session" in out
+        assert "running shim" in out
+        assert "never written back" in out
+        # An empty state is not a listing — no table header.
+        assert "SESSION" not in out
+
+    def test_route_empty_reports_resolved_config_path(self, tmp_path, runner):
+        # The path printed is the one the command actually read (`--config` /
+        # `$HERMES_H3_CONFIG`), not a hardcoded default.
+        custom = tmp_path / "scratch" / "h3" / "config.yaml"
+        result = runner.invoke(hermes_h3, ["route", "--config", str(custom)])
+        assert result.exit_code == 0
+        assert str(custom) in result.output
+        assert "sessions:" in result.output
+
+    def test_route_listing_output_unchanged(self, cfg_path, runner):
+        # Byte-for-byte contract for a NON-empty table (header + fixed-width
+        # session column): only the empty state changed in this task.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"telegram:1": {"harness": "alpha"}},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0
+        assert result.output == (
+            f"{'SESSION':40s} HARNESS\n"
+            + "-" * 60
+            + "\n"
+            + f"{'telegram:1':40s} alpha\n"
+        )
+
+    def test_route_empty_example_is_valid_and_reusable(self, cfg_path, runner):
+        # The documented example is the deliverable: it must be valid YAML
+        # and, dropped into a config verbatim, must produce the route it
+        # promises (both binding forms).
+        out = runner.invoke(hermes_h3, ["route"]).output
+        lines = out.splitlines()
+        start = next(i for i, ln in enumerate(lines) if ln.startswith("  harnesses:"))
+        block: list[str] = []
+        for ln in lines[start:]:
+            if not ln.strip() or not ln.startswith("  "):
+                break
+            block.append(ln[2:])
+        example = yaml.safe_load("\n".join(block))
+        assert example["harnesses"]["my-harness"]["endpoint"] == (
+            "http://localhost:9191"
+        )
+        assert example["sessions"]["telegram:-1001234567890"] == "my-harness"
+        assert example["sessions"]["telegram:-1001234567890:42"] == {
+            "harness": "my-harness"
+        }
+
+        # Round-trip: write the pasted example as the config and confirm the
+        # table and the single-session lookup both resolve it.
+        cfg_path.write_text("\n".join(block))
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0
+        assert "SESSION" in result.output
+        assert "telegram:-1001234567890" in result.output
+        assert "my-harness" in result.output
+        one = runner.invoke(
+            hermes_h3, ["route", "--session", "telegram:-1001234567890:42"]
+        )
+        assert one.exit_code == 0
+        assert one.output.strip() == "telegram:-1001234567890:42 -> my-harness"
+
     def test_route_lists_sessions(self, cfg_path, runner):
         cfg_path.write_text(
             yaml.safe_dump(
