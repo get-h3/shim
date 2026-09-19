@@ -1054,6 +1054,190 @@ class TestRoute:
         assert result.exit_code != 0
         assert "nope" in result.output
 
+    # ── DF-H3-SHIM-FOREMAN-4: route can WRITE a binding ──────────────────
+
+    @staticmethod
+    def _config_with_harnesses(sessions: dict | None = None) -> dict:
+        """A config with two registered harnesses and (usually) no routes."""
+        return {
+            "default_harness": "native",
+            "harnesses": {
+                "native": {"transport": "native"},
+                "alpha": {"endpoint": "http://localhost:9191"},
+            },
+            "sessions": sessions or {},
+        }
+
+    def _write_cfg(self, cfg_path: Path, sessions: dict | None = None) -> bytes:
+        """Write a routable config; return its bytes for unchanged-checks."""
+        cfg_path.write_text(yaml.safe_dump(self._config_with_harnesses(sessions)))
+        return cfg_path.read_bytes()
+
+    def test_route_set_harness_writes_binding(self, cfg_path, runner):
+        # The finding itself: a binding must be writable from the CLI instead
+        # of only by hand-editing `sessions:`.
+        self._write_cfg(cfg_path)
+        result = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "alpha"]
+        )
+        assert result.exit_code == 0, result.output
+        # The confirmation names the session, the harness AND the file written.
+        assert "demo" in result.output
+        assert "alpha" in result.output
+        assert str(cfg_path) in result.output
+        assert yaml.safe_load(cfg_path.read_text())["sessions"] == {
+            "demo": {"harness": "alpha"}
+        }
+        # The read path sees it immediately, both modes.
+        listed = runner.invoke(hermes_h3, ["route"])
+        assert listed.exit_code == 0
+        assert "demo" in listed.output and "alpha" in listed.output
+        one = runner.invoke(hermes_h3, ["route", "--session", "demo"])
+        assert one.exit_code == 0
+        assert one.output.strip() == "demo -> alpha"
+
+    def test_route_set_harness_creates_missing_sessions_map(self, cfg_path, runner):
+        # The empty state the finding is about: no `sessions:` key at all.
+        # The write must create the map, not silently no-op.
+        cfg_path.write_text(
+            "default_harness: native\nharnesses:\n  native:\n    transport: native\n"
+        )
+        assert "sessions" not in (yaml.safe_load(cfg_path.read_text()) or {})
+        result = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "native"]
+        )
+        assert result.exit_code == 0, result.output
+        written = yaml.safe_load(cfg_path.read_text())
+        assert written["sessions"] == {"demo": {"harness": "native"}}
+        # Unrelated keys survive the rewrite.
+        assert written["harnesses"]["native"] == {"transport": "native"}
+        assert written["default_harness"] == "native"
+
+    def test_route_set_harness_absent_config_fails_closed(self, cfg_path, runner):
+        # Nothing is registered yet, so no harness name can be valid: the
+        # command must fail closed and must NOT create the config file.
+        assert not cfg_path.exists()
+        result = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "native"]
+        )
+        assert result.exit_code != 0
+        assert "not found in config" in result.output
+        assert not cfg_path.exists()
+
+    def test_route_set_harness_unknown_harness_leaves_file_unchanged(
+        self, cfg_path, runner
+    ):
+        before = self._write_cfg(cfg_path, {"telegram:1": {"harness": "alpha"}})
+        result = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "ghost"]
+        )
+        assert result.exit_code != 0
+        # Wording mirrors resolve_harness(): the name plus the known set.
+        assert "harness 'ghost' not found in config" in result.output
+        assert "known:" in result.output
+        assert "alpha" in result.output and "native" in result.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_set_harness_without_session_errors(self, cfg_path, runner):
+        before = self._write_cfg(cfg_path)
+        result = runner.invoke(hermes_h3, ["route", "--set-harness", "alpha"])
+        assert result.exit_code != 0
+        assert "--session" in result.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_set_harness_and_remove_together_error(self, cfg_path, runner):
+        before = self._write_cfg(cfg_path, {"telegram:1": {"harness": "alpha"}})
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "route",
+                "--session",
+                "telegram:1",
+                "--set-harness",
+                "alpha",
+                "--remove",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_remove_deletes_binding(self, cfg_path, runner):
+        self._write_cfg(
+            cfg_path,
+            {"telegram:1": {"harness": "alpha"}, "discord:2": {"harness": "native"}},
+        )
+        result = runner.invoke(
+            hermes_h3, ["route", "--session", "telegram:1", "--remove"]
+        )
+        assert result.exit_code == 0, result.output
+        assert "telegram:1" in result.output
+        assert str(cfg_path) in result.output
+        written = yaml.safe_load(cfg_path.read_text())
+        # Only the named binding goes; the sibling route survives.
+        assert written["sessions"] == {"discord:2": {"harness": "native"}}
+        gone = runner.invoke(hermes_h3, ["route", "--session", "telegram:1"])
+        assert gone.exit_code != 0
+        assert "no session 'telegram:1' in the routing table" in gone.output
+
+    def test_route_remove_unknown_session_fails_closed(self, cfg_path, runner):
+        before = self._write_cfg(cfg_path, {"telegram:1": {"harness": "alpha"}})
+        result = runner.invoke(hermes_h3, ["route", "--session", "nope", "--remove"])
+        assert result.exit_code != 0
+        assert "nope" in result.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_remove_without_session_errors(self, cfg_path, runner):
+        before = self._write_cfg(cfg_path)
+        result = runner.invoke(hermes_h3, ["route", "--remove"])
+        assert result.exit_code != 0
+        assert "--session" in result.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_set_harness_is_idempotent(self, cfg_path, runner):
+        self._write_cfg(cfg_path)
+        first = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "alpha"]
+        )
+        assert first.exit_code == 0, first.output
+        once = cfg_path.read_bytes()
+        second = runner.invoke(
+            hermes_h3, ["route", "--session", "demo", "--set-harness", "alpha"]
+        )
+        assert second.exit_code == 0, second.output
+        # Same state, byte for byte, and still exit 0.
+        assert cfg_path.read_bytes() == once
+
+    def test_route_read_paths_unchanged_by_write_flags(self, cfg_path, runner):
+        # The read contracts this task must not move: empty state, listing
+        # bytes, fail-closed lookup, and no read-mode write.
+        empty = runner.invoke(hermes_h3, ["route"])
+        assert empty.exit_code == 0
+        assert empty.output.startswith("no sessions configured")
+        # The empty state now points at the CLI write path (one line).
+        assert "--set-harness" in empty.output
+        assert "SESSION" not in empty.output
+
+        before = self._write_cfg(cfg_path, {"telegram:1": {"harness": "alpha"}})
+        listing = runner.invoke(hermes_h3, ["route"])
+        assert listing.exit_code == 0
+        assert listing.output == (
+            f"{'SESSION':40s} HARNESS\n"
+            + "-" * 60
+            + "\n"
+            + f"{'telegram:1':40s} alpha\n"
+        )
+        lookup = runner.invoke(hermes_h3, ["route", "--session", "nope"])
+        assert lookup.exit_code != 0
+        assert "no session 'nope' in the routing table" in lookup.output
+        assert cfg_path.read_bytes() == before
+
+    def test_route_help_documents_write_flags(self, runner):
+        result = runner.invoke(hermes_h3, ["route", "--help"])
+        assert result.exit_code == 0
+        assert "--set-harness" in result.output
+        assert "--remove" in result.output
+
 
 # ── help output ────────────────────────────────────────────────────────────
 

@@ -1152,10 +1152,10 @@ def _empty_route_help(config_path: Path) -> str:
             "running shim or embedder can also pin routes at runtime via",
             "H3Loader.route_session(...); those pins live in memory for that",
             "run and are never written back to the config, so this table",
-            "stays empty until a route is pinned at runtime or added here by",
-            "hand.",
+            "stays empty until a route is pinned at runtime or written here.",
             "",
-            "Add a route by hand — under `sessions:` in the config file:",
+            "Add a route from the CLI (`hermes-h3 route --session <id>",
+            "--set-harness <name>`) or by hand under `sessions:`:",
             "",
             "  harnesses:",
             "    my-harness:",
@@ -1179,19 +1179,41 @@ def _empty_route_help(config_path: Path) -> str:
     "--session",
     "session",
     default=None,
-    help="Show only the binding for this session id.",
+    help="Show only the binding for this session id "
+    "(or the session to write with --set-harness/--remove).",
+)
+@click.option(
+    "--set-harness",
+    "set_harness",
+    default=None,
+    metavar="NAME",
+    help="Bind --session to harness NAME and persist it to the config file.",
+)
+@click.option(
+    "--remove",
+    "remove",
+    is_flag=True,
+    default=False,
+    help="Delete --session's binding from the config file.",
 )
 @click.pass_context
 def route(
     ctx: click.Context,
     config_path: Path | None,
     session: str | None,
+    set_harness: str | None,
+    remove: bool,
 ) -> None:
     """Pretty-print the ``sessions`` map from the config.
 
     With ``--session <id>`` only that session's binding is printed.  An
     id that is not in the routing table fails loudly (fail-closed): a
     silent empty answer is indistinguishable from a broken lookup.
+
+    With ``--session <id> --set-harness <name>`` the binding is written
+    to the resolved config file (no hand-edit needed); ``--remove``
+    deletes it.  Both write paths validate first and fail closed — a bad
+    invocation raises, exits non-zero and leaves the file untouched.
 
     With no routes configured, the command exits 0 and prints where the
     routes come from (config ``sessions:`` map, plus runtime pins by the
@@ -1202,6 +1224,38 @@ def route(
     path = _config_path(ctx)
     config = load_config(path)
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
+    if set_harness is not None or remove:
+        if session is None:
+            raise click.ClickException(
+                "--set-harness and --remove need --session <id> to know "
+                "which route to write"
+            )
+        if set_harness is not None and remove:
+            raise click.ClickException(
+                "--set-harness and --remove are mutually exclusive; "
+                "pass one or the other"
+            )
+        if set_harness is not None:
+            harnesses: dict[str, Any] = config.get("harnesses", {}) or {}
+            if set_harness not in harnesses:
+                raise click.ClickException(
+                    f"harness {set_harness!r} not found in config; "
+                    f"known: {sorted(harnesses) or 'none'}"
+                )
+            sessions[session] = {"harness": set_harness}
+            config["sessions"] = sessions
+            save_config(config, path)
+            click.echo(f"{session} -> {set_harness} (saved to {path})")
+            return
+        if session not in sessions:
+            raise click.ClickException(
+                f"no session {session!r} in the routing table to remove"
+            )
+        del sessions[session]
+        config["sessions"] = sessions
+        save_config(config, path)
+        click.echo(f"removed session {session} from {path}")
+        return
     if session is not None:
         if session not in sessions:
             raise click.ClickException(f"no session {session!r} in the routing table")

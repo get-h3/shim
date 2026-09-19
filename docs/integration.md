@@ -110,7 +110,9 @@ hermes-h3 install NAME --endpoint URL [--transport rest]
   `src/h3_shim/templates/<lang>/`).
 - `hermes-h3 route` prints the current session → harness routing table.  With
   no routes configured it exits 0 and prints where routes come from plus a
-  minimal `sessions:` YAML example (see §4.4).
+  minimal `sessions:` YAML example (see §4.4).  `--session <id>
+  --set-harness <name>` writes a binding to the config file and `--remove`
+  deletes one — no hand-edit needed (see §4.4).
 
 ## 3. Configure Hermes routing
 
@@ -333,6 +335,25 @@ hermes-h3 route                          # shows the session → harness table
 hermes-h3 route --session telegram:-100:42   # one row, fail-closed if absent
 ```
 
+**Add or remove a binding from the CLI** (no hand-edit, works on an
+existing config):
+
+```bash
+# bind a session to a harness (the harness must already be registered —
+# see `hermes-h3 list` / `hermes-h3 install`)
+hermes-h3 route --session "telegram:-1001234567890" --set-harness my-harness
+# telegram:-1001234567890 -> my-harness (saved to /home/you/.hermes/h3/config.yaml)
+
+hermes-h3 route                    # confirm the row appears in the table
+hermes-h3 route --session "telegram:-1001234567890" --remove   # delete it
+```
+
+Both write flags need `--session <id>`; `--set-harness` also needs a harness
+name that is present in the config's `harnesses:` map, and the two flags are
+mutually exclusive.  Anything else exits non-zero, prints the reason (unknown
+harness names are listed), and leaves the config file **untouched**.  A
+repeated `--set-harness` for the same session/harness pair is idempotent.
+
 **If the table is empty** (`no sessions configured — the routing table is
 empty.`), the command exits 0 and prints the resolved config path, the YAML
 to add, and why an empty table is normal:
@@ -347,11 +368,12 @@ sessions:
     harness: my-harness                        # or {harness: <name>}
 ```
 
-Put that under `sessions:` in the config file the command names (default
-`~/.hermes/h3/config.yaml`; override with `--config <path>` or
-`$HERMES_H3_CONFIG`), then re-run `hermes-h3 route` and confirm the row
-appears.  The loader applies most-specific-first matching (§3.2), and the
-native loop is always the fallback when a harness is unreachable.
+**Or add it by hand** — put that under `sessions:` in the config file the
+command names (default `~/.hermes/h3/config.yaml`; override with
+`--config <path>` or `$HERMES_H3_CONFIG`) — then re-run `hermes-h3 route` and
+confirm the row appears.  The loader applies most-specific-first matching
+(§3.2), and the native loop is always the fallback when a harness is
+unreachable.
 
 **Why it can be empty even though routing "works".**  The table above is
 read from the config file only.  Routes can *also* be pinned in memory at
@@ -375,6 +397,7 @@ alternative.  Note the fallback order is independent: a session with no
 | `Error: endpoint <url> failed its health check: ...` (exit 1) | `install` probed `GET /v1/health` and the endpoint is unreachable, is not an H3 harness, or reports a non-`ok` status — **nothing was written**. Fix the URL or start the harness, confirm with `hermes-h3 verify --endpoint <url>`, then re-run `install`. |
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
 | `verify failed for 'x': ...` | Harness not running or wrong endpoint — check it is up on the port you registered. |
-| `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add a route under `sessions:` in the config path the message names (default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |
+| `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add one with `hermes-h3 route --session <id> --set-harness <name>` (or under `sessions:` in the config path the message names, default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |
+| `Error: --set-harness and --remove need --session <id>` / `Error: --set-harness and --remove are mutually exclusive` | The write flags need a target: pass `--session <id>` with exactly one of `--set-harness <name>` or `--remove`. **Nothing was written** (the config file is validated before any save). See §4.4. |
 | Battery exits non-zero | Check the exit code: **0** = compliant, **1** = real compliance failure (run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference), **2** = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) — NOT a protocol regression. See [Exit codes](#exit-codes). |
 | `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — re-copy `h3/` from this repo to `~/.hermes/plugins/h3/`. |
