@@ -288,3 +288,7 @@
 {"from":"tests/test_scaffold_build.py","to":"pkg:fastapi.testclient","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_scaffold_build.py","to":"pkg:h3_shim.templates.py","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_scaffold_build.py","to":"pkg:h3_shim.templates.py","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:h3_shim.protocol","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"src/h3_shim/cli.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_cli.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_cli.py","to":"pkg:pydantic","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
