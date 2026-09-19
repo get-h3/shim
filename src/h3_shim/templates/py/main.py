@@ -208,7 +208,10 @@ class EchoHarness:
 
     Mirrors the Go echo example from get-h3/sdk-go/examples/echo/main.go:
     messages containing ``"do not finish"`` enable streaming mode, and the
-    session ends after two result callbacks in normal mode.
+    session ends after two result callbacks in normal mode. A session that
+    ends naturally drops out of the session table, so
+    ``health().active_sessions`` counts live sessions only and cannot grow
+    without bound on a long-lived harness (DF2-H3-SHIM-3).
     """
 
     VERSION = "1.0.0"
@@ -265,7 +268,19 @@ class EchoHarness:
         st.last_active = datetime.utcnow()
 
         if not st.streaming_mode and st.result_count >= 2:
-            st.status = SessionStatus.COMPLETED.value
+            # DF2-H3-SHIM-3: the loop is over, so drop the session entry here.
+            # ``_state()`` auto-creates entries and only an explicit DELETE
+            # used to remove them, so a long-lived harness accumulated every
+            # finished session (97 sessions / 26h observed on a live dogfood
+            # instance) and ``health().active_sessions`` grew monotonically
+            # instead of measuring health. The decision returned below is
+            # unchanged. A naturally ended session is therefore gone:
+            # ``GET /v1/sessions/{id}`` answers 404 "Session not found" — the
+            # documented answer for a harness that keeps no state for it (the
+            # compliance battery accepts 404 for an ended session). An explicit
+            # ``DELETE /v1/sessions/{id}`` still tears down an in-flight
+            # session and stays idempotent.
+            self.on_session_terminate(req.session_id)
             return Decision(
                 decision=DecisionType.END,
                 decision_id="echo-end",

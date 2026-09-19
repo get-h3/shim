@@ -107,8 +107,9 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    a new one fails to bind and the battery happily tests the OLD one —
    hit again on 2026-09-05 (a stale harness with 97 phantom sessions was
    answering). Always confirm which process answers (`lsof -i :9191`) or
-   use a distinct port (DF2-H3-SHIM-3: scaffolded harness never GCs
-   sessions; use `DELETE /v1/sessions/{id}` for teardown).
+   use a distinct port. The scaffold's harness now drops a session on its
+   natural END (DF2-H3-SHIM-3), so `active_sessions` only counts live
+   sessions; use `DELETE /v1/sessions/{id}` to tear down one in flight.
 7. **`--categories` now works** (GAP-006): tokens map to display labels;
    unknown tokens error with exit 2. `h3-test --categories health` runs 7/7.
 8. **Plugin `--config` works before OR after the subcommand** (GAP-009):
