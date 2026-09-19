@@ -66,6 +66,7 @@ _VALUE_FLAGS = {
     "lang": "--lang",
     "output_dir": "--output-dir",
     "versions_yaml_path": "--versions-yaml",
+    "session": "--session",
 }
 
 # click positional arguments per subcommand (in order)
@@ -85,6 +86,8 @@ _OPTIONS: dict[str, tuple[str, ...]] = {
     "verify": ("harness", "endpoint", "fallback"),
     "scaffold": ("force", "lang", "output_dir"),
     "pre-update-check": ("versions_yaml_path",),
+    # ``route [--session <id>]`` — narrows the routing table to one binding.
+    "route": ("session",),
 }
 
 # argparse defaults per subcommand — options left at their default are
@@ -101,6 +104,7 @@ _DEFAULTS: dict[str, dict[str, Any]] = {
     "verify": {"harness": None, "endpoint": None, "fallback": False},
     "scaffold": {"force": False, "lang": None, "output_dir": None},
     "pre-update-check": {"versions_yaml_path": None},
+    "route": {"session": None},
 }
 
 
@@ -256,6 +260,11 @@ def _setup(parser: argparse.ArgumentParser) -> None:
 
     p = sub.add_parser("route", help="Show the session → harness routing table.")
     _add_config_option(p)
+    p.add_argument(
+        "--session",
+        default=None,
+        help="Show only the binding for this session id.",
+    )
 
     p = sub.add_parser(
         "pre-update-check",

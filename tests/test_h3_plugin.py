@@ -427,3 +427,144 @@ def test_verify_positional_wins_over_harness_flag(
     assert "harness: alpha" in result.output
     assert f"endpoint: {VERIFY_ENDPOINT_A}" in result.output
     assert "harness: beta" not in result.output
+
+
+# ── H3-GAP-091: route --session in the plugin mirror ───────────────────────
+# ``hermes-h3 route [--session <id>]`` narrows the routing table to one
+# session binding (dict *or* bare-string form) and fails closed on an
+# unknown id.  The plugin mirror registered no options for ``route`` at
+# all, so ``hermes h3 route --session <id>`` died in argparse with
+# ``unrecognized arguments: --session`` — the same mirror-drift class as
+# GAP-009 / DF-H3-3 / H3-GAP-092.  These tests drive the REAL plugin
+# reconstruction and the real click group; every assertion consumes the
+# rebuilt argv or the click invocation it produces.
+
+ROUTE_DICT_SID = "sess-dict-1"
+ROUTE_STR_SID = "sess-str-2"
+ROUTE_UNKNOWN_SID = "sess-not-there"
+
+
+def _write_session_config(path: Path) -> None:
+    """Config holding one dict binding and one bare-string binding."""
+    import yaml
+
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "default_harness": "alpha",
+                "harnesses": {
+                    "alpha": {
+                        "endpoint": VERIFY_ENDPOINT_A,
+                        "transport": "rest",
+                        "timeout_ms": 5000,
+                    },
+                    "beta": {
+                        "endpoint": VERIFY_ENDPOINT_B,
+                        "transport": "rest",
+                        "timeout_ms": 5000,
+                    },
+                },
+                "sessions": {
+                    ROUTE_DICT_SID: {"harness": "alpha"},
+                    ROUTE_STR_SID: "beta",
+                },
+            }
+        )
+    )
+
+
+def test_route_session_flag_parses(plugin: object) -> None:
+    """``hermes h3 route --session X`` parses (was exit 2: unrecognized args)."""
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["route", "--session", ROUTE_DICT_SID])
+    assert ns.h3_command == "route"
+    assert ns.session == ROUTE_DICT_SID
+    assert plugin._argv_from_namespace(ns) == [  # type: ignore[attr-defined]
+        "route",
+        "--session",
+        ROUTE_DICT_SID,
+    ]
+
+
+def test_route_no_flag_argv_unchanged(plugin: object) -> None:
+    """An unset ``--session`` is omitted, so the forwarded argv is ``route``.
+
+    The mirror drops options left at their default, which is what keeps
+    the no-flag invocation byte-identical to what it was before GAP-091.
+    """
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["route"])
+    assert ns.session is None
+    assert plugin._argv_from_namespace(ns) == ["route"]  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    ("sid", "harness"),
+    [(ROUTE_DICT_SID, "alpha"), (ROUTE_STR_SID, "beta")],
+    ids=["dict-binding", "bare-string-binding"],
+)
+def test_route_session_binding_found(
+    plugin: object, tmp_path: Path, sid: str, harness: str
+) -> None:
+    """Both binding shapes print ``<id> -> <harness>`` through the real click job."""
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    cfg = tmp_path / "config.yaml"
+    _write_session_config(cfg)
+
+    rebuilt, result = _rebuild_and_invoke(plugin, ["route", "--session", sid], cfg)
+    assert rebuilt == ["--config", str(cfg), "route", "--session", sid]
+    assert result.exit_code == 0, result.output
+    assert result.output == f"{sid} -> {harness}\n"
+
+    direct = CliRunner().invoke(
+        hermes_h3, ["route", "--session", sid, "--config", str(cfg)]
+    )
+    assert direct.exit_code == 0
+    assert result.output == direct.output
+
+
+def test_route_unknown_session_fails_closed(plugin: object, tmp_path: Path) -> None:
+    """An unknown id exits non-zero and names the id (no silent empty table)."""
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    cfg = tmp_path / "config.yaml"
+    _write_session_config(cfg)
+
+    rebuilt, result = _rebuild_and_invoke(
+        plugin, ["route", "--session", ROUTE_UNKNOWN_SID], cfg
+    )
+    assert rebuilt == ["--config", str(cfg), "route", "--session", ROUTE_UNKNOWN_SID]
+    assert result.exit_code != 0
+    assert ROUTE_UNKNOWN_SID in result.output
+    assert "->" not in result.output
+
+    direct = CliRunner().invoke(
+        hermes_h3, ["route", "--session", ROUTE_UNKNOWN_SID, "--config", str(cfg)]
+    )
+    assert direct.exit_code == result.exit_code
+    assert direct.output == result.output
+
+
+def test_route_no_flag_behavior_unchanged(plugin: object, tmp_path: Path) -> None:
+    """``hermes h3 route`` with no flag still prints the full table, unchanged."""
+    from click.testing import CliRunner
+
+    from h3_shim.cli import hermes_h3
+
+    cfg = tmp_path / "config.yaml"
+    _write_session_config(cfg)
+
+    rebuilt, result = _rebuild_and_invoke(plugin, ["route"], cfg)
+    assert rebuilt == ["--config", str(cfg), "route"]
+
+    direct = CliRunner().invoke(hermes_h3, ["route", "--config", str(cfg)])
+    assert result.exit_code == direct.exit_code == 0
+    assert result.output == direct.output
+    assert f"{'SESSION':40s} HARNESS" in result.output
+    assert f"{ROUTE_DICT_SID:40s} alpha" in result.output
+    assert f"{ROUTE_STR_SID:40s} beta" in result.output
