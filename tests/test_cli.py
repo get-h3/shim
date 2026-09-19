@@ -20,6 +20,7 @@ import click
 import pytest
 import yaml
 from click.testing import CliRunner
+from pydantic import ValidationError
 
 from h3_shim.cli import (
     CONFIG_PATH,
@@ -35,6 +36,7 @@ from h3_shim.cli import (
     resolve_harness,
     save_config,
 )
+from h3_shim.protocol import HealthResponse, HealthStatus
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -116,6 +118,41 @@ def _failing_report() -> FakeTestReport:
         duration_ms=105.0,
         timestamp="2026-01-01T00:00:00Z",
     )
+
+
+def _stub_health_client(
+    monkeypatch,
+    *,
+    status: HealthStatus | None = None,
+    version: str = "1.2.3",
+    degraded_reason: str | None = None,
+    error: Exception | None = None,
+) -> MagicMock:
+    """Stub the health client that ``install`` / ``verify`` import lazily.
+
+    Keeps every install/verify test deterministic — no socket is ever
+    opened.  *error* makes ``health()`` raise (unreachable endpoint or a
+    non-H3 payload); otherwise the stub answers like a healthy H3
+    harness.  Returns the patched class so a caller can assert how the
+    probe was constructed (endpoint / transport / timeout_ms).
+    """
+    fake_client = MagicMock()
+    instance = MagicMock()
+    if error is not None:
+        instance.health = AsyncMock(side_effect=error)
+    else:
+        instance.health = AsyncMock(
+            return_value=HealthResponse(
+                status=status if status is not None else HealthStatus.OK,
+                version=version,
+                capabilities=[],
+                degraded_reason=degraded_reason,
+            )
+        )
+    instance.close = AsyncMock()
+    fake_client.return_value = instance
+    monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
+    return fake_client
 
 
 @pytest.fixture
@@ -373,7 +410,8 @@ class TestScaffold:
 
 
 class TestInstall:
-    def test_install_adds_harness(self, cfg_path, runner):
+    def test_install_adds_harness(self, cfg_path, runner, monkeypatch):
+        _stub_health_client(monkeypatch)
         result = runner.invoke(
             hermes_h3,
             ["install", "--endpoint", "http://x:1", "myharness"],
@@ -405,7 +443,8 @@ class TestInstall:
         # The config must not be written with a silently-ignored transport.
         assert not cfg_path.exists()
 
-    def test_install_set_default_promotes(self, cfg_path, runner):
+    def test_install_set_default_promotes(self, cfg_path, runner, monkeypatch):
+        _stub_health_client(monkeypatch)
         result = runner.invoke(
             hermes_h3,
             [
@@ -420,8 +459,9 @@ class TestInstall:
         data = yaml.safe_load(cfg_path.read_text())
         assert data["default_harness"] == "myharness"
 
-    def test_install_first_becomes_default(self, cfg_path, runner):
+    def test_install_first_becomes_default(self, cfg_path, runner, monkeypatch):
         # No --set-default flag; the first harness installed auto-promotes.
+        _stub_health_client(monkeypatch)
         runner.invoke(
             hermes_h3,
             ["install", "--endpoint", "http://x:1", "first"],
@@ -429,7 +469,8 @@ class TestInstall:
         data = yaml.safe_load(cfg_path.read_text())
         assert data["default_harness"] == "first"
 
-    def test_install_custom_timeout(self, cfg_path, runner):
+    def test_install_custom_timeout(self, cfg_path, runner, monkeypatch):
+        _stub_health_client(monkeypatch)
         runner.invoke(
             hermes_h3,
             [
@@ -444,8 +485,9 @@ class TestInstall:
         data = yaml.safe_load(cfg_path.read_text())
         assert data["harnesses"]["h"]["timeout_ms"] == 12345
 
-    def test_install_name_flag_alias(self, cfg_path, runner):
+    def test_install_name_flag_alias(self, cfg_path, runner, monkeypatch):
         """DF-H3-3: ``--name`` is an alias for the positional NAME."""
+        _stub_health_client(monkeypatch)
         result = runner.invoke(
             hermes_h3,
             ["install", "--name", "flagharness", "--endpoint", "http://x:1"],
@@ -465,8 +507,11 @@ class TestInstall:
         # Nothing may be written — no phantom unnamed entry.
         assert not cfg_path.exists()
 
-    def test_install_positional_wins_over_name_flag(self, cfg_path, runner):
+    def test_install_positional_wins_over_name_flag(
+        self, cfg_path, runner, monkeypatch
+    ):
         """With both forms given, the positional NAME wins (verify's rule)."""
+        _stub_health_client(monkeypatch)
         result = runner.invoke(
             hermes_h3,
             ["install", "pos", "--name", "flag", "--endpoint", "http://x:1"],
@@ -476,6 +521,259 @@ class TestInstall:
         assert "pos" in data["harnesses"]
         assert "flag" not in data["harnesses"]
         assert data["default_harness"] == "pos"
+
+
+# ── install: endpoint health check (DF-H3-SHIM-FOREMAN-3) ───────────────────
+# Verified behaviour before the fix: ``install dead-harness --endpoint
+# http://localhost:9999`` exited 0 and wrote the entry; the failure only
+# appeared later, at ``verify``/first session.  The install path must now
+# probe ``GET /v1/health`` first and fail without writing.  Every test
+# stubs the health client, so nothing here touches the network.
+
+
+class TestInstallHealthCheck:
+    @staticmethod
+    def _seed_config(cfg_path: Path, harness: str = "alpha") -> str:
+        """Write a one-harness config and return its exact bytes."""
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": harness,
+                    "harnesses": {
+                        harness: {
+                            "endpoint": "http://a:1",
+                            "transport": "rest",
+                            "timeout_ms": 5000,
+                        },
+                    },
+                    "sessions": {},
+                }
+            )
+        )
+        return cfg_path.read_text()
+
+    def test_install_unreachable_endpoint_fails_and_writes_nothing(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """The dogfood scenario: a dead endpoint is refused, exit non-zero."""
+        _stub_health_client(monkeypatch, error=ConnectionError("connection refused"))
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "dead-harness",
+                "--endpoint",
+                "http://localhost:9999",
+            ],
+        )
+        assert result.exit_code != 0
+        # Actionable: names the endpoint, the cause, and what to do next.
+        assert "http://localhost:9999" in result.output
+        assert "health check" in result.output
+        assert "connection refused" in result.output
+        assert "Nothing was written" in result.output
+        assert "hermes-h3 verify --endpoint http://localhost:9999" in result.output
+        # …and the harness/config really are absent.
+        assert not cfg_path.exists()
+
+    def test_install_unreachable_leaves_existing_config_untouched(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """A failed install must not touch the config or the default."""
+        before = self._seed_config(cfg_path, "alpha")
+        _stub_health_client(monkeypatch, error=ConnectionError("refused"))
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "beta",
+                "--endpoint",
+                "http://localhost:9999",
+                "--set-default",
+            ],
+        )
+        assert result.exit_code != 0
+        assert cfg_path.read_text() == before
+        data = yaml.safe_load(cfg_path.read_text())
+        assert "beta" not in data["harnesses"]
+        assert data["default_harness"] == "alpha"
+
+    def test_install_failure_does_not_create_config_dir(
+        self, tmp_path, runner, monkeypatch
+    ):
+        """No partial write either: the config dir is not even created."""
+        nested = tmp_path / "nested" / "h3" / "config.yaml"
+        _stub_health_client(monkeypatch, error=ConnectionError("refused"))
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "dead",
+                "--endpoint",
+                "http://localhost:9999",
+                "--config",
+                str(nested),
+            ],
+        )
+        assert result.exit_code != 0
+        assert not nested.parent.exists()
+        assert not nested.exists()
+
+    def test_install_unhealthy_status_fails_and_writes_nothing(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """A reachable-but-degraded harness is not installable either."""
+        _stub_health_client(
+            monkeypatch,
+            status=HealthStatus.DEGRADED,
+            degraded_reason="database unreachable",
+        )
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "wobbly", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code != 0
+        assert "'degraded'" in result.output
+        assert "database unreachable" in result.output
+        assert "Nothing was written" in result.output
+        assert not cfg_path.exists()
+
+    @staticmethod
+    def _invalid_payload_errors() -> tuple[ValidationError, json.JSONDecodeError]:
+        """Real decoder/validator errors a non-H3 200 response produces."""
+        try:
+            HealthResponse.model_validate({"status": "ok"})
+        except ValidationError as exc:  # pragma: no cover - defensive else
+            validation = exc
+        else:
+            raise AssertionError("expected a ValidationError (version is missing)")
+        try:
+            json.loads("<html>not an H3 harness</html>")
+        except json.JSONDecodeError as exc:  # pragma: no cover - defensive else
+            decode = exc
+        else:
+            raise AssertionError("expected a JSONDecodeError")
+        return validation, decode
+
+    def test_install_non_h3_payload_fails_and_writes_nothing(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """A 200 that is not an H3 health payload is refused, not stored."""
+        validation, _ = self._invalid_payload_errors()
+        _stub_health_client(monkeypatch, error=validation)
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "not-h3", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code != 0
+        assert "not a valid H3 health payload" in result.output
+        assert "version" in result.output
+        assert not cfg_path.exists()
+
+    def test_install_non_json_response_fails_with_clear_reason(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """Something else on the port (a web server) is named as such."""
+        _, decode = self._invalid_payload_errors()
+        _stub_health_client(monkeypatch, error=decode)
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "wrong-port", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code != 0
+        assert "answered, but not with JSON" in result.output
+        assert not cfg_path.exists()
+
+    def test_install_healthy_endpoint_succeeds(self, cfg_path, runner, monkeypatch):
+        """The healthy path still installs, and reports the probe result."""
+        fake_client = _stub_health_client(monkeypatch, version="9.9.9")
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "healthy", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code == 0
+        assert "installed harness 'healthy'" in result.output
+        assert "health:   ok (version 9.9.9)" in result.output
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["harnesses"]["healthy"] == {
+            "endpoint": "http://x:1",
+            "transport": "rest",
+            "timeout_ms": 30000,
+        }
+        # First harness installed still becomes the default.
+        assert data["default_harness"] == "healthy"
+        # The probe used the endpoint that was about to be persisted and
+        # the connection was closed (no leaked client).
+        assert fake_client.call_args.kwargs["endpoint"] == "http://x:1"
+        assert fake_client.call_args.kwargs["transport"] == "rest"
+        assert fake_client.call_args.kwargs["timeout_ms"] == 30000
+
+    def test_install_healthy_with_existing_flags(self, cfg_path, runner, monkeypatch):
+        """--transport/--timeout-ms/--set-default/--name keep working."""
+        self._seed_config(cfg_path, "alpha")
+        fake_client = _stub_health_client(monkeypatch)
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "--name",
+                "beta",
+                "--endpoint",
+                "http://b:2",
+                "--transport",
+                "rest",
+                "--timeout-ms",
+                "12345",
+                "--set-default",
+            ],
+        )
+        assert result.exit_code == 0
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["harnesses"]["beta"] == {
+            "endpoint": "http://b:2",
+            "transport": "rest",
+            "timeout_ms": 12345,
+        }
+        assert data["harnesses"]["alpha"]["endpoint"] == "http://a:1"
+        assert data["default_harness"] == "beta"
+        # The probe is made with the options being persisted — including the
+        # custom timeout — not hardcoded defaults.
+        assert fake_client.call_args.kwargs == {
+            "endpoint": "http://b:2",
+            "transport": "rest",
+            "timeout_ms": 12345,
+        }
+
+    def test_install_probe_client_is_closed(self, cfg_path, runner, monkeypatch):
+        """The probe must release its client even on the happy path."""
+        fake_client = _stub_health_client(monkeypatch)
+        result = runner.invoke(
+            hermes_h3,
+            ["install", "h", "--endpoint", "http://x:1"],
+        )
+        assert result.exit_code == 0
+        fake_client.return_value.close.assert_awaited()
+
+    def test_install_transport_validation_precedes_health_check(
+        self, cfg_path, runner, monkeypatch
+    ):
+        """Unsupported transports fail on their own error, without probing."""
+        fake_client = _stub_health_client(monkeypatch)
+        result = runner.invoke(
+            hermes_h3,
+            [
+                "install",
+                "h",
+                "--endpoint",
+                "http://x:1",
+                "--transport",
+                "grpc",
+            ],
+        )
+        assert result.exit_code != 0
+        assert "grpc transport not supported yet" in result.output
+        assert not fake_client.called
+        assert not cfg_path.exists()
 
 
 # ── uninstall ──────────────────────────────────────────────────────────────
@@ -970,6 +1268,8 @@ class TestConfigPathEnvOverride:
         monkeypatch.setattr("h3_shim.cli.CONFIG_PATH", home_default)
         env_cfg = tmp_path / "env-config.yaml"
         monkeypatch.setenv(CONFIG_PATH_ENV, str(env_cfg))
+        # install health-checks the endpoint first (DF-H3-SHIM-FOREMAN-3).
+        _stub_health_client(monkeypatch)
 
         result = runner.invoke(
             hermes_h3,

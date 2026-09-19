@@ -205,13 +205,29 @@ def test_install_name_flag_rebuilds_positional_argv(plugin: object) -> None:
 
 
 def test_install_flag_and_positional_behave_identically(
-    plugin: object, tmp_path: Path
+    plugin: object, tmp_path: Path, monkeypatch
 ) -> None:
     """Drive the real click group with both rebuilt argvs (behaviour parity)."""
+    from unittest.mock import AsyncMock, MagicMock
+
     import yaml
     from click.testing import CliRunner
 
     from h3_shim.cli import hermes_h3
+    from h3_shim.protocol import HealthResponse, HealthStatus
+
+    # ``install`` health-checks the endpoint before writing it
+    # (DF-H3-SHIM-FOREMAN-3).  Stub the lazily-imported client so this
+    # parity test stays hermetic — it must never depend on a harness
+    # actually listening on INSTALL_ENDPOINT.
+    fake_client = MagicMock()
+    instance = MagicMock()
+    instance.health = AsyncMock(
+        return_value=HealthResponse(status=HealthStatus.OK, version="1.2.3")
+    )
+    instance.close = AsyncMock()
+    fake_client.return_value = instance
+    monkeypatch.setattr("h3_shim.client.H3Client", fake_client)
 
     parser = _new_parser(plugin)
     runner = CliRunner()

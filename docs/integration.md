@@ -69,6 +69,7 @@ same order.
 
 ```bash
 # Register a harness and make it the default
+# (the harness must be up: install health-checks the endpoint first)
 hermes-h3 install my-harness --endpoint http://localhost:9191 --set-default
 
 # Inspect what is registered
@@ -93,6 +94,16 @@ hermes-h3 install NAME --endpoint URL [--transport rest]
 - `--set-default` promotes the harness to `default_harness`.  When no
   default exists yet, the first installed harness becomes the default
   automatically.
+- `install` **health-checks the endpoint before writing anything**
+  (DF-H3-SHIM-FOREMAN-3).  It issues `GET /v1/health` with the same client,
+  transport and timeout the shim uses at runtime, and refuses to register an
+  endpoint that is unreachable, does not answer like an H3 harness, or
+  reports a status other than `ok`.  The failure exits non-zero, names the
+  endpoint and the cause, and leaves the config file (including an existing
+  `default_harness`) byte-for-byte untouched — a typo can no longer produce a
+  config entry that only fails later at `verify`/first session.  If the
+  harness is not running yet, start it before installing (or add the entry to
+  `harnesses:` by hand and use `hermes-h3 verify` to re-check it).
 - `hermes-h3 scaffold` with no `--lang` writes an empty config skeleton;
   with `--lang go|py|ts` it generates a complete harness project in a new
   `h3-harness-<lang>/` subdirectory (rendered from
@@ -361,6 +372,7 @@ alternative.  Note the fallback order is independent: a session with no
 |---------|------------|
 | `hermes h3 --help` → `error: argument command: invalid choice: 'h3'` | Plugin not installed or not enabled — see §3.4 (`cp -r h3 ~/.hermes/plugins/h3/` + `hermes plugins enable h3`). |
 | `Error: no harness specified and no default_harness set` | No harness registered — `hermes-h3 install <name> --endpoint <url> --set-default`. |
+| `Error: endpoint <url> failed its health check: ...` (exit 1) | `install` probed `GET /v1/health` and the endpoint is unreachable, is not an H3 harness, or reports a non-`ok` status — **nothing was written**. Fix the URL or start the harness, confirm with `hermes-h3 verify --endpoint <url>`, then re-run `install`. |
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
 | `verify failed for 'x': ...` | Harness not running or wrong endpoint — check it is up on the port you registered. |
 | `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add a route under `sessions:` in the config path the message names (default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |

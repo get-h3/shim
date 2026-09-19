@@ -681,6 +681,103 @@ def _validate_transport(transport: str) -> None:
         )
 
 
+# Health probe used by ``install`` (DF-H3-SHIM-FOREMAN-3). ``install`` used
+# to persist whatever endpoint string it was handed, so a typo — or a
+# harness that simply was not running — exited 0 and produced a config
+# entry that only surfaced as a connection failure later, at ``verify`` or
+# at the first session. Probing before the write makes the failure happen
+# where the mistake was made, and leaves the config untouched.
+
+
+def _probe_failure_reason(exc: Exception) -> str:
+    """Translate a probe exception into an actionable one-line reason.
+
+    A wrong URL is the common failure here, and the raw decoder errors
+    ("Expecting value: line 1 column 1") or a pydantic dump do not tell
+    the operator what is actually wrong — so the two shapes that mean
+    "something answered but it is not an H3 harness" are named as such.
+    Everything else keeps the exception's own message.
+    """
+    from pydantic import ValidationError
+
+    if isinstance(exc, json.JSONDecodeError):
+        return (
+            f"the endpoint answered, but not with JSON ({exc}) — "
+            "is this really an H3 harness?"
+        )
+    if isinstance(exc, ValidationError):
+        errors = exc.errors()
+        if errors:
+            first = errors[0]
+            where = ".".join(str(part) for part in first.get("loc", ())) or "<root>"
+            detail = str(first.get("msg", ""))
+        else:  # pragma: no cover — pydantic always reports at least one error
+            where, detail = "<root>", str(exc)
+        return (
+            f"the response is not a valid H3 health payload "
+            f"({where}: {detail}) — is this really an H3 harness?"
+        )
+    return str(exc) or exc.__class__.__name__
+
+
+def _probe_endpoint(
+    endpoint: str,
+    transport: str,
+    timeout_ms: int,
+    config_path: Path,
+) -> tuple[str, str]:
+    """Health-check *endpoint*; return ``(status, version)``.
+
+    Issues ``GET /v1/health`` with the same client the shim uses at
+    runtime (so transport, timeout and auth headers all match) and raises
+    :class:`click.ClickException` when the endpoint is unreachable, does
+    not answer like an H3 harness, or reports a status other than
+    ``ok``.  The message names the endpoint, the cause and what to do
+    next, and states that nothing was written to *config_path*.
+
+    Callers must not have written anything yet: ``install`` only
+    persists the harness after this returns.
+    """
+
+    def _fail(reason: str) -> click.ClickException:
+        return click.ClickException(
+            f"endpoint {endpoint} failed its health check: {reason}\n"
+            f"Nothing was written — {config_path} is unchanged and the "
+            f"harness was not registered.\n"
+            f"Check that the harness is running and that {endpoint} is the "
+            f"right URL, then retry; probe it directly with "
+            f"'hermes-h3 verify --endpoint {endpoint}'."
+        )
+
+    from h3_shim.client import H3Client  # local import: optional dep
+    from h3_shim.protocol import HealthStatus
+
+    async def _probe():
+        client = H3Client(endpoint=endpoint, transport=transport, timeout_ms=timeout_ms)
+        try:
+            return await client.health()
+        finally:
+            await client.close()
+
+    try:
+        health = asyncio.run(_probe())
+    except KeyboardInterrupt:  # pragma: no cover — interactive Ctrl-C
+        raise
+    except Exception as exc:
+        raise _fail(_probe_failure_reason(exc)) from exc
+
+    status = str(getattr(health.status, "value", health.status))
+    if status != HealthStatus.OK.value:
+        detail = getattr(health, "degraded_reason", None) or getattr(
+            health, "error", None
+        )
+        reason = f"reported status {status!r}"
+        if detail:
+            reason += f" ({detail})"
+        raise _fail(f"{reason}; expected {HealthStatus.OK.value!r}")
+    return status, str(getattr(health, "version", "") or "")
+
+
 @hermes_h3.command(help="Register a harness in the config.")
 @_config_option
 @click.argument("name", required=False)
@@ -720,7 +817,7 @@ def install(
     timeout_ms: int,
     set_default: bool,
 ) -> None:
-    """Add or update a harness entry.
+    """Add or update a harness entry after health-checking its endpoint.
 
     NAME is an optional positional alias for ``--name``::
 
@@ -729,6 +826,11 @@ def install(
     Exactly one of NAME / **--name** must be given; with neither the
     command fails loudly instead of installing an unnamed entry.  When
     both are given, NAME wins.
+
+    The endpoint is probed with ``GET /v1/health`` before anything is
+    written (DF-H3-SHIM-FOREMAN-3): an unreachable, non-H3 or non-``ok``
+    endpoint exits non-zero and leaves the existing config — and any
+    existing default — untouched.
     """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
@@ -740,7 +842,11 @@ def install(
             "(install NAME ...) or with --name NAME"
         )
     _validate_transport(transport)
-    config = load_config(_config_path(ctx))
+    path = _config_path(ctx)
+    # Probe BEFORE reading or writing the config: a dead endpoint must not
+    # produce a config entry, and must not touch an existing one.
+    status, version = _probe_endpoint(endpoint, transport, timeout_ms, path)
+    config = load_config(path)
     harnesses = config.setdefault("harnesses", {})
     harnesses[resolved] = {
         "endpoint": endpoint,
@@ -749,9 +855,10 @@ def install(
     }
     if set_default or not config.get("default_harness"):
         config["default_harness"] = resolved
-    path = save_config(config, _config_path(ctx))
+    saved = save_config(config, path)
     click.echo(f"installed harness {resolved!r} at {endpoint} ({transport})")
-    click.echo(f"config: {path}")
+    click.echo(f"health:   {status}" + (f" (version {version})" if version else ""))
+    click.echo(f"config: {saved}")
 
 
 @hermes_h3.command(help="Remove a harness from the config.")
