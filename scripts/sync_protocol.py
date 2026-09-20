@@ -69,11 +69,22 @@ def resolve_ref(ref: str, schema_dir: Path) -> dict[str, Any] | None:
 
 def field_signature(name: str, prop: dict[str, Any]) -> str:
     """Produce a deterministic signature string for a schema field."""
-    py_type = TYPE_MAP.get(prop.get("type", "string"), "Any")
+    raw_type = prop.get("type", "string")
+    if isinstance(raw_type, list):
+        # JSON-Schema 2020-12 union type, e.g. ["string", "null"]: pick the
+        # first non-null member as the py type and treat the field as
+        # nullable (same :optional suffix as the anyOf-with-null path).
+        # Empty / all-null / unknown unions degrade to Any — never raise.
+        members = [t for t in raw_type if t != "null"]
+        py_type = TYPE_MAP.get(members[0], "Any") if members else "Any"
+        union_nullable = len(members) < len(raw_type)
+    else:
+        py_type = TYPE_MAP.get(raw_type, "Any")
+        union_nullable = False
     required = prop.get("required", False)
     has_default = "default" in prop
     enum_vals = prop.get("enum")
-    is_nullable = any(
+    is_nullable = union_nullable or any(
         t.get("type") == "null" for t in prop.get("anyOf", []) if isinstance(t, dict)
     )
 
