@@ -4,10 +4,10 @@ description: >-
   How to USE the H3 shim (get-h3/shim) for real: install, scaffold a
   harness, run the 46-test compliance battery, manage harnesses and
   routing, drive sessions through the shim loop, and use the hermes h3
-  plugin. Includes pitfalls from the 2026-08-07, 2026-08-20, 2026-09-05
-  and 2026-09-06 dogfood runs. Load this before touching the shim, its
-  tests, or any get-h3 harness verification task.
-version: 1.3.0
+  plugin. Includes pitfalls from the 2026-08-07, 2026-08-20, 2026-09-05,
+  2026-09-06 and 2026-09-20 dogfood runs. Load this before touching the
+  shim, its tests, or any get-h3 harness verification task.
+version: 1.4.0
 category: software-development
 ---
 
@@ -76,6 +76,15 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
 
 ## Common pitfalls (learned the hard way)
 
+0. **Cross-language first, raw-httpx never** (2026-09-20 lesson): the
+   battery deliberately bypasses `H3Client` (test_battery.py:10), so ANY
+   client-serialization bug is invisible to 46/46 PASS. When verifying a
+   harness, always finish with one real `H3ShimLoop.run()` against it
+   (prefer omitting `identity` to exercise the documented default), and
+   drive harnesses in a DIFFERENT language than the client — that is how
+   DF4-H3-SHIM-1 (null vs absent optional, py client vs ts zod) was
+   found after five dogfood cycles of green batteries.
+
 1. **`pre-update-check` ALWAYS blocks** (GAP-033 / DF-4, still open
    2026-09-05): the package ships as v0.1.0 while `data/versions.yaml`
    requires h3_shim ≥ 1.0.0 for every supported Hermes version — every
@@ -107,9 +116,12 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    a new one fails to bind and the battery happily tests the OLD one —
    hit again on 2026-09-05 (a stale harness with 97 phantom sessions was
    answering). Always confirm which process answers (`lsof -i :9191`) or
-   use a distinct port. The scaffold's harness now drops a session on its
-   natural END (DF2-H3-SHIM-3), so `active_sessions` only counts live
-   sessions; use `DELETE /v1/sessions/{id}` to tear down one in flight.
+   use a distinct port. Session GC on natural END exists ONLY in the py
+   template (dfa9d99): as of 2026-09-20 the go scaffold, ts scaffold and
+   sdk-python BaseHarness still leak `active_sessions` forever (98 after
+   ONE battery run on go; DF4-H3-SHIM-2) — treat that health number as
+   meaningless on non-py harnesses and `DELETE /v1/sessions/{id}` to
+   tear down sessions in flight.
 7. **`--categories` now works** (GAP-006): tokens map to display labels;
    unknown tokens error with exit 2. `h3-test --categories health` runs 7/7.
 8. **Plugin `--config` works before OR after the subcommand** (GAP-009):
@@ -119,11 +131,17 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    thread_id)`; clients live in `loader.harnesses` (dict name →
    `H3Client`). `H3Client` has NO generic `.get()` — methods are
    `health/process/result/cancel/close`, all async.
-10. **NEVER set `Message.timestamp`** (DF3-H3-SHIM-1, found 2026-09-06):
-   `H3Client` serializes with `model_dump()` not `model_dump(mode="json")`,
-   so the pydantic-coerced `datetime` reaches httpx's json.dumps and the
-   whole run() collapses to end-reason `"error"` (traceback log-only).
-   Omit timestamp until DF3-H3-SHIM-1 closes.
+10. **`Message.timestamp` is safe again** (DF3-H3-SHIM-1 FIXED, verified
+    live 2026-09-20): `client.py` now posts `model_dump(mode="json")`
+    (750bb90), so datetime timestamps serialize cleanly. The serialization
+    trap MOVED though (DF4-H3-SHIM-1): `model_dump` without
+    `exclude_unset`/`exclude_none` sends unset optionals as explicit
+    `null`s, and strict harnesses (the ts scaffold's zod
+    `z.string().optional()`) reject null with 400 — the DOCUMENTED
+    default path (H3ShimLoop with no identity, api.md:336) fails
+    end-to-end against the ts scaffold. Until DF4-H3-SHIM-1 closes:
+    either set `thread_id` explicitly, or drive go/py harnesses
+    (lenient parsers) when prototyping.
 11. **Constructor shapes the docs imply wrong** (DF3-H3-SHIM-4):
    `identity` takes an Identity-shaped dict (or the model), NOT the tuple
    `("shim", session_id)` from api.md's prose; `context["memory"]` is a
@@ -134,6 +152,17 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    `scripts/test-count.txt` is the single source; `make verify-counts`
    (`scripts/check-test-count.sh`) fails the build if any current-state
    surface quotes a retired count (H3-GAP-079).
+13. **The 09-18 CLI wave works** (verified live 2026-09-20):
+   `install` health-checks BEFORE writing (dead endpoint → exit 1,
+   config untouched, actionable message — the 09-05 P2 is closed);
+   `route --session S --set-harness N|--remove` is the full session-route
+   lifecycle (unknown harness → exit 1, empty table explains where
+   routes come from); `verify NAME` / `install --name N` positional
+   aliases both work; `pre-update-check` needs a TARGET_VERSION argument
+   (bare call = exit 2 usage error, NOT the old always-block). The
+   `pre-update-check` verdict semantics: exit 1 means "matrix consulted,
+   update blocked" — for v0.1.0 vs 2.0.0 it honestly reports no
+   compatibility data for the target.
 
 ## Doing verification tasks (the gate)
 

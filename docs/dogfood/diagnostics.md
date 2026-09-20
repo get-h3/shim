@@ -266,3 +266,54 @@ install + 5s harness + 46/46) re-confirmed the scaffold session leak:
 `active_sessions: 98` after a single battery pass on a brand-new harness
 (DF2-H3-SHIM-3 still open). Installability itself remains clean — no
 sudo, no compose, no toolchain surprises on bare Debian.
+
+## 2026-09-20 cycle — the green-battery blind spot, mapped
+
+**Why five cycles of 46/46 could still hide a P1.** The battery's own
+docstring (test_battery.py:10) says tests deliberately bypass H3Client
+and talk raw httpx. That choice makes the battery a pure *server*
+contract test — and leaves the *client's* wire serialization with zero
+coverage. This cycle drove the py client against harnesses in OTHER
+languages, which is the only way null-vs-absent JSON semantics can
+surface: pydantic's `model_dump` (even with `mode="json"`) serializes
+unset optionals as explicit `null`s, Go's `encoding/json` silently
+accepts them, and the ts stack's zod `z.string().optional()` rejects
+null with 400. The fix is wire-level: `exclude_unset`/`exclude_none` on
+the shim side or `.nullable()` on the SDK side (DF4-H3-SHIM-1). Lesson
+for the repo's gates: a compliance battery and an interop test are
+different artifacts; the ecosystem needed both and only had one.
+
+**Template parity is a process gap, not a code gap.** dfa9d99 fixed the
+py scaffold's session leak and its message honestly says the go/ts
+siblings were "unchanged on purpose" — but nothing then propagated the
+fix. Live numbers: go 98 active_sessions after one battery, ts 197
+after four, sdk-python BaseHarness 87 after one (DF4-H3-SHIM-2). The
+repo now has three scaffold templates and one SDK BaseHarness that all
+implement the same echo contract; any behavioral fix lands in one and
+silently diverges in the others. The right way: a cross-template
+lifecycle test matrix (the TestPyScaffoldSessionLifecycle pattern
+applied to go/ts/sdk-python), plus a battery assertion tying observed
+decision types to health.capabilities (DF4-H3-SHIM-4 — go declares
+`["text"]` while emitting `end`).
+
+**The 09-18 CLI wave closed real 09-05 frictions — verified, not
+trusted.** `install` now health-checks before writing (dead endpoint →
+exit 1, config byte-identical, message names `verify --endpoint` as the
+probe); `route --session --set-harness/--remove` turned the docs-says-
+hand-edit dead end into a full lifecycle with unknown-harness guards;
+`pre-update-check` takes TARGET_VERSION and honestly reports matrix
+gaps instead of always blocking. Pattern worth keeping: each fix went
+in with its own regression test, and every one of them held up under
+independent live probing the same week.
+
+**Bunker leg mechanics (what actually happened).** spawn 344005f2 ttl
+2h → clone (public repo, no creds) → venv + pip install . 11s on
+Python 3.13 → README quickstart → 46/46 in 0.60s → destroy exit 0.
+Two retries, both instructive: (1) the bunker agent's `/tmp` is not
+writable — logs belong in `$HOME`; (2) the README's step-2 venv hint
+resolves to the outer venv in the same terminal, so the harness died
+with ModuleNotFoundError until activated in its own venv — that
+ambiguity is DF4-H3-SHIM-3, not a bunker quirk. The destroy-first
+discipline (before writing findings) is what keeps a 2h TTL from
+becoming the only cleanup.
+

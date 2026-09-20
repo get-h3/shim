@@ -133,3 +133,39 @@ actually experienced, the verdict, and where the findings landed.
   (briefing's 259200s was stale) and ticks flowing (latest completed 09-06
   04:28, outcome=committed). Enabled, healthy, already fast.
 2026-09-07 | SHIPPABLE | 22s t2fs | friction 6 | 5 findings
+
+## 2026-09-20 — h3-shim dogfood run (6th cycle)
+
+- **Verdict:** SHIPPABLE
+- **Promise:** install from source → scaffold harness (py/go/ts) → verify
+  with the 46-test battery → manage/route via CLI → embed H3ShimLoop as
+  the brain-swap.
+- **Angle change (pitfall doctrine):** prior cycles covered py scaffold +
+  py embedding + battery; this cycle took the untouched surfaces: go/ts
+  scaffolds end-to-end (first battery runs ever on them), the AGENTS.md
+  release gate (battery vs all three SDK echo examples), the 09-18 CLI
+  wave, and cross-language interop (py loop → go/ts harnesses).
+- **Time-to-first-success:** ~25s cold (12s shim install + 5s scaffold +
+  1s go build + 0.36s battery, 46/46 exit 0); bunker fresh-box 11s
+  install → 46/46 in 0.60s on Python 3.13.
+- **Friction count:** 5 (2× P1, 2× P2, 1 env quirk).
+- **Top findings:** DF4-H3-SHIM-1 (P1: py client sends explicit nulls,
+  ts/zod rejects → documented default loop path fails against ts
+  scaffold; battery is blind by design — bypasses H3Client);
+  DF4-H3-SHIM-2 (P1: session-GC fix dfa9d99 never left the py template —
+  go 98/ts 197/sdk-python 87 active_sessions, unbounded);
+  DF4-H3-SHIM-3 (P2 README quickstart venv trap, burned a bunker
+  attempt); DF4-H3-SHIM-4 (P2 health.capabilities drift: go declares
+  ['text'] while emitting end).
+- **Fixes verified live:** DF3-H3-SHIM-1 (datetime serialization) FIXED;
+  09-05 P2 dead-endpoint install FIXED (health-check before write);
+  FOREMAN-5 route empty-explain FIXED; route --session lifecycle works.
+- **Artifacts:** docs/dogfood/2026-09-20-integration.md (new),
+  docs/dogfood/diagnostics.md (§ appended), skills/h3-shim-usage/SKILL.md
+  (v1.4.0: pitfalls 0/6/10/13 rewritten), board rows DF4-H3-SHIM-1..4.
+- **Foreman:** NOT woken per 2026-09-09 fleet law (21600s pin; injected
+  rows picked up at normal cadence). Enabled=True, healthy (tick #386
+  completed 2026-09-20 04:23).
+- **Bunker leg:** agent 344005f2 spawned/used/destroyed (exit 0);
+  INSTALL proven 11s, smoke PASS; no silent passes.
+
