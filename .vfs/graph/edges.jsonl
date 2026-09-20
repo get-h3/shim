@@ -292,3 +292,15 @@
 {"from":"src/h3_shim/cli.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_cli.py","to":"pkg:pydantic","rel":"imports","provenance":"ast_exact","confidence":1.0}
 {"from":"tests/test_cli.py","to":"pkg:pydantic","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:importlib.util","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:importlib.util","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:json","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:json","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:sys","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:sys","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:pathlib","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:pathlib","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:typing","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:typing","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:pytest","rel":"imports","provenance":"ast_exact","confidence":1.0}
+{"from":"tests/test_sync_protocol.py","to":"pkg:pytest","rel":"tested_by","provenance":"ast_exact","confidence":1.0}
