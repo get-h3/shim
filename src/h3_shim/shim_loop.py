@@ -449,7 +449,7 @@ class H3ShimLoop:
                 data={"error": str(e)},
                 success=False,
             )
-        result.duration_ms = (time.monotonic() - start) * 1000
+        result.duration_ms = max(0, round((time.monotonic() - start) * 1000))
         return result
 
     @staticmethod
@@ -504,7 +504,7 @@ class H3ShimLoop:
                     data={"content": text},
                     success=True,
                 )
-            result.duration_ms = (time.monotonic() - start) * 1000
+            result.duration_ms = max(0, round((time.monotonic() - start) * 1000))
             return result
 
         logger.warning(
@@ -523,7 +523,7 @@ class H3ShimLoop:
             },
             success=False,
         )
-        result.duration_ms = (time.monotonic() - start) * 1000
+        result.duration_ms = max(0, round((time.monotonic() - start) * 1000))
         return result
 
     async def _execute_text(self, text: TextResponse) -> ExecutionResult:
@@ -544,7 +544,7 @@ class H3ShimLoop:
         if text.finished:
             data["finished"] = True
         result = ExecutionResult(type="text_sent", data=data, success=True)
-        result.duration_ms = (time.monotonic() - start) * 1000
+        result.duration_ms = max(0, round((time.monotonic() - start) * 1000))
         return result
 
     async def _execute_wait(self, wait: Wait) -> ExecutionResult:
@@ -644,7 +644,7 @@ class H3ShimLoop:
             data=data,
             success=success,
         )
-        result.duration_ms = total_seconds * 1000
+        result.duration_ms = max(0, round(total_seconds * 1000))
         return result
 
     async def _execute_delegate(self, delegate: Delegate) -> ExecutionResult:
@@ -661,5 +661,5 @@ class H3ShimLoop:
             data={"task": delegate.task, "status": "accepted"},
             success=True,
         )
-        result.duration_ms = (time.monotonic() - start) * 1000
+        result.duration_ms = max(0, round((time.monotonic() - start) * 1000))
         return result
