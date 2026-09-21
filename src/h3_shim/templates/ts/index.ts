@@ -172,6 +172,15 @@ class EchoHarness implements Harness {
       };
     }
     this.recordFor(req.session_id, decision);
+    // Session GC (DF4-H3-SHIM-2): an END decision terminates the
+    // conversation — drop both per-session maps here (mirroring the py
+    // template's pop-on-END) so health() counts only live sessions.
+    // The per-session lookup then 404s per the battery's ended-session
+    // contract; a DELETE still tears down an in-flight session.
+    if (decision.decision === DECISION_END) {
+      this.sessions.delete(req.session_id);
+      this.records.delete(req.session_id);
+    }
     return decision;
   }
 

@@ -97,6 +97,14 @@ func (h *EchoHarness) OnResult(req *protocol.ResultRequest) (*protocol.Decision,
 
 	// End after 2 results in normal mode; stay alive in streaming mode.
 	if !streaming && count >= 2 {
+		// Session GC (DF4-H3-SHIM-2): an END decision terminates the
+		// conversation — drop the per-session state here so the map and
+		// Health()'s active_sessions stay live-only, mirroring the py
+		// template's pop-on-END semantics.
+		h.mu.Lock()
+		delete(h.sessions, req.SessionID)
+		h.mu.Unlock()
+
 		return &protocol.Decision{
 			Decision:   protocol.DecisionEnd,
 			DecisionID: "echo-end",
