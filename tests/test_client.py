@@ -28,6 +28,7 @@ from h3_shim.protocol import (
     Message,
     ProcessRequest,
 )
+from h3_shim.shim_loop import H3ShimLoop
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -463,3 +464,185 @@ class TestPayloadShape:
         raw_result = result_body["result"]["data"]["finished_at"]
         assert isinstance(raw_result, str)
         assert datetime.fromisoformat(raw_result.replace("Z", "+00:00")) == ts
+
+
+# ── strict-wire regression (DF4-H3-SHIM-1) ──────────────────────────────────
+
+
+class _Strict400Error(Exception):
+    """Raised by the strict handler where the real zod path would 400."""
+
+
+class _StrictZodLikeHandler:
+    """In-process handler that mirrors the ts scaffold's zod strictness.
+
+    The generated ts harness validates ``ProcessRequest`` /
+    ``ResultRequest`` with the ``@get-h3/h3-harness-sdk`` zod schema, where
+    optional fields such as ``identity.thread_id`` are
+    ``.optional()`` but NOT ``.nullable()``: the field may be ABSENT from
+    the JSON, but an explicit ``null`` is a type error. So a pydantic
+    ``model_dump`` that materializes unset ``None`` optionals fails with
+    HTTP 400 on the documented default path.
+
+    This handler reimplements that rule for the fields the wire requests
+    carry and returns a minimal valid H3 ``Decision``. Usable directly as
+    an ``httpx.MockTransport`` handler.
+    """
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        body = request.content.decode("utf-8")
+        if request.method == "POST" and request.url.path == "/v1/process":
+            self._reject_explicit_null_optionals(
+                body,
+                path="identity",
+                optionals=("thread_id", "user_name", "user_id"),
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "decision": "text",
+                    "decision_id": "d_strict_1",
+                    "text": {"content": "Echo: hi", "finished": True},
+                },
+            )
+        if request.method == "POST" and request.url.path == "/v1/result":
+            self._reject_explicit_null_optionals(
+                body,
+                path="result",
+                optionals=("tool_name",),
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "decision": "end",
+                    "decision_id": "d_strict_end",
+                    "end": {"reason": "task_complete", "summary": "ok"},
+                },
+            )
+        return httpx.Response(404, json={"error": {"code": "NOT_FOUND"}})
+
+    @staticmethod
+    def _reject_explicit_null_optionals(
+        body: str, *, path: str, optionals: tuple[str, ...]
+    ) -> None:
+        payload = json.loads(body)
+        section = payload.get(path, {})
+        for field in optionals:
+            if field in section and section[field] is None:
+                raise _Strict400Error(
+                    f"zod: {path}.{field} must be string or absent, got explicit null"
+                )
+
+
+class TestStrictHarnessWireShape:
+    """DF4-H3-SHIM-1: no explicit nulls on the wire for unset optionals.
+
+    Strict zod harnesses (ts scaffold via @get-h3/h3-harness-sdk) type
+    optional request fields as ``.optional()`` — ABSENT is accepted,
+    explicit ``null`` is rejected with 400. The pre-fix client serialized
+    with plain ``model_dump(mode="json")``, which materializes every unset
+    optional (``thread_id``, ``user_name``, …) as ``null`` and broke the
+    DOCUMENTED default path (``H3ShimLoop(...)`` with identity omitted,
+    docs/api.md §process) end-to-end.
+    """
+
+    async def test_default_identity_process_wire_has_no_explicit_nulls(self):
+        """Default-path /v1/process body carries no explicit-null optionals."""
+        captured: dict[str, str] = {}
+        strict = _StrictZodLikeHandler()
+        real_transport = httpx.MockTransport(strict.handle_request)
+
+        client = H3Client(endpoint="http://harness.test")
+
+        async def capture_and_reject(request: httpx.Request) -> httpx.Response:
+            captured["body"] = request.content.decode("utf-8")
+            return await real_transport.handle_async_request(request)
+
+        client._rest = httpx.AsyncClient(
+            base_url=client.endpoint,
+            transport=httpx.MockTransport(capture_and_reject),
+        )
+        try:
+            decision = await client.process(
+                session_id="s_df4",
+                message=Message(role="user", content="hi"),
+                identity=Identity(platform="shim", chat_id="s_df4"),
+                context=Context(),
+            )
+        finally:
+            await client._rest.aclose()
+
+        assert decision.decision_id == "d_strict_1"
+        assert '"thread_id": null' not in captured["body"]
+        assert '"user_name": null' not in captured["body"]
+        assert '"user_id": null' not in captured["body"]
+
+    async def test_shim_loop_default_path_end_to_end_strict_harness(self):
+        """H3ShimLoop with NO identity kwarg completes against strict zod.
+
+        This is the docs/api.md documented default: the loop fabricates
+        ``Identity(platform="shim", chat_id=session_id)`` whose optional
+        fields are unset. Both POSTs (process and result) must survive a
+        harness that rejects explicit nulls exactly like the ts scaffold.
+        """
+        strict = _StrictZodLikeHandler()
+
+        async def strict_send(request: httpx.Request) -> httpx.Response:
+            try:
+                return strict.handle_request(request)
+            except _Strict400Error as exc:
+                return httpx.Response(
+                    400,
+                    json={
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": str(exc),
+                        }
+                    },
+                )
+
+        client = H3Client(endpoint="http://harness.test")
+        client._rest = httpx.AsyncClient(
+            base_url=client.endpoint,
+            transport=httpx.MockTransport(strict_send),
+        )
+
+        loop = H3ShimLoop(  # identity intentionally omitted — default path
+            client,
+            session_id="s_df4_loop",
+            context=Context(),
+        )
+        try:
+            reason = await loop.run(Message(role="user", content="hi"))
+        finally:
+            await client._rest.aclose()
+
+        assert reason == "task_complete"
+        assert loop.last_error is None
+
+    async def test_set_optional_still_sent_and_absent_one_omitted(self):
+        """exclude_unset only drops UNSET fields — explicit values survive.
+
+        Guards against overcorrecting: a set ``thread_id`` must still
+        reach the wire, and a never-touched optional should be absent
+        (not ``null``) from the serialized dict.
+        """
+        c = _make_client()
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "end",
+                "decision_id": "d_opt",
+                "end": {"reason": "task_complete"},
+            },
+        )
+        await c.process(
+            session_id="s_opt",
+            message=Message(role="user", content="hi"),
+            identity=Identity(platform="cli", chat_id="c1", thread_id="t9"),
+            context=Context(),
+        )
+        identity_body = c._rest.post.call_args.kwargs["json"]["identity"]
+        assert identity_body["thread_id"] == "t9"
+        assert "user_name" not in identity_body
+        assert "user_id" not in identity_body
