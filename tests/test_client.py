@@ -8,12 +8,21 @@ HTTP verb, returning a fake ``Response`` whose ``.json()`` and
 
 import json
 import os
+import shutil
+import signal
+import socket
+import subprocess
+import time
+import urllib.request
+import uuid
+from collections.abc import Iterator
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
+from h3_shim.cli import scaffold_project
 from h3_shim.client import H3Client
 from h3_shim.protocol import (
     CancelResponse,
@@ -646,3 +655,264 @@ class TestStrictHarnessWireShape:
         assert identity_body["thread_id"] == "t9"
         assert "user_name" not in identity_body
         assert "user_id" not in identity_body
+
+
+# ── real-stack regression (DF4-H3-SHIM-1) — real ts scaffold + zod ──────────
+
+
+def _free_port() -> int:
+    """Bind a throwaway socket to get a free port, then release it."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _wait_healthy(port: int, timeout_s: float = 60.0) -> None:
+    """Poll /v1/health until the ts harness answers or the timeout elapses."""
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/v1/health", timeout=1
+            ) as resp:
+                if resp.status == 200:
+                    return
+        except Exception:  # noqa: BLE001 — connection refused while booting
+            pass
+        time.sleep(0.25)
+    raise AssertionError(f"ts scaffold harness on :{port} never became healthy")
+
+
+def _stop_process_tree(proc: subprocess.Popen) -> None:
+    """SIGTERM the harness process group, escalating to SIGKILL if needed.
+
+    The harness is started with ``start_new_session=True`` (tsx spawns a
+    child for the actual module), so the group kill reaches the listener
+    even when the wrapper dies first.
+    """
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:  # pragma: no cover - already gone
+        pass
+    try:
+        proc.wait(timeout=10)
+        return
+    except subprocess.TimeoutExpired:  # pragma: no cover - defensive
+        pass
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:  # pragma: no cover - already gone
+        pass
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="module")
+def ts_scaffold_zod(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    """Scaffold, install and RUN the real ts harness once for the module.
+
+    GAP-047 doctrine (mirrors ``py_scaffold`` in test_scaffold_build.py):
+    the heavy work — scaffold, ``npm install`` (pulls the real zod
+    schemas via @get-h3/h3-harness-sdk) and harness boot — happens ONCE
+    per module run; the consuming test drives the live server over real
+    HTTP. stdout/stderr go to a FILE, never an undrained PIPE (known
+    anon_pipe_write deadlock). Teardown terminates the process group and
+    verifies the port is actually freed.
+    """
+    npm = shutil.which("npm")
+    if npm is None:
+        pytest.skip("npm toolchain not installed")
+
+    base = tmp_path_factory.mktemp("ts-scaffold-zod")
+    proj = scaffold_project("ts", base, overwrite=True)
+    assert (proj / "package.json").is_file()
+    assert (proj / "index.ts").is_file()
+
+    install = subprocess.run(
+        [npm, "install", "--no-audit", "--no-fund"],
+        cwd=proj,
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
+    assert install.returncode == 0, (
+        f"npm install failed:\n{install.stdout}\n{install.stderr}"
+    )
+
+    # Equivalent to the dev path (`npx tsx index.ts`): run the template's
+    # TypeScript source directly under tsx so the SDK's zod validation is
+    # exercised exactly as a developer runs the scaffold.
+    node = shutil.which("node")
+    assert node is not None, "node not found on PATH"
+    tsx_cli = proj / "node_modules" / "tsx" / "dist" / "cli.mjs"
+    assert tsx_cli.is_file(), f"tsx CLI missing after npm install: {tsx_cli}"
+
+    port = _free_port()
+    log_path = base / "harness.log"
+    log_file = log_path.open("w")
+    proc = subprocess.Popen(
+        [node, str(tsx_cli), "index.ts"],
+        cwd=proj,
+        env={**os.environ, "PORT": str(port)},
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    try:
+        _wait_healthy(port)
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        _stop_process_tree(proc)
+        log_file.close()
+        # The listener must actually be gone — an orphaned tsx child would
+        # keep the port and poison the next module run.
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            with socket.socket() as probe:
+                if probe.connect_ex(("127.0.0.1", port)) != 0:
+                    break
+            time.sleep(0.2)
+        else:  # pragma: no cover - only on a leaked listener
+            raise AssertionError(f"port {port} still in use after harness teardown")
+
+
+class TestRealTsScaffoldInterop:
+    """DF4-H3-SHIM-1 — the REAL ts scaffold accepts the default-identity wire.
+
+    ``TestStrictHarnessWireShape`` pins the wire contract with a
+    hand-rolled Python mirror of the ts zod rules; these tests drive the
+    REAL stack instead: the scaffolded harness (``templates/ts``) running
+    under tsx, validating every POST with ``@get-h3/h3-harness-sdk``'s
+    zod schema over real HTTP — wire-shape interop, not a
+    re-implementation of it.
+
+    Live-verified SDK facts these tests are built on (dist/protocol.js of
+    the github:get-h3/sdk-typescript install):
+
+    * ``IdentitySchema`` types ``thread_id`` / ``user_name`` / ``user_id``
+      as ``.optional()`` (NOT ``.nullable()``) — the DF4-H3-SHIM-1
+      subject: explicit nulls on the wire are 400s.
+    * ``ContextSchema`` types ``config`` and ``session_state`` as
+      REQUIRED objects (``history``/``tools``/``models`` carry
+      ``.default()``, these two do not), so the tests pass them
+      explicitly — explicitly-passed fields survive ``exclude_unset``.
+      Invisible to the Python-mock layer; flagged as a follow-up
+      protocol-doc gap, not fixed here (this task is test-only).
+    * ``ResultRequestSchema.result.duration_ms`` is
+      ``z.number().int().min(0).optional()`` while the SDK's own
+      ``ResultPayloadSchema`` types the same field
+      ``z.number().min(0)`` — the request wrapper deviates from both the
+      protocol spec (py ``ExecutionResult.duration_ms: float``) and the
+      SDK's own payload schema. ``H3ShimLoop``'s executors assign a
+      fractional monotonic-delta float, so a loop-driven result POST is
+      rejected with 400 on every real execution: pinned as a strict
+      xfail below rather than papered over.
+    """
+
+    async def test_real_ts_scaffold_accepts_default_identity_loop(
+        self, ts_scaffold_zod: str
+    ) -> None:
+        """Full echo cycle against the real zod stack — no 400 anywhere.
+
+        Drives ``H3Client`` over real HTTP exactly the way
+        ``H3ShimLoop.run`` drives it: the default-path identity the loop
+        fabricates when the kwarg is omitted
+        (``Identity(platform="shim", chat_id=session_id)``,
+        shim_loop.py ``__init__``), whose optional fields are unset and
+        must be ABSENT from the wire, and the cycle process → text →
+        result → second text → result → END(task_complete). The
+        pre-fix client (plain ``model_dump(mode="json")``) materialized
+        the unset identity optionals as nulls and the real SDK 400'd the
+        very first POST. The result POSTs omit ``duration_ms`` (unset →
+        excluded → zod-optional) because of the SDK int violation
+        documented on the class — that limitation is what the strict
+        xfail loop test tracks.
+        """
+        session_id = f"s_df4_real_{uuid.uuid4().hex[:8]}"
+        # The exact identity H3ShimLoop fabricates for the default path.
+        identity = Identity(platform="shim", chat_id=session_id)
+        context = Context(config={}, session_state={})
+
+        client = H3Client(endpoint=ts_scaffold_zod)
+        decisions: list[Decision] = []
+        try:
+            decision = await client.process(
+                session_id=session_id,
+                message=Message(role="user", content="hi"),
+                identity=identity,
+                context=context,
+            )
+            decisions.append(decision)
+
+            # Two result round-trips are what the echo harness needs to
+            # reach its END (resultCount >= 2).
+            for _ in range(2):
+                assert decision.decision == DecisionType.TEXT
+                assert decision.text is not None
+                decision = await client.result(
+                    session_id=session_id,
+                    decision_id=decision.decision_id,
+                    # duration_ms left UNSET: excluded from the wire.
+                    result=ExecutionResult(
+                        type="text_sent",
+                        data={"content": decision.text.content, "finished": True},
+                        success=True,
+                    ),
+                )
+                decisions.append(decision)
+        finally:
+            await client.close()
+
+        assert [d.decision for d in decisions[:2]] == [
+            DecisionType.TEXT,
+            DecisionType.TEXT,
+        ]
+        assert decisions[0].text is not None
+        assert decisions[0].text.content == "Echo: hi"
+        assert decisions[-1].decision == DecisionType.END
+        assert decisions[-1].end is not None
+        assert decisions[-1].end.reason == EndReason.TASK_COMPLETE
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "Real-stack gap OUTSIDE DF4-H3-SHIM-1's exclude_unset fix: the "
+            "SDK's ResultRequestSchema types result.duration_ms as "
+            "z.number().int() (its own ResultPayloadSchema says "
+            "z.number().min(0); py protocol says float) while H3ShimLoop's "
+            "executors assign a fractional monotonic-delta float — the "
+            "loop-driven /v1/result POST is a deterministic 400 against "
+            "the real ts scaffold. Remove this marker when the SDK schema "
+            "(or a shim-side wire normalization) lands."
+        ),
+    )
+    async def test_shim_loop_real_ts_scaffold_default_identity_end_to_end(
+        self, ts_scaffold_zod: str
+    ) -> None:
+        """H3ShimLoop, NO identity kwarg, completes against the REAL zod stack.
+
+        This is the brief's literal end-to-end shape. A 400 on either
+        POST surfaces as reason ``"error"`` + ``last_error``; the natural
+        ``task_complete`` end proves every request validated. Currently
+        xfail: see the class docstring and the marker reason — the
+        result-leg SDK int violation, discovered by this test.
+        """
+        texts: list[str] = []
+        client = H3Client(endpoint=ts_scaffold_zod)
+        loop = H3ShimLoop(  # identity intentionally omitted — default path
+            client,
+            session_id=f"s_df4_loop_{uuid.uuid4().hex[:8]}",
+            # Explicitly-passed so exclude_unset keeps them on the wire
+            # (the SDK zod schema requires both as objects).
+            context=Context(config={}, session_state={}),
+            on_text=texts.append,
+        )
+        try:
+            reason = await loop.run(Message(role="user", content="hi"))
+        finally:
+            await client.close()
+
+        assert reason == "task_complete"
+        assert loop.last_error is None
+        assert loop.iteration == 2  # two result round-trips, then END
+        assert texts[0] == "Echo: hi"
+        assert texts[1].startswith("Result received: ")
