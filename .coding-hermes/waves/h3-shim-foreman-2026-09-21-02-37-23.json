@@ -1,0 +1,37 @@
+{
+  "scheduler_tick_id": "h3-shim-foreman-2026-09-21-02-37-23",
+  "tick_number": 387,
+  "dispatched_at": "2026-09-21T02:50:00Z",
+  "wave_budget": 9,
+  "workers": 3,
+  "model": "glm-5.3-flash",
+  "provider": "zai-glm-default",
+  "base_sha": "456bca2",
+  "tasks": [
+    {
+      "task_id": "DF4-H3-SHIM-1",
+      "worktree": "/home/kara/worktrees/h3-shim-DF4-H3-SHIM-1",
+      "branch": "wt/DF4-H3-SHIM-1",
+      "base_sha": "456bca2",
+      "brief": "/tmp/h3shim387_brief_DF4-H3-SHIM-1.txt",
+      "dispatch_script": "/tmp/h3shim387_dispatch_DF4-H3-SHIM-1.sh"
+    },
+    {
+      "task_id": "DF4-H3-SHIM-3",
+      "worktree": "/home/kara/worktrees/h3-shim-DF4-H3-SHIM-3",
+      "branch": "wt/DF4-H3-SHIM-3",
+      "base_sha": "456bca2",
+      "brief": "/tmp/h3shim387_brief_DF4-H3-SHIM-3.txt",
+      "dispatch_script": "/tmp/h3shim387_dispatch_DF4-H3-SHIM-3.sh"
+    },
+    {
+      "task_id": "GAP-047",
+      "worktree": "/home/kara/worktrees/h3-shim-GAP-047",
+      "branch": "wt/GAP-047",
+      "base_sha": "456bca2",
+      "brief": "/tmp/h3shim387_brief_GAP-047.txt",
+      "dispatch_script": "/tmp/h3shim387_dispatch_GAP-047.sh"
+    }
+  ],
+  "deferred": ["DF4-H3-SHIM-2 (overlaps ts+go templates with DF4-1/DF4-4)", "DF4-H3-SHIM-4 (overlaps test_battery.py with DF4-2, go template with DF4-2)"]
+}
