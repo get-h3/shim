@@ -109,7 +109,11 @@ class H3Client:
         )
         try:
             resp = await self._rest.post(
-                "/v1/process", json=req.model_dump(mode="json")
+                "/v1/process",
+                # exclude_unset: strict zod harnesses (ts scaffold) type
+                # optional fields as .optional() — absent is valid, an
+                # explicit null is a 400. DF4-H3-SHIM-1.
+                json=req.model_dump(mode="json", exclude_unset=True),
             )
             resp.raise_for_status()
             return Decision(**resp.json())
@@ -140,7 +144,13 @@ class H3Client:
             result=result,
         )
         try:
-            resp = await self._rest.post("/v1/result", json=req.model_dump(mode="json"))
+            resp = await self._rest.post(
+                "/v1/result",
+                # exclude_unset: strict zod harnesses (ts scaffold) type
+                # optional fields as .optional() — absent is valid, an
+                # explicit null is a 400. DF4-H3-SHIM-1.
+                json=req.model_dump(mode="json", exclude_unset=True),
+            )
             resp.raise_for_status()
             return Decision(**resp.json())
         except httpx.TimeoutException:
