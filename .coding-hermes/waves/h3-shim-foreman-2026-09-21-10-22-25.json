@@ -1,0 +1,38 @@
+{
+  "tick_id": "h3-shim-foreman-2026-09-21-10-22-25",
+  "tick_number": 388,
+  "project": "h3-shim",
+  "created": "2026-09-21T10:40:00Z",
+  "wave_size": 3,
+  "workers": [
+    {
+      "task_id": "DF4-H3-SHIM-1",
+      "gitreins_task": "df4-h3-shim-1-r3",
+      "worktree": "/home/kara/worktrees/h3-shim-DF4-H3-SHIM-1",
+      "branch": "wt/DF4-H3-SHIM-1",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": "shim_loop.py duration_ms int + undecorated regression test (judge r2 root cause: fractional float vs zod integer)"
+    },
+    {
+      "task_id": "DF4-H3-SHIM-2",
+      "gitreins_task": "df4-h3-shim-2",
+      "worktree": "/home/kara/worktrees/h3-shim-DF4-H3-SHIM-2",
+      "branch": "wt/DF4-H3-SHIM-2",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": "session-GC END-purge port: templates/go/main.go, templates/ts/index.ts, sdk-python BaseHarness"
+    },
+    {
+      "task_id": "QA-H3-SHIM-FOREMAN-6",
+      "gitreins_task": "qa-h3-shim-6",
+      "worktree": "/home/kara/worktrees/h3-shim-QA-H3-SHIM-FOREMAN-6",
+      "branch": "wt/QA-H3-SHIM-FOREMAN-6",
+      "model": "glm-5.3-flash",
+      "provider": "zai-glm-default",
+      "scope": "test_loop_reroutes_on_failure determinism (event-based, no wall-clock race)"
+    }
+  ],
+  "e2e_battery": {"ran_this_tick": true, "result": "46/46 x3 + live loop PASS"},
+  "deferred": ["DF4-H3-SHIM-4 (collides with DF4-H3-SHIM-2 on templates/go+ts)"]
+}
