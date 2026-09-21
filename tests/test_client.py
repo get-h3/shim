@@ -802,10 +802,10 @@ class TestRealTsScaffoldInterop:
       ``ResultPayloadSchema`` types the same field
       ``z.number().min(0)`` — the request wrapper deviates from both the
       protocol spec (py ``ExecutionResult.duration_ms: float``) and the
-      SDK's own payload schema. ``H3ShimLoop``'s executors assign a
-      fractional monotonic-delta float, so a loop-driven result POST is
-      rejected with 400 on every real execution: pinned as a strict
-      xfail below rather than papered over.
+      SDK's own payload schema. ``H3ShimLoop``'s executors therefore
+      round their measured duration to a non-negative integer before
+      assigning it, so a loop-driven result POST validates on every
+      real execution (proven end-to-end below).
     """
 
     async def test_real_ts_scaffold_accepts_default_identity_loop(
@@ -872,19 +872,6 @@ class TestRealTsScaffoldInterop:
         assert decisions[-1].end is not None
         assert decisions[-1].end.reason == EndReason.TASK_COMPLETE
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Real-stack gap OUTSIDE DF4-H3-SHIM-1's exclude_unset fix: the "
-            "SDK's ResultRequestSchema types result.duration_ms as "
-            "z.number().int() (its own ResultPayloadSchema says "
-            "z.number().min(0); py protocol says float) while H3ShimLoop's "
-            "executors assign a fractional monotonic-delta float — the "
-            "loop-driven /v1/result POST is a deterministic 400 against "
-            "the real ts scaffold. Remove this marker when the SDK schema "
-            "(or a shim-side wire normalization) lands."
-        ),
-    )
     async def test_shim_loop_real_ts_scaffold_default_identity_end_to_end(
         self, ts_scaffold_zod: str
     ) -> None:
@@ -892,9 +879,9 @@ class TestRealTsScaffoldInterop:
 
         This is the brief's literal end-to-end shape. A 400 on either
         POST surfaces as reason ``"error"`` + ``last_error``; the natural
-        ``task_complete`` end proves every request validated. Currently
-        xfail: see the class docstring and the marker reason — the
-        result-leg SDK int violation, discovered by this test.
+        ``task_complete`` end proves every request validated — including
+        the loop-driven result POSTs, whose ``duration_ms`` the executors
+        now round to schema-legal integers.
         """
         texts: list[str] = []
         client = H3Client(endpoint=ts_scaffold_zod)
