@@ -10,7 +10,7 @@ The package is **not published to PyPI** — install from source:
 # PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
 # always use a venv:
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # run from the directory holding .venv
 pip install git+https://github.com/get-h3/shim
 ```
 
@@ -22,18 +22,19 @@ This installs two CLI entry points:
 ## Quickstart
 
 ```bash
-# 1. Stand up a demo harness first (scaffolds h3-harness-py/ + run instructions):
+# 1. Stand up a demo harness first. The scaffold prints run instructions:
 hermes-h3 scaffold --lang py
 cd h3-harness-py
-# PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
-# always use a venv:
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e . && python main.py   # listens on :9191
+# One venv, explicitly activated. The scaffold's pyproject.toml depends on
+# fastapi + uvicorn, so this venv is self-sufficient for running main.py.
+cd h3-harness-py && python3 -m venv .venv && source .venv/bin/activate && pip install -e . && python main.py   # listens on :9191
 
-# 2. In another terminal, run the test battery against it:
-# The new terminal does not inherit step 1's venv activation — reactivate it so h3-test is on PATH:
-source .venv/bin/activate
+# 2. In another terminal, run the test battery against it.
+# The shim is NOT pre-deployed — install it into ITS OWN venv:
+cd /tmp
+python3 -m venv .venv-h3-test           # shim's own venv, separate from .venv
+source /tmp/.venv-h3-test/bin/activate  # activate BY FULL PATH (not ./.venv)!
+pip install git+https://github.com/get-h3/shim   # provides h3-test
 h3-test --endpoint http://localhost:9191
 ```
 
