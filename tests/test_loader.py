@@ -444,13 +444,28 @@ class TestHealthLoop:
             except asyncio.CancelledError:
                 pass
 
+        # The reroute fires synchronously as soon as consecutive failures
+        # reach the threshold, so wait on that counter instead of racing a
+        # fixed wall-clock window (which flakes on slow/loaded boxes).
+        real_sleep = asyncio.sleep
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + 10.0
         task = asyncio.create_task(fast_loop())
-        await asyncio.sleep(0.05)
-        task.cancel()
         try:
-            await task
-        except asyncio.CancelledError:
-            pass
+            while (
+                loader._consecutive_failures.get("alpha", 0)
+                < loader.max_consecutive_failures
+            ):
+                assert loop.time() < deadline, (
+                    "health check loop never reached the reroute threshold"
+                )
+                await real_sleep(0.001)
+        finally:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         # The session that was on alpha must have been moved to native.
         assert loader.get_session_harness("sess_x") == "native"
 
