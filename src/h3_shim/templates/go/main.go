@@ -270,7 +270,11 @@ func (h *EchoHarness) OnSessionTerminate(sessionID string) error {
 	return nil
 }
 
-// Health reports the harness is healthy and advertises the DecisionText capability.
+// Health reports the harness is healthy. Capabilities must list EVERY decision
+// type this harness emits — declaring fewer capabilities than you emit lies to
+// capability-routing consumers (DF4-H3-SHIM-4). This harness emits text
+// (OnProcess, and the non-ending OnResult branch) and end (OnResult once the
+// second result of a non-streaming turn arrives).
 // ActiveSessions is this harness's own count of LIVE sessions; see the
 // package-level OWNERSHIP NOTE — the sdk-go server overwrites the field on
 // the wire with its own store's size.
@@ -293,8 +297,11 @@ func (h *EchoHarness) Health() *protocol.HealthResponse {
 		Version:         "1.0.0",
 		Transport:       "rest",
 		ProtocolVersion: "1.0",
-		Capabilities:    []protocol.DecisionType{protocol.DecisionText},
-		ActiveSessions:  active,
+		// Capabilities must match what this harness actually emits:
+		// declaring fewer capabilities than you emit lies to
+		// capability-routing consumers.
+		Capabilities:   []protocol.DecisionType{protocol.DecisionText, protocol.DecisionEnd},
+		ActiveSessions: active,
 	}
 }
 

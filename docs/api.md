@@ -195,6 +195,29 @@ an `end` decision arrives.
 
 ---
 
+## Scaffold templates — declared `/v1/health` capabilities
+
+`hermes-h3 scaffold --lang <go|py|ts>` copies `src/h3_shim/templates/<lang>/`.
+A scaffolded echo harness whose `capabilities` list is SHORTER than the set of
+decision types it actually emits lies to capability-routing consumers: a router
+that picks a harness by `/v1/health.capabilities` will never send it the work it
+would have handled. Declaring extra types you never emit is the same lie in the
+opposite direction. The rule is one line: **declare exactly what you emit.**
+
+| Scaffold (`--lang`) | Declares | Emits | Declaration site |
+|---|---|---|---|
+| `go` | `text`, `end` | `text` (`OnProcess`, non-ending `OnResult`), `end` (`OnResult` after the 2nd result) | `templates/go/main.go` — `EchoHarness.Health()` |
+| `py` | `text`, `end` | `text` (`on_process`, non-ending `on_result`), `end` (`on_result` after the 2nd result) | `templates/py/main.py` — `EchoHarness.health()` |
+| `ts` | `text`, `end` | `text` (`onProcess`, non-ending `onResult`), `end` (`onResult` after the 2nd result) | `templates/ts/index.ts` — `health()` |
+
+`capabilities` holds decision-type strings (`tool_call`, `llm_call`, `text`,
+`wait`, `delegate`, `end`). None of the three echo examples emits `tool_call`,
+`llm_call`, `wait` or `delegate`, so none advertises them. Adding a decision
+type to a scaffolded example means updating that template's `capabilities` line
+(and this table) in the same commit.
+
+---
+
 ## H3Client
 
 `H3Client(endpoint, transport="rest", timeout_ms=30000, hermes_token=None, hermes_identity=None, protocol_version="1.0")`

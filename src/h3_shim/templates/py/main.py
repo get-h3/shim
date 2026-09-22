@@ -320,7 +320,12 @@ class EchoHarness:
             protocol_version=self.PROTOCOL_VERSION,
             uptime_seconds=uptime,
             active_sessions=active,
-            capabilities=[DecisionType.TEXT.value],
+            # Capabilities must match what this harness actually emits:
+            # declaring fewer capabilities than you emit lies to
+            # capability-routing consumers. This harness emits text
+            # (on_process, and the non-ending on_result branch) and end
+            # (on_result once the second result arrives).
+            capabilities=[DecisionType.TEXT.value, DecisionType.END.value],
         )
 
     def on_process(self, req: ProcessRequest) -> Decision:

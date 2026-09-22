@@ -200,6 +200,10 @@ class EchoHarness implements Harness {
       protocol_version: PROTOCOL_VERSION,
       uptime_seconds: Math.floor((Date.now() - this.startedAt) / 1000),
       active_sessions: this.activeCount(),
+      // Capabilities must match what this harness actually emits: declaring
+      // fewer capabilities than you emit lies to capability-routing consumers.
+      // This harness emits text (onProcess, and the non-ending onResult
+      // branch) and end (onResult once the second result arrives).
       capabilities: [DECISION_TEXT, DECISION_END],
     };
   }
