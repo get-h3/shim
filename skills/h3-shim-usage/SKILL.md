@@ -4,10 +4,10 @@ description: >-
   How to USE the H3 shim (get-h3/shim) for real: install, scaffold a
   harness, run the 46-test compliance battery, manage harnesses and
   routing, drive sessions through the shim loop, and use the hermes h3
-  plugin. Includes pitfalls from the 2026-08-07, 2026-08-20, 2026-09-05,
-  2026-09-06 and 2026-09-20 dogfood runs. Load this before touching the
-  shim, its tests, or any get-h3 harness verification task.
-version: 1.4.0
+  plugin. Includes pitfalls from the 2026-08-07 through 2026-09-22
+  dogfood runs. Load this before touching the shim, its tests, or any
+  get-h3 harness verification task.
+version: 1.5.0
 category: software-development
 ---
 
@@ -116,12 +116,13 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    a new one fails to bind and the battery happily tests the OLD one —
    hit again on 2026-09-05 (a stale harness with 97 phantom sessions was
    answering). Always confirm which process answers (`lsof -i :9191`) or
-   use a distinct port. Session GC on natural END exists ONLY in the py
-   template (dfa9d99): as of 2026-09-20 the go scaffold, ts scaffold and
-   sdk-python BaseHarness still leak `active_sessions` forever (98 after
-   ONE battery run on go; DF4-H3-SHIM-2) — treat that health number as
-   meaningless on non-py harnesses and `DELETE /v1/sessions/{id}` to
-   tear down sessions in flight.
+   use a distinct port. Session GC status after 2026-09-22 (DF5-H3-SHIM-2,
+   LIVE-verified): the END-purge (89886e3, DF4-H3-SHIM-2) fires ONLY on
+   the `result_count >= 2` path, so sessions that never get a second
+   result still leak on ALL THREE scaffolds — ~96 per battery run (py
+   hit 1440→1536 across runs; a fresh bunker scaffold hit 192 after ONE
+   battery). Treat `active_sessions` as a leak counter, not a health
+   metric, and `DELETE /v1/sessions/{id}` to tear down sessions in flight.
 7. **`--categories` now works** (GAP-006): tokens map to display labels;
    unknown tokens error with exit 2. `h3-test --categories health` runs 7/7.
 8. **Plugin `--config` works before OR after the subcommand** (GAP-009):
@@ -131,17 +132,20 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    thread_id)`; clients live in `loader.harnesses` (dict name →
    `H3Client`). `H3Client` has NO generic `.get()` — methods are
    `health/process/result/cancel/close`, all async.
-10. **`Message.timestamp` is safe again** (DF3-H3-SHIM-1 FIXED, verified
-    live 2026-09-20): `client.py` now posts `model_dump(mode="json")`
-    (750bb90), so datetime timestamps serialize cleanly. The serialization
-    trap MOVED though (DF4-H3-SHIM-1): `model_dump` without
-    `exclude_unset`/`exclude_none` sends unset optionals as explicit
-    `null`s, and strict harnesses (the ts scaffold's zod
-    `z.string().optional()`) reject null with 400 — the DOCUMENTED
-    default path (H3ShimLoop with no identity, api.md:336) fails
-    end-to-end against the ts scaffold. Until DF4-H3-SHIM-1 closes:
-    either set `thread_id` explicitly, or drive go/py harnesses
-    (lenient parsers) when prototyping.
+10. **`Message.timestamp` is safe** (DF3-H3-SHIM-1 FIXED, verified live
+    2026-09-20): `client.py` posts `model_dump(mode="json",
+    exclude_unset=True)`, so datetime timestamps serialize cleanly AND
+    unset optionals no longer go on the wire as explicit `null`s
+    (e9e16ff). BUT the ts-scaffold interop trap is NOT fully closed
+    (DF5-H3-SHIM-1, live-verified 2026-09-22): `exclude_unset` also
+    drops `Context.config`/`Context.session_state` when you construct
+    `Context()` bare, and the SDK zod schema types both as REQUIRED
+    objects → the default-identity default-context embed path still
+    400s ("context.config expected object, received undefined") and
+    `run()` returns 'error'. WORKING FORM (passes the live zod stack,
+    proven): `H3ShimLoop(client, session_id=..., context=Context(config={},
+    session_state={}))`. Either set both explicitly, or drive go/py
+    harnesses (lenient parsers) when prototyping.
 11. **Constructor shapes the docs imply wrong** (DF3-H3-SHIM-4):
    `identity` takes an Identity-shaped dict (or the model), NOT the tuple
    `("shim", session_id)` from api.md's prose; `context["memory"]` is a
@@ -163,6 +167,22 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    `pre-update-check` verdict semantics: exit 1 means "matrix consulted,
    update blocked" — for v0.1.0 vs 2.0.0 it honestly reports no
    compatibility data for the target.
+14. **Plugin install + staleness trap** (DF5-H3-SHIM-3, live-verified
+   2026-09-22): the documented `cp -r h3 ~/.hermes/plugins/h3/` NESTS
+   the fresh copy inside an existing dir (cp -r semantics), so the
+   previously-installed copy keeps serving silently. A stale mirror
+   predating `verify [name]` / `route --session` fails with
+   "unrecognized arguments: ..." AND `hermes h3` exits 0 on the failure
+   (error text only) — scripts can't catch it. The RIGHT WAY: refresh
+   the deployed copy in place (`cp -f <repo>/h3/__init__.py
+   <repo>/h3/plugin.yaml ~/.hermes/plugins/h3/`) whenever the repo
+   copy changes; check `hermes h3 verify --help` documents `[name]` as
+   a smoke. All 9 commands verified working post-refresh, including
+   full install→use→route→uninstall lifecycle with correct RCs.
+15. **`--categories` takes tokens, not display labels** (DF5-H3-SHIM-4):
+   the battery banner prints "Stress & Performance" but the filter
+   wants `stress` (also: decisions/errors/health/process/results).
+   Display labels error with exit 2 listing the valid tokens.
 
 ## Doing verification tasks (the gate)
 

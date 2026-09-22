@@ -169,3 +169,47 @@ actually experienced, the verdict, and where the findings landed.
 - **Bunker leg:** agent 344005f2 spawned/used/destroyed (exit 0);
   INSTALL proven 11s, smoke PASS; no silent passes.
 
+## 2026-09-22 — h3-shim dogfood run (7th cycle)
+
+- **Verdict:** SHIPPABLE (core); one closed P1 reopened (DF5-H3-SHIM-1),
+  one resurrected by scope (DF5-H3-SHIM-2).
+- **Promise:** install from source → scaffold harness (py/go/ts) →
+  verify with the 46-test battery → manage/route via the CLI or the
+  `hermes h3` plugin → embed H3ShimLoop as the brain-swap.
+- **Angle change (pitfall doctrine):** cycles 1-6 never drove the
+  `hermes h3` PLUGIN end-to-end (first this cycle), and tick #388 had
+  closed DF4-H3-SHIM-1/2 the day before — so this cycle re-proved both
+  against real artifacts (live ts zod stack, session counters) instead
+  of trusting the board. Neither survived intact.
+- **Time-to-first-success:** ~35s cold (21s shim install + 9s harness
+  venv + battery green first try); battery warm 477ms ±21ms (hyperfine
+  ×10). Bunker: agent 16d8d4ad — clone → 11s install → 46/46 smoke
+  0.59s on Python 3.13.5, destroyed (`bunker list` empty).
+- **Friction count:** 6 (3 constructor/signature guesses the docs
+  never show: `H3Client(endpoint=)`, `H3ShimLoop(session_id, context)`
+  required, `run(Message)` not `run(str)`; `go mod tidy -q` invalid;
+  categories label≠token; ~50s cold venv setup timeout).
+- **Top findings:** DF5-H3-SHIM-1 (P1: default-Context embed still 400s
+  vs ts zod — closing merge f897019 only changed duration_ms to int;
+  the closing test admits "invisible to the Python-mock layer" in its
+  own docstring); DF5-H3-SHIM-2 (P1: END-purge only on result_count>=2
+  → ~96 leaks/battery on ALL scaffolds, py 1440→1536 live, fresh
+  bunker 192 after ONE run); DF5-H3-SHIM-3 (P1: documented
+  `cp -r h3 ~/.hermes/plugins/h3/` nests the fresh copy into an
+  existing dir → stale Aug-7 mirror served "unrecognized arguments"
+  for verify/route AND exited 0; refresh in place → all 9 commands
+  green with correct RCs); DF5-H3-SHIM-4 (P2: --categories takes
+  tokens, not the display labels the battery prints).
+- **Also verified live:** battery triad post-#388: py 46/46 0.54s, ts
+  46/46 0.28s, go 46/46 0.23s (all exit 0); DF4-H3-SHIM-4
+  (capabilities drift) still reproduces, still pending; battery exit
+  codes honest (2 on dead endpoint / unknown category, never 0/0).
+- **Artifacts:** `docs/dogfood/2026-09-22-integration.md` (new),
+  `docs/dogfood/diagnostics.md` (2026-09-22 section appended),
+  `skills/h3-shim-usage/SKILL.md` (v1.5.0: pitfalls 6/10 rewritten,
+  14/15 added), `.coding-hermes/tasks.md`, board rows
+  DF5-H3-SHIM-1..4 + events 424-427, this log.
+- **Foreman:** NOT woken per 2026-09-09 fleet law (21600s pin;
+  injected rows picked up at normal cadence). Enabled=True,
+  healthy (tick #388 completed 2026-09-21 06:16).
+

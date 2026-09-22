@@ -317,3 +317,45 @@ ambiguity is DF4-H3-SHIM-3, not a bunker quirk. The destroy-first
 discipline (before writing findings) is what keeps a 2h TTL from
 becoming the only cleanup.
 
+## 2026-09-22 cycle — read the merge, not the board
+
+The seventh run re-proved the two P1s that tick #388 had closed the
+previous day, and the re-proof changed the verdict on both. The
+transferable lessons:
+
+**Closed ≠ fixed; the merge is the evidence.** DF4-H3-SHIM-1 closed
+with merge f897019, whose only src change is `duration_ms` float→int.
+A task titled "loop passes real ts zod stack" cannot be closed by a
+commit that never touches the wire path — and indeed the default
+`Context()` embed still 400s against the live zod stack (config/
+session_state unset → dropped by `exclude_unset` → zod requires them
+as objects). Reopened as DF5-H3-SHIM-1. The repo's own test docstring
+(tests/test_client.py:794-799) had flagged the gap as a follow-up and
+the closing test worked around it with an explicit
+`Context(config={}, session_state={})`. When a closing commit's tests
+dodge the exact path named in the title, the board is optimistic and
+the diff is not.
+
+**A green battery is not a lifecycle gate.** DF4-H3-SHIM-2's purge
+(89886e3) only fires on `result_count >= 2`, so ~96 battery sessions
+per run leak on every scaffold (py 1440→1536 across runs; fresh bunker
+scaffold 192 after ONE battery). The originally-requested
+active_sessions-returns-to-0 battery assertion was never added — that
+assertion is what would have caught the resurrection before a human
+did. Resurrected as DF5-H3-SHIM-2.
+
+**Install commands that assume a fresh target are docs defects.** The
+documented `cp -r h3 ~/.hermes/plugins/h3/` silently nested the fresh
+copy into the existing Aug-7 dir; the stale mirror then rejected
+`verify NAME` / `route --session` with "unrecognized arguments" — and
+the plugin exited 0 on the failure. Three fixes belong in the repo
+(DF5-H3-SHIM-3): parent-dir copy target, a staleness warning in
+`register()`, honest exit codes. Refreshing the deployed copy in place
+fixed the behavior immediately — the mirror itself was already correct.
+
+**Bunker leg, seventh iteration.** agent 16d8d4ad ttl 2h → clone
+(public) → 11s install (Python 3.13.5, Debian 13) → scaffold → 46/46
+smoke 0.59s → destroy verified via `bunker list` (No agents found).
+No new bunker quirks — the 09-20 lessons (logs in $HOME, venv
+ambiguity) both held.
+
