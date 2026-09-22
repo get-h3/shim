@@ -19,8 +19,10 @@ The shim works with any harness implementing the H3 protocol. Pre-built SDKs:
 ## Running the Test Battery
 
 ```
-pip install git+https://github.com/get-h3/shim
+pip install hermes-h3-shim
 h3-test --endpoint http://localhost:9191
 ```
 
-46 compliance tests. Exit 0 = compliant.
+46 compliance tests. Exit 0 = compliant. (For an unreleased commit:
+`pip install git+https://github.com/get-h3/shim`; release flow in
+[`docs/publishing.md`](docs/publishing.md).)

@@ -8,19 +8,28 @@ version = "0.1.0"
 description = "H3 protocol shim for Hermes Core — client, loop, test battery, CLI"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+# PEP 639 — the license is declared ONCE, as an SPDX expression, with the files
+# that carry it named explicitly. The deprecated
+# "License :: OSI Approved :: MIT License" classifier is deliberately absent:
+# a license classifier next to a License-Expression is the combination PEP 639
+# lets a build tool reject ("the presence of license classifiers SHOULD NOT
+# raise an error unless License-Expression is also provided").
+license = "MIT"
+license-files = ["LICENSE", "NOTICE", "NOTICE.md"]
 authors = [
-    {name = "Total Windup Flight Systems"}
+    {name = "Total Windup Flight Systems", email = "totalwindupflightsystems@gmail.com"}
 ]
 keywords = ["h3", "hermes", "shim", "protocol", "test-battery"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
     "fastapi>=0.109.0",
@@ -49,8 +58,31 @@ dev = [
 h3-test = "h3_shim.cli:main"
 hermes-h3 = "h3_shim.cli:hermes_h3"
 
+[project.urls]
+Homepage = "https://github.com/get-h3/shim"
+Repository = "https://github.com/get-h3/shim"
+Issues = "https://github.com/get-h3/shim/issues"
+Changelog = "https://github.com/get-h3/shim/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/get-h3/shim/blob/main/docs/integration.md"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/h3_shim"]
+
+# The sdist is assembled from the working tree, so internal artifacts that sit
+# next to the source ship to PyPI unless they are named here. The foreman's
+# local board (.coding-hermes/**), GitReins state, the Hilo code-graph cache
+# and the DAGger run store are rebuildable working state — never package data.
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.coding-hermes",
+    "/.gitreins",
+    "/.vfs",
+    "/e2e-output",
+    "/dagger.db",
+    "/dagger.db-shm",
+    "/dagger.db-wal",
+    "**/*.bak",
+]
 
 [tool.ruff]
 target-version = "py310"

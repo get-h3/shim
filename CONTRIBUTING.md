@@ -1,6 +1,6 @@
 # Contributing to H3 Shim
 
-The shim is the Hermes-side implementation of the H3 protocol — the bridge between Hermes Core and external agent harnesses. It's a Python package distributed from the get-h3/shim repository (`pip install git+https://github.com/get-h3/shim`).
+The shim is the Hermes-side implementation of the H3 protocol — the bridge between Hermes Core and external agent harnesses. It's a Python package published to PyPI as `hermes-h3-shim` (v0.1.0 and later; `pip install hermes-h3-shim`) and distributed from the get-h3/shim repository (`pip install git+https://github.com/get-h3/shim` for unreleased commits).
 
 ## Development Setup
 
@@ -116,12 +116,14 @@ All must pass.
 # After merge to main, create a tag:
 git tag v1.0.0
 git push origin v1.0.0
-# Not on PyPI yet — install from git (see README)
 ```
+
+Bump the version, upload to PyPI and verify the upload: see
+[`docs/publishing.md`](docs/publishing.md).
 
 ## Review Checklist
 
-- [ ] `make test` passes (151 tests)
+- [ ] `make test` passes (pytest suite + the compliance battery)
 - [ ] `make lint` passes
 - [ ] `make typecheck` passes
 - [ ] `h3-test --endpoint http://localhost:9191` passes against all 3 SDKs

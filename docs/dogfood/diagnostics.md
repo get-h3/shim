@@ -15,8 +15,10 @@ dumps — read this to understand the system, not to replay a session.
   `test_battery.py` (the 46-test gate), `cli.py` (both CLIs), and
   `templates/{go,py,ts}/` for scaffolding.
 - **Packaging:** hatchling wheel from `packages = ["src/h3_shim"]`, two
-  console scripts (`h3-test`, `hermes-h3`). NOT on PyPI yet — install from
-  git/source. The `h3/` directory is an optional Hermes Core plugin that
+  console scripts (`h3-test`, `hermes-h3`). Published to PyPI as
+  `hermes-h3-shim` (v0.1.0 and later) — `pip install hermes-h3-shim`, or from
+  git/source for an unreleased commit; build/upload/verification flow in
+  `docs/publishing.md`. The `h3/` directory is an optional Hermes Core plugin that
   registers an `h3` command group delegating to the same CLI.
 - **The battery:** 46 tests / 6 categories, E2E region-style. Runs a
   pre-flight `probe()` that raises `NotH3EndpointError` (non-JSON, foreign

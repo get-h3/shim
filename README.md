@@ -4,15 +4,24 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side.
 
 ## Install
 
-The package is **not published to PyPI** — install from source:
+The package is published to PyPI as of v0.1.0:
 
 ```bash
 # PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —
 # always use a venv:
 python3 -m venv .venv
 source .venv/bin/activate   # run from the directory holding .venv
+pip install hermes-h3-shim
+```
+
+From source, for any commit (including one that is not in a release yet):
+
+```bash
 pip install git+https://github.com/get-h3/shim
 ```
+
+Release mechanics — build, `twine upload`, post-upload verification and the
+version-bump flow — are in [`docs/publishing.md`](docs/publishing.md).
 
 This installs two CLI entry points:
 
@@ -34,7 +43,7 @@ cd h3-harness-py && python3 -m venv .venv && source .venv/bin/activate && pip in
 cd /tmp
 python3 -m venv .venv-h3-test           # shim's own venv, separate from .venv
 source /tmp/.venv-h3-test/bin/activate  # activate BY FULL PATH (not ./.venv)!
-pip install git+https://github.com/get-h3/shim   # provides h3-test
+pip install hermes-h3-shim   # provides h3-test (or the git URL for an unreleased commit)
 h3-test --endpoint http://localhost:9191
 ```
 

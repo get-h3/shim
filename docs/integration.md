@@ -25,12 +25,14 @@ see [Optional: the `hermes h3` plugin](#optional-the-hermes-h3-plugin).
 # always use a venv:
 python3 -m venv .venv
 source .venv/bin/activate
+pip install hermes-h3-shim            # v0.1.0 and later
+# or, for a commit that is not in a release yet:
 pip install git+https://github.com/get-h3/shim
 ```
 
 This installs the `hermes-h3-shim` package and the two console scripts
-above.  The package is **not** published to PyPI yet, which is why the
-install is from the git URL.
+above.  The release/build/verification flow lives in
+[`publishing.md`](publishing.md).
 
 Everything is driven by one YAML config file, created on demand:
 
