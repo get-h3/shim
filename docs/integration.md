@@ -206,13 +206,11 @@ installed in the same interpreter as Hermes, otherwise by shelling out
 to the `hermes-h3` executable).
 
 ```bash
-# Install the plugin (copy the directory from this repo).
-# Target the PARENT — `cp -r h3 ~/.hermes/plugins/h3/` copies INTO an
-# existing h3 dir and NESTS the fresh copy while the stale one keeps serving.
+# Install the plugin: copy the h3 directory into the plugins PARENT, so the
+# result is ~/.hermes/plugins/h3/ and no pre-existing h3 dir is involved.
+# (Copying the h3 directory INTO an existing plugin directory nests the
+# fresh copy at .../h3/h3/ — see "Refreshing an existing install" below.)
 cp -r h3 ~/.hermes/plugins/
-
-# Refresh an existing install in place:
-rsync -a --delete h3/ ~/.hermes/plugins/h3/
 
 # Enable it (user plugins are opt-in)
 hermes plugins enable h3
@@ -222,6 +220,40 @@ hermes h3 --help
 hermes h3 list
 hermes h3 install my-harness --endpoint http://localhost:9191 --set-default
 ```
+
+**Refreshing an existing install.** An update REPLACES the installed copy in
+place — use `rsync --delete` rather than copying the repo's `h3` directory
+into the plugin directory:
+
+```bash
+rsync -a --delete h3/ ~/.hermes/plugins/h3/
+```
+
+Copying the repo's `h3` directory into an existing plugin directory
+(`cp -r <repo>/h3 <plugins-dir>/h3/`) copies *into* it once it exists, leaving
+a fresh copy nested at `~/.hermes/plugins/h3/h3/` while the stale copy at the
+top level keeps serving. The failure is quiet, not loud: a subcommand form the
+mirror's own help documents dies with `unrecognized arguments`, because the
+running copy predates it. Before debugging the mirror, confirm the installed
+copy is the one you think it is:
+
+```bash
+diff ~/.hermes/plugins/h3/__init__.py h3/__init__.py   # from a repo checkout
+cat ~/.hermes/plugins/h3/_plugin_version.txt           # installed mirror version
+```
+
+`h3/__init__.py` ships `PLUGIN_VERSION` (currently `0.3.0`) and the repo's
+`h3/_plugin_version.txt` carries the same string. An install keeps its own
+marker file, so `register()` compares the *installed* mirror version against
+the one the running copy expects and prints a `WARNING` (Hermes log **and**
+stderr) when the install is nested, has no marker, or carries an older marker.
+A stale install is still registered — the warning names the fix command rather
+than refusing to load.
+
+Failures are exit-code-honest: `hermes h3 <cmd>` raises the delegated CLI's
+exit code, so a bad subcommand or bad args exits `2`, a failing command exits
+`1`, and the battery's own codes (`hermes h3 test`, see [Exit codes](#exit-codes))
+pass through unchanged. Scripts and CI gates can therefore trust the status.
 
 The plugin is a thin delegate: it does not duplicate CLI logic, so the
 two entry points can never drift.  `hermes-h3` itself always works
@@ -405,4 +437,5 @@ alternative.  Note the fallback order is independent: a session with no
 | `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add one with `hermes-h3 route --session <id> --set-harness <name>` (or under `sessions:` in the config path the message names, default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |
 | `Error: --set-harness and --remove need --session <id>` / `Error: --set-harness and --remove are mutually exclusive` | The write flags need a target: pass `--session <id>` with exactly one of `--set-harness <name>` or `--remove`. **Nothing was written** (the config file is validated before any save). See §4.4. |
 | Battery exits non-zero | Check the exit code: **0** = compliant, **1** = real compliance failure (run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference), **2** = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) — NOT a protocol regression. See [Exit codes](#exit-codes). |
-| `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — re-copy `h3/` from this repo to `~/.hermes/plugins/h3/`. |
+| `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — refresh the install with `rsync -a --delete h3/ ~/.hermes/plugins/h3/` (never copy the repo's `h3` dir INTO `~/.hermes/plugins/h3/`, which nests the fresh copy and keeps serving the stale one). |
+| A subcommand form that `hermes h3 --help` documents fails with `unrecognized arguments`, and `_plugin_version.txt` is missing or older than the repo's | The running copy is a stale and/or nested mirror. `register()` prints a `WARNING` (Hermes log + stderr) naming the offending path; refresh with `rsync -a --delete h3/ ~/.hermes/plugins/h3/` and delete any leftover `~/.hermes/plugins/h3/h3/`. See §3.4. |

@@ -15,14 +15,24 @@ invocation is passed through to the real CLI so behaviour is identical:
   interpreter), the reconstructed argv is forwarded to the
   ``hermes-h3`` executable and its exit code is propagated.
 
-Install: copy this directory to ``~/.hermes/plugins/`` (the PARENT —
-run ``cp -r h3 ~/.hermes/plugins/`` or refresh an existing install with
-``rsync -a --delete h3/ ~/.hermes/plugins/h3/``) and run ``hermes
-plugins enable h3``.  **Warning:** ``cp -r h3 ~/.hermes/plugins/h3/``
-(the old documented form) copies INTO the existing ``h3`` directory,
-NESTING the fresh copy at ``~/.hermes/plugins/h3/h3/`` while the stale
-copy keeps serving.  ``register()`` emits a loud warning when the
-installed copy looks nested or stale.  See docs/integration.md.
+Install — copy this directory into the plugins PARENT, never into an
+existing plugin directory::
+
+    cp -r h3 ~/.hermes/plugins/          # -> ~/.hermes/plugins/h3/
+    hermes plugins enable h3
+
+Refreshing an existing install means REPLACING it in place::
+
+    rsync -a --delete h3/ ~/.hermes/plugins/h3/
+
+``cp -r h3 <plugins-dir>/h3/`` — the form this repo used to document —
+copies INTO that directory once it exists, NESTING the fresh copy at
+``<plugins-dir>/h3/h3/`` while the stale copy keeps serving.  The
+symptom is confusing rather than loud: a subcommand form that
+``hermes h3 --help`` documents dies with ``unrecognized arguments``
+from the stale mirror.  ``register()`` warns (Hermes log + stderr)
+when the installed copy looks nested or older than
+``PLUGIN_VERSION``; see docs/integration.md §3.4.
 """
 
 from __future__ import annotations
@@ -35,13 +45,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-PLUGIN_VERSION = "0.2.0"
-"""Installed-copy version marker (DF5-H3-SHIM-3).
+PLUGIN_VERSION = "0.3.0"
+"""Installed-copy (mirror) version marker (DF5-H3-SHIM-3).
 
-Recorded next to the installed ``__init__.py`` as
-``_plugin_version.txt``; ``register()`` compares it against the running
-copy to warn on stale installs.  Bump together with plugin behaviour
-changes.
+The same string ships in the repo as ``h3/_plugin_version.txt``.  An
+installed copy keeps its own marker file, so ``register()`` can compare
+the *installed* mirror version against the one this code expects and
+warn when an install predates features the mirror claims to offer.
+Bump together with plugin behaviour changes.
 """
 
 logger = logging.getLogger(__name__)
@@ -341,23 +352,63 @@ def _argv_from_namespace(ns: argparse.Namespace) -> list[str]:
     return argv
 
 
-def _handler(args: argparse.Namespace) -> int | None:
+def _propagate(code: int) -> None:
+    """Fail the process with *code* instead of only returning it.
+
+    Hermes Core turns a handler's non-zero int return into the process exit
+    code, but that is a *host* convention, not a contract this plugin can
+    rely on: a host that calls the handler and discards the value
+    (``args.func(args)`` with no assignment) turns every delegated-CLI
+    failure into exit 0 — the reported "``hermes h3`` exits 0 on the
+    failure" symptom, which no script or CI gate can catch.
+    ``SystemExit`` escapes both conventions, so failures raise it.
+    """
+    raise SystemExit(code)
+
+
+def _exit_code_from_system_exit(exc: SystemExit) -> int:
+    """Normalise an ``SystemExit`` payload to an int exit code.
+
+    ``exc.code`` is ``None`` (exit 0), an int, or a *string* — CPython
+    prints a string payload and exits 1.  Returning a string as if it were
+    a code silently produced exit 0 with the message dropped.
+    """
+    code = exc.code
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    print(code, file=sys.stderr)
+    return 1
+
+
+def _handler(args: argparse.Namespace) -> None:
     """Dispatch ``hermes h3 ...`` to the real CLI.
 
-    Returns ``None`` on success (exit 0) or the exit code to propagate.
+    Returns ``None`` on success; every failure raises ``SystemExit`` with
+    the delegated CLI's exit code (argparse/click usage errors 2, click
+    command failures 1, ``hermes-h3 test`` 1 or 2).
     """
     argv = _argv_from_namespace(args)
 
     if _CLICK_GROUP is not None and click is not None:
         try:
-            _CLICK_GROUP.main(args=argv, prog_name="hermes h3", standalone_mode=False)
+            returned = _CLICK_GROUP.main(
+                args=argv, prog_name="hermes h3", standalone_mode=False
+            )
         except click.ClickException as exc:
             click.echo(f"Error: {exc.format_message()}", err=True)
-            return exc.exit_code
+            _propagate(exc.exit_code)
         except SystemExit as exc:
-            code = exc.code
-            return code if isinstance(code, int) and code != 0 else None
-        return None
+            code = _exit_code_from_system_exit(exc)
+        else:
+            # click documents that a non-standalone ``main()`` *returns* the
+            # command's int return value and ``ctx.exit(n)``'s code instead
+            # of raising — discarding it was an exit 0 for both.
+            code = returned if isinstance(returned, int) else 0
+        if code:
+            _propagate(code)
+        return
 
     exe = shutil.which("hermes-h3")
     if exe is None:
@@ -366,9 +417,15 @@ def _handler(args: argparse.Namespace) -> int | None:
             "package (pip install git+https://github.com/get-h3/shim).",
             file=sys.stderr,
         )
-        return 1
+        _propagate(1)
+        return  # unreachable: _propagate raises (keeps type checkers honest)
     proc = subprocess.run([exe, *argv], check=False)
-    return proc.returncode or None
+    if proc.returncode > 0:
+        _propagate(proc.returncode)
+    elif proc.returncode < 0:
+        # Killed by signal N — report the shell convention (128 + N) rather
+        # than a negative code, which Python would wrap to 256 - N.
+        _propagate(128 - proc.returncode)
 
 
 # Install-fix commands named in the staleness warning (DF5-H3-SHIM-3):
@@ -417,27 +474,31 @@ def _stale_install_reasons(base: Path) -> list[str]:
             "install, cannot prove it is current"
         )
         return reasons
-    installed = _parse_version(marker.read_text(encoding="utf-8"))
-    if installed < _parse_version(PLUGIN_VERSION):
+    installed_text = marker.read_text(encoding="utf-8").strip()
+    if _parse_version(installed_text) < _parse_version(PLUGIN_VERSION):
         reasons.append(
-            f"installed plugin version {_parse_version(PLUGIN_VERSION)}-stale: "
-            f"marker says '{marker.read_text(encoding='utf-8').strip()}', "
+            f"installed mirror is stale: marker says '{installed_text}', "
             f"this copy is {PLUGIN_VERSION}"
         )
     return reasons
 
 
 def _warn_on_stale_install(base: Path) -> None:
-    """Log a loud WARNING per staleness reason, naming the fix command."""
+    """Warn loudly per staleness reason, naming the fix command.
+
+    Emitted to BOTH the Hermes logger and stderr: a nested/stale install is
+    exactly the failure mode that is otherwise silent, and ``hermes h3`` is
+    usually run from a script whose operator never opens the log.
+    """
     for reason in _stale_install_reasons(base):
-        logger.warning(
-            "h3 plugin install looks STALE (%s). The CLI mirror you are "
-            "running may not match the hermes-h3 CLI. Fix: reinstall with "
-            "'%s' (parent target) or refresh in place with '%s'.",
-            reason,
-            _FIX_PARENT,
-            _FIX_RSYNC,
+        message = (
+            f"h3 plugin install looks STALE ({reason}). The CLI mirror you "
+            f"are running may not match the hermes-h3 CLI it delegates to. "
+            f"Fix: reinstall with '{_FIX_PARENT}' (parent target, no "
+            f"pre-existing h3 dir) or refresh in place with '{_FIX_RSYNC}'."
         )
+        logger.warning(message)
+        print(f"WARNING: {message}", file=sys.stderr)
 
 
 def register(ctx: Any, base: Path | str | None = None) -> None:

@@ -25,7 +25,9 @@ the thinking brain of Hermes. This skill teaches how to actually run it.
   `pre-update-check`, `route`, `scaffold`, `test`, `uninstall`, `use`,
   `verify`.
 - `hermes h3 <cmd>` — same 9 commands via the optional `h3/` plugin
-  (`cp -r h3 ~/.hermes/plugins/h3/` + `hermes plugins enable h3`).
+  (install into the plugins PARENT: `cp -r h3 ~/.hermes/plugins/`, then
+  `hermes plugins enable h3`; refresh an existing install with
+  `rsync -a --delete h3/ ~/.hermes/plugins/h3/`).
 - Config: `~/.hermes/h3/config.yaml` (auto-created; every command accepts
   `--config <path>`, including `scaffold` since GAP-007).
 - Programmatic: `H3Client`, `H3Loader`, `H3ShimLoop`, `H3TestBattery` —
@@ -167,18 +169,25 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    `pre-update-check` verdict semantics: exit 1 means "matrix consulted,
    update blocked" — for v0.1.0 vs 2.0.0 it honestly reports no
    compatibility data for the target.
-14. **Plugin install + staleness trap** (DF5-H3-SHIM-3, live-verified
-   2026-09-22): the documented `cp -r h3 ~/.hermes/plugins/h3/` NESTS
-   the fresh copy inside an existing dir (cp -r semantics), so the
-   previously-installed copy keeps serving silently. A stale mirror
-   predating `verify [name]` / `route --session` fails with
-   "unrecognized arguments: ..." AND `hermes h3` exits 0 on the failure
-   (error text only) — scripts can't catch it. The RIGHT WAY: refresh
-   the deployed copy in place (`cp -f <repo>/h3/__init__.py
-   <repo>/h3/plugin.yaml ~/.hermes/plugins/h3/`) whenever the repo
-   copy changes; check `hermes h3 verify --help` documents `[name]` as
-   a smoke. All 9 commands verified working post-refresh, including
-   full install→use→route→uninstall lifecycle with correct RCs.
+14. **Plugin install + staleness trap** (DF5-H3-SHIM-3, found live
+   2026-09-22): copying the repo's `h3` directory INTO an existing plugin
+   directory (`cp -r <repo>/h3 <plugins-dir>/h3/`) NESTS the fresh copy
+   inside it (cp -r semantics), so the previously-installed copy keeps
+   serving silently — a stale mirror predating `verify [name]` /
+   `route --session` fails with "unrecognized arguments: ..." while
+   `hermes h3 --help` documents the form. Fixed in the plugin:
+   - install into the PARENT (`cp -r h3 ~/.hermes/plugins/`); refresh an
+     existing install with `rsync -a --delete h3/ ~/.hermes/plugins/h3/`;
+   - `register()` prints a WARNING to the Hermes log AND stderr when the
+     installed copy is nested, has no `_plugin_version.txt` marker, or
+     carries one older than `PLUGIN_VERSION` — it names the fix command;
+   - a failing `hermes h3 <cmd>` RAISES the delegated CLI's exit code
+     (bad args/subcommand 2, command failures 1, battery 1/2) instead of
+     only returning it, so the failure reaches the process exit status
+     under every host dispatch convention — scripts can catch it.
+   Smoke after any refresh: `diff ~/.hermes/plugins/h3/__init__.py
+   h3/__init__.py`, `cat ~/.hermes/plugins/h3/_plugin_version.txt`, and
+   `hermes h3 verify --help` still documenting `[name]`.
 15. **`--categories` takes tokens, not display labels** (DF5-H3-SHIM-4):
    the battery banner prints "Stress & Performance" but the filter
    wants `stress` (also: decisions/errors/health/process/results).
