@@ -42,6 +42,7 @@ from h3_shim.test_battery import (
     NotH3EndpointError,
     TestReport,
     TestResult,
+    category_token,
 )
 
 # ---------------------------------------------------------------------------
@@ -409,9 +410,18 @@ async def _run_battery(
         await battery.close()
 
     if categories:
-        wanted_tokens = {c.strip() for c in categories.split(",") if c.strip()}
-        # Validate all tokens are known.
-        unknown = wanted_tokens - set(CATEGORIES)
+        wanted_tokens: set[str] = set()
+        unknown: list[str] = []
+        for raw in categories.split(","):
+            value = raw.strip()
+            if not value:
+                continue
+            token = category_token(value)
+            if token is None:
+                unknown.append(value)
+            else:
+                wanted_tokens.add(token)
+        # Validate every value against the token AND display-label forms.
         if unknown:
             print(
                 f"Error: unknown categories: {', '.join(sorted(unknown))}",
@@ -419,6 +429,11 @@ async def _run_battery(
             )
             print(
                 f"Valid categories: {', '.join(sorted(CATEGORIES))}",
+                file=sys.stderr,
+            )
+            print(
+                "Valid labels: "
+                + ", ".join(f'"{CATEGORIES[t]}"' for t in sorted(CATEGORIES)),
                 file=sys.stderr,
             )
             return 2
@@ -509,8 +524,9 @@ def main() -> None:
     parser.add_argument(
         "--categories",
         help=(
-            "Comma-separated categories to run "
-            "(health,process,decisions,results,errors,stress)"
+            "Comma-separated categories to run — protocol tokens "
+            "(health,process,decisions,results,errors,stress) or the display "
+            'labels the battery prints (e.g. "Stress & Performance")'
         ),
     )
     args = parser.parse_args()
@@ -607,7 +623,11 @@ def _config_option(func):
 @click.option(
     "--categories",
     default=None,
-    help="Comma-separated categories to run.",
+    help=(
+        "Comma-separated categories to run — protocol tokens "
+        "(health,process,decisions,results,errors,stress) or display labels "
+        '(e.g. "Stress & Performance").'
+    ),
 )
 @click.pass_context
 def test(

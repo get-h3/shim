@@ -37,6 +37,7 @@ from h3_shim.cli import (
     save_config,
 )
 from h3_shim.protocol import HealthResponse, HealthStatus
+from h3_shim.test_battery import CATEGORIES, category_token
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -1803,6 +1804,109 @@ class TestRunBatteryCategories:
         assert payload["failed"] == 0
         categories = {r["category"] for r in payload["results"]}
         assert categories == {"Health & Protocol"}
+
+    @pytest.mark.asyncio
+    async def test_display_label_runs_only_that_category(self, monkeypatch, capsys):
+        """--categories "Stress & Performance" (the banner label) runs stress."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "Stress & Performance", False)
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Stress & Performance" in out
+        assert "5/5" in out
+        # None of the other categories should appear
+        assert "Health & Protocol" not in out
+        assert "Process Basic Flows" not in out
+        assert "Decision Types" not in out
+        assert "Result Handling" not in out
+        assert "Error & Edge Cases" not in out
+
+    @pytest.mark.asyncio
+    async def test_labels_for_every_category_are_accepted(self, monkeypatch, capsys):
+        """Every display label resolves to its category token."""
+        for token, label in CATEGORIES.items():
+            self._stub_battery(monkeypatch, _full_category_report())
+            code = await _run_battery("http://x:1", label, True)
+            assert code == 0, label
+            payload = json.loads(capsys.readouterr().out)
+            assert {r["category"] for r in payload["results"]} == {label}
+            assert payload["total"] == _LABEL_COUNTS[label], token
+
+    @pytest.mark.asyncio
+    async def test_label_matching_ignores_case_and_whitespace(
+        self, monkeypatch, capsys
+    ):
+        """Shell-typed spacing/casing still resolves to the same category."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "  stress  &   PERFORMANCE ", False)
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Stress & Performance" in out
+        assert "5/5" in out
+        assert "Health & Protocol" not in out
+
+    @pytest.mark.asyncio
+    async def test_tokens_and_labels_can_be_mixed(self, monkeypatch, capsys):
+        """A mixed token/label list runs the union of both categories."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "errors, Stress & Performance", False)
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "Error & Edge Cases" in out
+        assert "13/13" in out
+        assert "Stress & Performance" in out
+        assert "5/5" in out
+        # 13 + 5 = 18 tests total
+        assert "18/18" in out
+        assert "Health & Protocol" not in out
+
+    @pytest.mark.asyncio
+    async def test_unknown_category_error_lists_tokens_and_labels(
+        self, monkeypatch, capsys
+    ):
+        """The exit-2 message names both accepted forms."""
+        self._stub_battery(monkeypatch, _full_category_report())
+        code = await _run_battery("http://x:1", "Stress & Reliability", False)
+        assert code == 2
+        err = capsys.readouterr().err
+        assert "unknown" in err.lower()
+        assert "Stress & Reliability" in err
+        assert "Valid categories:" in err
+        assert "Valid labels:" in err
+        assert '"Stress & Performance"' in err
+
+
+#: Test counts per category label — mirrors the real battery's 46-test split.
+_LABEL_COUNTS: dict[str, int] = {
+    "Health & Protocol": 7,
+    "Process Basic Flows": 8,
+    "Decision Types": 6,
+    "Result Handling": 7,
+    "Error & Edge Cases": 13,
+    "Stress & Performance": 5,
+}
+
+
+class TestCategoryTokenResolution:
+    """Unit tests for the token/label alias map in h3_shim.test_battery."""
+
+    def test_protocol_tokens_resolve(self):
+        for token in CATEGORIES:
+            assert category_token(token) == token
+
+    def test_display_labels_resolve(self):
+        for token, label in CATEGORIES.items():
+            assert category_token(label) == token
+
+    def test_case_and_whitespace_insensitive(self):
+        assert category_token("STRESS") == "stress"
+        assert category_token(" Health   &  Protocol ") == "health"
+        assert category_token("stress   &   performance") == "stress"
+
+    def test_unknown_values_return_none(self):
+        assert category_token("bogus") is None
+        assert category_token("Stress & Reliability") is None
+        assert category_token("") is None
 
 
 # ── test command (asyncio + battery stubbed) ───────────────────────────────

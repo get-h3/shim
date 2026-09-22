@@ -100,6 +100,39 @@ CATEGORIES: dict[str, str] = {
     "stress": "Stress & Performance",
 }
 
+#: Values accepted by ``--categories`` map to these tokens; the labels are
+#: what the battery banner prints (and what ``TestResult.category`` carries).
+
+
+def _category_key(value: str) -> str:
+    """Case- and whitespace-insensitive match key for a category value.
+
+    ``--categories`` values arrive from a shell, so ``"Stress &  Performance"``
+    and ``"stress & performance"`` must resolve to the same category as the
+    exact label the banner prints.
+    """
+    return " ".join(value.split()).casefold()
+
+
+#: Every accepted spelling (token *and* display label) -> protocol token.
+_CATEGORY_ALIASES: dict[str, str] = {
+    key: token
+    for token, label in CATEGORIES.items()
+    for key in (_category_key(token), _category_key(label))
+}
+
+
+def category_token(value: str) -> str | None:
+    """Resolve one ``--categories`` value to its protocol token.
+
+    Both forms are accepted: the short protocol tokens (``stress``) and the
+    display labels the battery itself prints (``Stress & Performance``).
+    Matching ignores case and collapses runs of whitespace. Returns ``None``
+    when the value is neither a known token nor a known label.
+    """
+    return _CATEGORY_ALIASES.get(_category_key(value))
+
+
 # Total expected count — kept here so we can sanity-check at runtime.
 EXPECTED_TEST_COUNT = 46
 
