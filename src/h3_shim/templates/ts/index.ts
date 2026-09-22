@@ -7,6 +7,16 @@
  * session state is tracked per `session_id`, and the loop ends after two
  * result callbacks.
  *
+ * Session liveness + GC (DF5-H3-SHIM-2): a session is *live* only while the
+ * harness still owes it work — from the `/v1/process` that opened the turn
+ * until that turn is answered by `/v1/result`, is cancelled, or ends.
+ * `health().active_sessions` counts live sessions only. An answered session
+ * stays in the maps for a bounded closing window (the loop's END callback
+ * and `GET /v1/sessions/:id` still resolve) and is then dropped by
+ * `sweepIdle` — an idle TTL (`H3_SESSION_TTL_S`, default 30s) plus a hard
+ * entry cap (`H3_SESSION_MAX`) — so one-shot / error-path / cancelled
+ * sessions cannot leak and the table cannot grow with every conversation.
+ *
  * To run:
  *
  *   npm install
@@ -39,6 +49,11 @@ import {
 const VERSION = '1.0.0';
 const PROTOCOL_VERSION = '1.0';
 
+// Session GC (DF5-H3-SHIM-2): idle TTL + hard cap on tracked sessions.
+// H3_SESSION_TTL_S is in seconds; zero or less disables the TTL sweep.
+const SESSION_TTL_MS = Number(process.env.H3_SESSION_TTL_S ?? '30') * 1000;
+const MAX_SESSIONS = Number(process.env.H3_SESSION_MAX ?? '1024');
+
 const DECISION_TEXT = 'text' as const;
 const DECISION_END = 'end' as const;
 const END_REASON_TASK_COMPLETE = 'task_complete' as const;
@@ -56,6 +71,15 @@ interface SessionRecord {
 interface SessionState {
   resultCount: number;
   streamingMode: boolean;
+  /** Epoch ms of the last request that touched this session (idle sweep). */
+  lastActive: number;
+  /**
+   * True while the harness still owes this session work (DF5-H3-SHIM-2).
+   * It goes false once a non-streaming turn has been answered, so a
+   * one-shot / error-path / cancelled conversation stops counting in
+   * `health().active_sessions`.
+   */
+  live: boolean;
 }
 
 class EchoHarness implements Harness {
@@ -66,10 +90,66 @@ class EchoHarness implements Harness {
   private stateFor(sessionId: string): SessionState {
     let st = this.sessions.get(sessionId);
     if (!st) {
-      st = { resultCount: 0, streamingMode: false };
+      st = {
+        resultCount: 0,
+        streamingMode: false,
+        lastActive: Date.now(),
+        live: true,
+      };
       this.sessions.set(sessionId, st);
     }
+    st.lastActive = Date.now();
     return st;
+  }
+
+  /**
+   * Session GC (DF5-H3-SHIM-2): drop entries that outlived the idle TTL and
+   * evict the least-recently-active beyond the hard cap, returning how many
+   * session entries were dropped.
+   *
+   * Every request path calls this, so a long-lived harness bounds its table
+   * instead of accumulating one entry per conversation forever — the leak
+   * the on-END purge alone could not close, because one-shot, error-path,
+   * cancel and streaming sessions never receive a second result and so
+   * never reached END.
+   */
+  private sweepIdle(now = Date.now()): number {
+    let dropped = 0;
+    if (SESSION_TTL_MS > 0) {
+      for (const [sid, st] of this.sessions) {
+        if (now - st.lastActive > SESSION_TTL_MS) {
+          this.sessions.delete(sid);
+          dropped += 1;
+        }
+      }
+      for (const [sid, rec] of this.records) {
+        const age = now - Date.parse(rec.last_active);
+        if (Number.isFinite(age) && age > SESSION_TTL_MS) {
+          this.records.delete(sid);
+        }
+      }
+    }
+    const overflow = this.sessions.size - MAX_SESSIONS;
+    if (overflow > 0) {
+      const oldest = [...this.sessions.entries()].sort(
+        (a, b) => a[1].lastActive - b[1].lastActive,
+      );
+      for (const [sid] of oldest.slice(0, overflow)) {
+        this.sessions.delete(sid);
+        this.records.delete(sid);
+        dropped += 1;
+      }
+    }
+    return dropped;
+  }
+
+  /** Live sessions only: entries that still owe the loop work. */
+  private activeCount(): number {
+    let count = 0;
+    for (const st of this.sessions.values()) {
+      if (st.live) count += 1;
+    }
+    return count;
   }
 
   /**
@@ -112,20 +192,25 @@ class EchoHarness implements Harness {
   }
 
   health(): HealthResponse {
+    this.sweepIdle();
     return {
       status: 'ok',
       version: VERSION,
       transport: 'rest',
       protocol_version: PROTOCOL_VERSION,
       uptime_seconds: Math.floor((Date.now() - this.startedAt) / 1000),
-      active_sessions: this.sessions.size,
+      active_sessions: this.activeCount(),
       capabilities: [DECISION_TEXT, DECISION_END],
     };
   }
 
   async onProcess(req: ProcessRequest) {
+    this.sweepIdle();
     const st = this.stateFor(req.session_id);
     st.streamingMode = req.message.content.includes('do not finish');
+    // A new user turn re-activates a session that had gone quiet
+    // (DF5-H3-SHIM-2).
+    st.live = true;
 
     const history = (req.context?.history ?? []).map((m: { role: string; content: string }) => ({
       role: m.role,
@@ -146,6 +231,7 @@ class EchoHarness implements Harness {
   }
 
   async onResult(req: ResultRequest) {
+    this.sweepIdle();
     const st = this.stateFor(req.session_id);
     st.resultCount += 1;
 
@@ -161,6 +247,15 @@ class EchoHarness implements Harness {
         },
       };
     } else {
+      // DF5-H3-SHIM-2: the harness has answered the only result of a
+      // non-streaming turn with its final text, so nothing is outstanding
+      // any more — the session stops being counted as live. The entry is
+      // retained for the loop's closing result callback (answered with END
+      // above) and for GET /v1/sessions/:id, and the idle sweep forgets it
+      // afterwards, so one-shot conversations cannot accumulate.
+      if (!st.streamingMode) {
+        st.live = false;
+      }
       decision = {
         decision: DECISION_TEXT,
         decision_id: randomUUID(),

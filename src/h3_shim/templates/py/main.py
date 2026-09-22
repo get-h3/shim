@@ -4,7 +4,10 @@ This file was scaffolded by ``hermes-h3 scaffold --lang py`` from
 ``get-h3/shim/src/h3_shim/templates/py/main.py``. It implements a minimal
 but H3-compliant harness: every user message is echoed back as text,
 session state is tracked per ``session_id``, and the loop ends after two
-result callbacks.
+result callbacks. Sessions are counted by ``/v1/health`` only while the
+harness still owes them work, and are reclaimed by an idle TTL + hard
+cap, so a long-lived harness does not accumulate one entry per
+conversation (DF5-H3-SHIM-2).
 
 Run with::
 
@@ -201,6 +204,11 @@ class SessionState:
         self.turn_count = 0
         self.streaming_mode = False
         self.status = SessionStatus.ACTIVE.value
+        # DF5-H3-SHIM-2: a session is LIVE only while the harness still owes
+        # it work — from the /v1/process that opened the turn until that turn
+        # is answered by /v1/result, is cancelled, or ends. It is the field
+        # ``health().active_sessions`` counts.
+        self.live = True
 
 
 class EchoHarness:
@@ -208,19 +216,57 @@ class EchoHarness:
 
     Mirrors the Go echo example from get-h3/sdk-go/examples/echo/main.go:
     messages containing ``"do not finish"`` enable streaming mode, and the
-    session ends after two result callbacks in normal mode. A session that
-    ends naturally drops out of the session table, so
-    ``health().active_sessions`` counts live sessions only and cannot grow
-    without bound on a long-lived harness (DF2-H3-SHIM-3).
+    session ends after two result callbacks in normal mode.
+
+    Session liveness + GC (DF5-H3-SHIM-2). A session is *live* only while
+    the harness still owes it work: it stops being live the moment a
+    non-streaming turn is answered by ``on_result``, is cancelled, or ends.
+    ``health().active_sessions`` counts live sessions only, so the metric
+    cannot grow with every finished conversation — the leak that survived
+    DF2/DF4, where the purge fired only on a *second* result and every
+    one-shot, error-path, cancel and streaming session stayed counted for
+    the life of the process (a live dogfood harness accumulated 1440+
+    sessions; the repo's own battery added ~96 per run).
+
+    The entry itself is retained for a bounded closing window — so the
+    loop's closing ``/v1/result`` can still be answered with the END
+    decision and ``GET /v1/sessions/{id}`` keeps reporting a truthful
+    ``completed`` status — and is then dropped by
+    :meth:`sweep_idle_sessions`: an idle TTL (``H3_SESSION_TTL_S``, default
+    30 s) plus a hard ``H3_SESSION_MAX`` cap, both applied on every request
+    path. The END decision still drops the entry outright.
     """
 
     VERSION = "1.0.0"
     PROTOCOL_VERSION = "1.0"
 
-    def __init__(self) -> None:
+    #: Idle seconds after which any session entry — live or retained — is
+    #: dropped. ``H3_SESSION_TTL_S``; 0 or less disables the TTL sweep.
+    DEFAULT_SESSION_TTL_S = 30.0
+    #: Hard cap on tracked entries; the least-recently-active are evicted
+    #: beyond it (``H3_SESSION_MAX``). Backstop so the table stays bounded
+    #: even with the TTL disabled.
+    DEFAULT_MAX_SESSIONS = 1024
+
+    def __init__(
+        self,
+        *,
+        session_ttl_s: float | None = None,
+        max_sessions: int | None = None,
+    ) -> None:
         self._lock = threading.Lock()
         self._sessions: dict[str, SessionState] = {}
         self._started_at = datetime.utcnow()
+        self._session_ttl_s = (
+            float(os.environ.get("H3_SESSION_TTL_S", self.DEFAULT_SESSION_TTL_S))
+            if session_ttl_s is None
+            else float(session_ttl_s)
+        )
+        self._max_sessions = (
+            int(os.environ.get("H3_SESSION_MAX", self.DEFAULT_MAX_SESSIONS))
+            if max_sessions is None
+            else int(max_sessions)
+        )
 
     def _state(self, session_id: str) -> SessionState:
         with self._lock:
@@ -228,11 +274,44 @@ class EchoHarness:
             if st is None:
                 st = SessionState()
                 self._sessions[session_id] = st
+            st.last_active = datetime.utcnow()
             return st
 
-    def health(self) -> HealthResponse:
+    def sweep_idle_sessions(self, *, now: datetime | None = None) -> int:
+        """Drop sessions that outlived the idle TTL / max-entry cap.
+
+        Returns how many entries were dropped. Called on every request path
+        (health, process, result, cancel, session read), so a long-lived
+        harness bounds its session table instead of accumulating one entry
+        per conversation forever — the sessions that never receive a second
+        result (one-shot ``finished=true`` turns, error paths, cancelled and
+        streaming sessions) can never reach the END purge, and are reclaimed
+        here once they go quiet (DF5-H3-SHIM-2).
+        """
         with self._lock:
-            active = len(self._sessions)
+            return self._sweep_locked(now or datetime.utcnow())
+
+    def _sweep_locked(self, now: datetime) -> int:
+        dropped = 0
+        if self._session_ttl_s > 0:
+            for session_id, st in list(self._sessions.items()):
+                if (now - st.last_active).total_seconds() > self._session_ttl_s:
+                    del self._sessions[session_id]
+                    dropped += 1
+        overflow = len(self._sessions) - self._max_sessions
+        if overflow > 0:
+            oldest = sorted(
+                self._sessions.items(), key=lambda item: item[1].last_active
+            )
+            for session_id, _ in oldest[:overflow]:
+                del self._sessions[session_id]
+                dropped += 1
+        return dropped
+
+    def health(self) -> HealthResponse:
+        self.sweep_idle_sessions()
+        with self._lock:
+            active = sum(1 for st in self._sessions.values() if st.live)
         uptime = int((datetime.utcnow() - self._started_at).total_seconds())
         return HealthResponse(
             status=HealthStatus.OK,
@@ -245,10 +324,16 @@ class EchoHarness:
         )
 
     def on_process(self, req: ProcessRequest) -> Decision:
+        self.sweep_idle_sessions()
         st = self._state(req.session_id)
-        st.streaming_mode = "do not finish" in req.message.content
-        st.turn_count += 1
-        st.last_active = datetime.utcnow()
+        with self._lock:
+            # A new user turn re-activates a session that had gone quiet
+            # (DF5-H3-SHIM-2).
+            st.streaming_mode = "do not finish" in req.message.content
+            st.turn_count += 1
+            st.live = True
+            st.status = SessionStatus.ACTIVE.value
+            st.last_active = datetime.utcnow()
 
         content = f"Echo: {req.message.content}"
         history = [
@@ -263,11 +348,15 @@ class EchoHarness:
         )
 
     def on_result(self, req: ResultRequest) -> Decision:
+        self.sweep_idle_sessions()
         st = self._state(req.session_id)
-        st.result_count += 1
-        st.last_active = datetime.utcnow()
+        with self._lock:
+            st.result_count += 1
+            result_count = st.result_count
+            streaming = st.streaming_mode
+            st.last_active = datetime.utcnow()
 
-        if not st.streaming_mode and st.result_count >= 2:
+        if not streaming and result_count >= 2:
             # DF2-H3-SHIM-3: the loop is over, so drop the session entry here.
             # ``_state()`` auto-creates entries and only an explicit DELETE
             # used to remove them, so a long-lived harness accumulated every
@@ -290,12 +379,29 @@ class EchoHarness:
                 ),
             )
 
+        if not streaming:
+            # DF5-H3-SHIM-2: the harness has answered the only result of a
+            # non-streaming turn with its final text, so nothing is
+            # outstanding any more — the session stops being *live* and
+            # ``health().active_sessions`` immediately returns to its
+            # baseline. DF2/DF4 purged only on a *second* result, so every
+            # one-shot, error-path, cancel and streaming session stayed
+            # counted forever. The entry itself is retained for a bounded
+            # closing window so the loop's closing ``/v1/result`` is still
+            # answered with the END decision above and
+            # ``GET /v1/sessions/{id}`` reports a truthful ``completed``
+            # status; :meth:`sweep_idle_sessions` forgets it once it goes
+            # quiet.
+            with self._lock:
+                st.live = False
+                st.status = SessionStatus.COMPLETED.value
+
         return Decision(
             decision=DecisionType.TEXT,
             decision_id="echo-result",
             text=TextResponse(
                 content=f"Result received: {req.decision_id}",
-                finished=not st.streaming_mode,
+                finished=not streaming,
             ),
         )
 
@@ -303,9 +409,17 @@ class EchoHarness:
         # Battery (test_5_9b cancel_unknown_session): cancelling a
         # nonexistent session must 404 when the harness tracks sessions.
         # Check the dict directly — _state() would auto-create the session.
+        self.sweep_idle_sessions()
         with self._lock:
-            if req.session_id not in self._sessions:
+            st = self._sessions.get(req.session_id)
+            if st is None:
                 raise HTTPException(status_code=404, detail="Session not found")
+            # DF5-H3-SHIM-2: an interrupted conversation owes no more work,
+            # so it stops being live at once; the entry is retained for the
+            # closing callbacks and reclaimed by the idle sweep.
+            st.live = False
+            st.status = SessionStatus.CANCELLED.value
+            st.last_active = datetime.utcnow()
         return CancelResponse(cancelled=True, cancelled_decision_id=None)
 
     def on_session_terminate(self, session_id: str) -> None:
@@ -316,6 +430,12 @@ class EchoHarness:
         # Protocol GET /v1/sessions/{session_id}: metadata for an active or
         # completed session. Check the dict directly — _state() would
         # auto-create the session (mirrors on_cancel's 404 handling).
+        # DF5-H3-SHIM-2: a session whose turn is over is retained for the
+        # bounded closing window and reports ``completed``; once the sweep
+        # forgets it (idle TTL / max cap) or the loop returns END, this 404s,
+        # which is the answer the compliance battery documents for a harness
+        # that keeps no state for an ended session.
+        self.sweep_idle_sessions()
         with self._lock:
             st = self._sessions.get(session_id)
             if st is None:
