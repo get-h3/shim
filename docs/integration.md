@@ -206,8 +206,13 @@ installed in the same interpreter as Hermes, otherwise by shelling out
 to the `hermes-h3` executable).
 
 ```bash
-# Install the plugin (copy the directory from this repo)
-cp -r h3 ~/.hermes/plugins/h3/
+# Install the plugin (copy the directory from this repo).
+# Target the PARENT — `cp -r h3 ~/.hermes/plugins/h3/` copies INTO an
+# existing h3 dir and NESTS the fresh copy while the stale one keeps serving.
+cp -r h3 ~/.hermes/plugins/
+
+# Refresh an existing install in place:
+rsync -a --delete h3/ ~/.hermes/plugins/h3/
 
 # Enable it (user plugins are opt-in)
 hermes plugins enable h3
@@ -392,7 +397,7 @@ alternative.  Note the fallback order is independent: a session with no
 
 | Symptom | Cause / fix |
 |---------|------------|
-| `hermes h3 --help` → `error: argument command: invalid choice: 'h3'` | Plugin not installed or not enabled — see §3.4 (`cp -r h3 ~/.hermes/plugins/h3/` + `hermes plugins enable h3`). |
+| `hermes h3 --help` → `error: argument command: invalid choice: 'h3'` | Plugin not installed or not enabled — see §3.4 (`cp -r h3 ~/.hermes/plugins/` (parent) + `hermes plugins enable h3`). |
 | `Error: no harness specified and no default_harness set` | No harness registered — `hermes-h3 install <name> --endpoint <url> --set-default`. |
 | `Error: endpoint <url> failed its health check: ...` (exit 1) | `install` probed `GET /v1/health` and the endpoint is unreachable, is not an H3 harness, or reports a non-`ok` status — **nothing was written**. Fix the URL or start the harness, confirm with `hermes-h3 verify --endpoint <url>`, then re-run `install`. |
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
