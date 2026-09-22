@@ -15,8 +15,14 @@ invocation is passed through to the real CLI so behaviour is identical:
   interpreter), the reconstructed argv is forwarded to the
   ``hermes-h3`` executable and its exit code is propagated.
 
-Install: copy this directory to ``~/.hermes/plugins/h3/`` and run
-``hermes plugins enable h3``.  See docs/integration.md in this repo.
+Install: copy this directory to ``~/.hermes/plugins/`` (the PARENT —
+run ``cp -r h3 ~/.hermes/plugins/`` or refresh an existing install with
+``rsync -a --delete h3/ ~/.hermes/plugins/h3/``) and run ``hermes
+plugins enable h3``.  **Warning:** ``cp -r h3 ~/.hermes/plugins/h3/``
+(the old documented form) copies INTO the existing ``h3`` directory,
+NESTING the fresh copy at ``~/.hermes/plugins/h3/h3/`` while the stale
+copy keeps serving.  ``register()`` emits a loud warning when the
+installed copy looks nested or stale.  See docs/integration.md.
 """
 
 from __future__ import annotations
@@ -26,7 +32,17 @@ import logging
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
+
+PLUGIN_VERSION = "0.2.0"
+"""Installed-copy version marker (DF5-H3-SHIM-3).
+
+Recorded next to the installed ``__init__.py`` as
+``_plugin_version.txt``; ``register()`` compares it against the running
+copy to warn on stale installs.  Bump together with plugin behaviour
+changes.
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -355,8 +371,85 @@ def _handler(args: argparse.Namespace) -> int | None:
     return proc.returncode or None
 
 
-def register(ctx: Any) -> None:
-    """Register the ``h3`` CLI subcommand group with Hermes Core."""
+# Install-fix commands named in the staleness warning (DF5-H3-SHIM-3):
+# parent-target copy, and the in-place refresh for an existing install.
+_FIX_PARENT = "cp -r h3 ~/.hermes/plugins/"
+_FIX_RSYNC = "rsync -a --delete h3/ ~/.hermes/plugins/h3/"
+
+
+def _parse_version(value: str) -> tuple[int, ...]:
+    """Best-effort ``1.2.3`` → ``(1, 2, 3)``; unparseable → ``(0,)``.
+
+    ``(0,)`` deliberately compares OLDER than any real ``0.x``/``1.x``
+    marker so a corrupt marker is reported stale (safe direction).
+    """
+    parts: list[int] = []
+    for chunk in value.strip().split("."):
+        if not chunk.isdigit():
+            return (0,)
+        parts.append(int(chunk))
+    return tuple(parts) if parts else (0,)
+
+
+def _stale_install_reasons(base: Path) -> list[str]:
+    """Return human-readable reasons the install rooted at ``base`` is stale.
+
+    ``base`` is the installed plugin directory (``~/.hermes/plugins/h3``).
+    Two signatures are checked: the classic cp -r NEST (a nested ``h3/``
+    subdirectory — the fresh copy buried inside the stale one, which
+    keeps serving) and a ``_plugin_version.txt`` marker older than this
+    copy's ``PLUGIN_VERSION`` (or missing/unparseable — a pre-marker or
+    corrupted install).  Empty list = install looks current.
+    """
+    reasons: list[str] = []
+    nested = base / "h3"
+    if nested.is_dir():
+        reasons.append(
+            "nested install: "
+            f"'{base / 'h3'}' exists — a previous install copied INTO this "
+            "directory instead of replacing it, so the stale copy keeps "
+            "serving"
+        )
+    marker = base / "_plugin_version.txt"
+    if not marker.is_file():
+        reasons.append(
+            f"no version marker at '{marker}' — pre-marker or corrupted "
+            "install, cannot prove it is current"
+        )
+        return reasons
+    installed = _parse_version(marker.read_text(encoding="utf-8"))
+    if installed < _parse_version(PLUGIN_VERSION):
+        reasons.append(
+            f"installed plugin version {_parse_version(PLUGIN_VERSION)}-stale: "
+            f"marker says '{marker.read_text(encoding='utf-8').strip()}', "
+            f"this copy is {PLUGIN_VERSION}"
+        )
+    return reasons
+
+
+def _warn_on_stale_install(base: Path) -> None:
+    """Log a loud WARNING per staleness reason, naming the fix command."""
+    for reason in _stale_install_reasons(base):
+        logger.warning(
+            "h3 plugin install looks STALE (%s). The CLI mirror you are "
+            "running may not match the hermes-h3 CLI. Fix: reinstall with "
+            "'%s' (parent target) or refresh in place with '%s'.",
+            reason,
+            _FIX_PARENT,
+            _FIX_RSYNC,
+        )
+
+
+def register(ctx: Any, base: Path | str | None = None) -> None:
+    """Register the ``h3`` CLI subcommand group with Hermes Core.
+
+    ``base`` overrides the installed-plugin directory for the
+    staleness check (defaults to the directory containing this file);
+    it exists so the check is testable without touching the real
+    ``~/.hermes``.
+    """
+    install_base = Path(base) if base is not None else Path(__file__).resolve().parent
+    _warn_on_stale_install(install_base)
     ctx.register_cli_command(
         name="h3",
         help="H3 harness management (delegates to the hermes-h3 CLI)",
