@@ -105,7 +105,18 @@ class H3Client:
             session_id=session_id,
             message=message,
             identity=identity,
-            context=context,
+            # DF5-H3-SHIM-1: strict zod harnesses (ts scaffold) type
+            # context.config / context.session_state as REQUIRED objects,
+            # but exclude_unset drops them when a bare Context() leaves
+            # both unset (pydantic default_factory=dict). Re-attach as
+            # explicitly set so the documented default embed path always
+            # carries both; caller-supplied values pass through
+            # untouched.
+            context=context.model_copy(
+                update={
+                    key: getattr(context, key) for key in ("config", "session_state")
+                }
+            ),
         )
         try:
             resp = await self._rest.post(

@@ -337,6 +337,14 @@ models, memory, …). `max_iterations` (default 50) caps `/v1/result`
 round-trips per `run()` — mirroring the canonical Hermes agent loop. When
 `identity` is omitted a placeholder `("shim", session_id)` identity is used.
 
+A bare `Context()` (no kwargs) is the minimal valid embed: the client
+always puts `config` and `session_state` on the wire (both `{}` unless
+supplied), because strict harnesses — the TypeScript scaffold's zod schema
+among them — type them as REQUIRED objects and answer 400
+INVALID_REQUEST when they are absent. Other defaulted fields (`history`,
+`tools`, `models`, …) stay absent from the payload until set; an absent
+optional is valid, an explicit null is not.
+
 Optional hooks let the embedding host supply the two things the loop
 itself does not own — the LLM client and the user-facing transport:
 

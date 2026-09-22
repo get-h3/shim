@@ -261,7 +261,11 @@ class TestProcess:
         assert body["session_id"] == "s_001"
         assert body["message"]["role"] == "user"
         assert body["identity"]["platform"] == "telegram"
-        assert body["context"] == {} or "history" in body["context"]
+        # DF5-H3-SHIM-1: the zod schema types context.config /
+        # context.session_state as REQUIRED objects — a bare Context()
+        # must still embed both on the wire.
+        assert body["context"]["config"] == {}
+        assert body["context"]["session_state"] == {}
 
     async def test_http_error_raises(self):
         c = _make_client()
@@ -795,8 +799,10 @@ class TestRealTsScaffoldInterop:
       REQUIRED objects (``history``/``tools``/``models`` carry
       ``.default()``, these two do not), so the tests pass them
       explicitly — explicitly-passed fields survive ``exclude_unset``.
-      Invisible to the Python-mock layer; flagged as a follow-up
-      protocol-doc gap, not fixed here (this task is test-only).
+      Invisible to the Python-mock layer; flagged as a follow-up gap and
+      since FIXED for the default path by DF5-H3-SHIM-1 (the client
+      re-attaches both fields as explicitly set), so the explicit
+      passing here is belt-and-braces for the direct-Context shape.
     * ``ResultRequestSchema.result.duration_ms`` is
       ``z.number().int().min(0).optional()`` while the SDK's own
       ``ResultPayloadSchema`` types the same field
@@ -903,3 +909,160 @@ class TestRealTsScaffoldInterop:
         assert loop.iteration == 2  # two result round-trips, then END
         assert texts[0] == "Echo: hi"
         assert texts[1].startswith("Result received: ")
+
+
+# ── default-Context embed regression (DF5-H3-SHIM-1) ────────────────────────
+
+
+class _StrictZodContextHandler:
+    """Handler mirroring the zod rule DF5-H3-SHIM-1 is about.
+
+    ``ContextSchema`` (ts scaffold via @get-h3/h3-harness-sdk) types
+    ``config`` / ``session_state`` as REQUIRED objects: ABSENT from the
+    JSON is a type error ("expected object, received undefined"). This is
+    the counterpart of ``_StrictZodLikeHandler`` (which pins the
+    optional-null rule) for the required-object rule; echo behaviour is
+    identical so a full loop run can complete against it.
+    """
+
+    def __init__(self) -> None:
+        self.captured_process_bodies: list[dict] = []
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode("utf-8"))
+        if request.method == "POST" and request.url.path == "/v1/process":
+            self.captured_process_bodies.append(body)
+            context = body.get("context")
+            for field in ("config", "session_state"):
+                if not isinstance(context, dict) or field not in context:
+                    raise _Strict400Error(
+                        f"zod: context.{field} expected object, received undefined"
+                    )
+                if not isinstance(context[field], dict):
+                    raise _Strict400Error(f"zod: context.{field} expected object")
+            return httpx.Response(
+                200,
+                json={
+                    "decision": "text",
+                    "decision_id": "d_df5_1",
+                    "text": {"content": "Echo: hi", "finished": True},
+                },
+            )
+        if request.method == "POST" and request.url.path == "/v1/result":
+            return httpx.Response(
+                200,
+                json={
+                    "decision": "end",
+                    "decision_id": "d_df5_end",
+                    "end": {"reason": "task_complete", "summary": "ok"},
+                },
+            )
+        return httpx.Response(404, json={"error": {"code": "NOT_FOUND"}})
+
+
+class TestDefaultContextEmbed:
+    """DF5-H3-SHIM-1: the bare-Context embed path survives strict zod.
+
+    The DOCUMENTED default embed path (docs/api.md §H3ShimLoop) is
+    ``H3ShimLoop(client, session_id=..., context=Context())`` with no
+    kwargs. ``Context.config`` / ``Context.session_state`` carry pydantic
+    ``default_factory=dict`` defaults, so on a bare ``Context()`` both are
+    UNSET — and the client serializes with ``exclude_unset``, dropping
+    both keys from the wire. The ts scaffold's zod schema types both as
+    REQUIRED objects: the server answers 400 INVALID_REQUEST
+    ("context.config expected object, received undefined") and the loop
+    returns "error". The pre-fix gap was invisible to the Python-mock
+    layer (the DF4 test docstring said so itself) and the closed-loop
+    test sidestepped it with ``Context(config={}, session_state={})``.
+    """
+
+    async def test_shim_loop_bare_context_wire_carries_config_and_session_state(
+        self,
+    ) -> None:
+        """Bare Context() → POSTed /v1/process body has both required keys.
+
+        Runs the full loop against the zod-faithful mock so a missing key
+        surfaces twice: as a captured body without the keys, and as the
+        loop's 400-driven ``"error"`` sentinel.
+        """
+        strict = _StrictZodContextHandler()
+
+        async def strict_send(request: httpx.Request) -> httpx.Response:
+            try:
+                return strict.handle_request(request)
+            except _Strict400Error as exc:
+                return httpx.Response(
+                    400,
+                    json={"error": {"code": "INVALID_REQUEST", "message": str(exc)}},
+                )
+
+        client = H3Client(endpoint="http://harness.test")
+        client._rest = httpx.AsyncClient(
+            base_url=client.endpoint,
+            transport=httpx.MockTransport(strict_send),
+        )
+        loop = H3ShimLoop(  # bare Context: no config/session_state kwargs
+            client,
+            session_id="s_df5_loop",
+            context=Context(),
+        )
+        try:
+            reason = await loop.run(Message(role="user", content="hi"))
+        finally:
+            await client._rest.aclose()
+
+        assert reason == "task_complete"
+        assert loop.last_error is None
+        [body] = strict.captured_process_bodies
+        assert isinstance(body["context"].get("config"), dict)
+        assert isinstance(body["context"].get("session_state"), dict)
+
+    async def test_client_process_bare_context_body_values(self):
+        """Schema-faithful mock: POSTed context carries both required objects."""
+        c = _make_client()
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "text",
+                "decision_id": "d_df5_c",
+                "text": {"content": "Echo: hi", "finished": True},
+            },
+        )
+        await c.process(
+            session_id="s_df5_c",
+            message=Message(role="user", content="hi"),
+            identity=Identity(platform="shim", chat_id="s_df5_c"),
+            context=Context(),
+        )
+        body = c._rest.post.call_args.kwargs["json"]
+        assert body["context"]["config"] == {}
+        assert body["context"]["session_state"] == {}
+
+    async def test_explicit_config_survives_and_unset_fields_stay_absent(self):
+        """Only UNSET context fields are materialized — explicit values win.
+
+        Guards against overcorrecting: an explicit ``config`` must reach
+        the wire untouched, a defaulted ``session_state`` is still
+        materialized as ``{}``, and never-set list fields (``history`` et
+        al.) stay absent exactly as ``exclude_unset`` left them since DF4.
+        """
+        c = _make_client()
+        c._rest.post.return_value = _fake_response(
+            200,
+            {
+                "decision": "text",
+                "decision_id": "d_df5_e",
+                "text": {"content": "Echo: hi", "finished": True},
+            },
+        )
+        await c.process(
+            session_id="s_df5_e",
+            message=Message(role="user", content="hi"),
+            identity=Identity(platform="shim", chat_id="s_df5_e"),
+            context=Context(config={"temperature": 0.5}),
+        )
+        context_body = c._rest.post.call_args.kwargs["json"]["context"]
+        assert context_body["config"] == {"temperature": 0.5}
+        assert context_body["session_state"] == {}
+        assert "history" not in context_body
+        assert "tools" not in context_body
