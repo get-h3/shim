@@ -974,6 +974,8 @@ class TestDefaultContextEmbed:
     returns "error". The pre-fix gap was invisible to the Python-mock
     layer (the DF4 test docstring said so itself) and the closed-loop
     test sidestepped it with ``Context(config={}, session_state={})``.
+    Mock-layer tests are structurally blind to this class — the live
+    ts-stack proof (``TestRealTsScaffoldInterop``) is the real gate.
     """
 
     async def test_shim_loop_bare_context_wire_carries_config_and_session_state(
