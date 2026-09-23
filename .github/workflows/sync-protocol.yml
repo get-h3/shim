@@ -3,6 +3,9 @@ name: Sync Protocol
 on:
   repository_dispatch:
     types: [protocol-updated]
+  # PROTO-CI-002: allow manual re-runs (dispatch-only workflow; the
+  # repository_dispatch fires only when protocol republishes)
+  workflow_dispatch:
 
 jobs:
   sync:
