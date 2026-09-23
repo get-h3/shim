@@ -1,9 +1,15 @@
-"""README quickstart venv-trap regression guards (DF4-H3-SHIM-3).
+"""Docs regression guards.
 
-The quickstart was rewritten so each role has its OWN venv, explicitly
-activated: the harness venv (.venv inside h3-harness-py) for scaffold deps,
-and a separate .venv-h3-test for the shim test battery. These tests keep the
-docs honest going forward.
+README (DF4-H3-SHIM-3): the quickstart was rewritten so each role has its
+OWN venv, explicitly activated: the harness venv (.venv inside
+h3-harness-py) for scaffold deps, and a separate .venv-h3-test for the shim
+test battery.
+
+docs/api.md (SHIM-DF3-H3-SHIM-4): the H3ShimLoop / Context / H3Loader
+constructor shapes are documented as the code REALLY is — a pydantic
+`Identity` default (not a tuple), `Context.memory` as a `str`, and an
+H3Loader config that names `default_harness`. These tests keep the prose
+honest going forward.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 README = REPO_ROOT / "README.md"
+API_DOC = REPO_ROOT / "docs/api.md"
 
 
 def test_readme_quickstart_block_exists() -> None:
@@ -67,3 +74,51 @@ def test_harness_requirements_docmarks_its_consumer() -> None:
     first_line = p.read_text(encoding="utf-8").lstrip().splitlines()[0]
     assert first_line.startswith("#"), "requirements.txt must carry consumer doc"
     assert "test_battery.sh" in first_line
+
+
+# ── docs/api.md — real constructor shapes (SHIM-DF3-H3-SHIM-4) ───────────────
+
+
+def test_api_doc_no_tuple_identity_default() -> None:
+    """The tuple-identity wording is gone; the pydantic default is documented.
+
+    The old prose read as a literal ``("shim", session_id)`` Python tuple,
+    which pydantic rejects — a real embedding host burned iterations on it.
+    """
+    text = API_DOC.read_text(encoding="utf-8")
+    assert '("shim", session_id)' not in text
+    assert 'Identity(platform="shim", chat_id=session_id)' in text
+
+
+def test_api_doc_identity_default_matches_source() -> None:
+    """The documented default identity IS the code's default (not a paraphrase)."""
+    source = (REPO_ROOT / "src/h3_shim/shim_loop.py").read_text(encoding="utf-8")
+    assert re.search(
+        r'Identity\(\s*platform="shim",\s*chat_id=session_id,?\s*\)', source
+    ), "shim_loop default identity changed — update docs/api.md with it"
+
+
+def test_api_doc_embedding_host_quickstart_exists() -> None:
+    text = API_DOC.read_text(encoding="utf-8")
+    assert "Embedding-host quickstart" in text
+    assert "from h3_shim.shim_loop import H3ShimLoop" in text
+
+
+def test_api_doc_loader_example_includes_default_harness() -> None:
+    """The H3Loader usage config must name default_harness.
+
+    A config with only ``harnesses``/``sessions`` falls back to the
+    ``"native"`` route, which has no entry in ``loader.harnesses``.
+    """
+    text = API_DOC.read_text(encoding="utf-8")
+    section = text[text.index("## H3Loader") : text.index("## H3ShimLoop")]
+    assert '"default_harness"' in section
+    assert 'config = {"harnesses": {...}, "sessions": {...}}' not in section
+
+
+def test_api_doc_context_documents_memory_as_string() -> None:
+    text = API_DOC.read_text(encoding="utf-8")
+    assert "`memory` is a plain `str`" in text, "Context prose must say str"
+    assert "`memory` is a str" in text, "quickstart must repeat memory-is-str"
+    protocol = (REPO_ROOT / "src/h3_shim/protocol.py").read_text(encoding="utf-8")
+    assert re.search(r'memory:\s*str\s*=\s*""', protocol)

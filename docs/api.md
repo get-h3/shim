@@ -297,8 +297,8 @@ Notable attributes after construction:
 
 | Attribute | Type | Description |
 |---|---|---|
-| `harnesses` | `dict[str, H3Client]` | Harness name → client (`None`-like absent for `native`) |
-| `default_harness` | `str` | Fallback harness name, default `"native"` |
+| `harnesses` | `dict[str, H3Client]` | Harness name → client. The reserved name `"native"` is never a key here (it is Hermes' own agent loop): look names up with `.get(name)`, since `harnesses["native"]` raises `KeyError`. |
+| `default_harness` | `str \| None` | Fallback route — `config.get("default_harness", "native")`: `"native"` when the key is absent, `None` when the key is present but unset. Embedding hosts should set it to a harness they configured. |
 | `max_consecutive_failures` | `int` | Consecutive failures before a harness is marked unhealthy (default 3) |
 
 ### Methods
@@ -338,14 +338,25 @@ Stop health checks and close all harness clients.
 ```python
 from h3_shim.loader import H3Loader
 
-loader = H3Loader(config)  # config = {"harnesses": {...}, "sessions": {...}}
+config = {
+    "default_harness": "my-harness",
+    "harnesses": {"my-harness": {"endpoint": "http://localhost:9191"}},
+    "sessions": {},
+}
+loader = H3Loader(config)
 await loader.start_health_checks()
 
-harness = loader.resolve("telegram", "-100", "84802")  # (platform, chat_id, thread_id)
-client = loader.harnesses.get(harness)  # None for native
+harness = await loader.resolve("telegram", "-100", "84802")  # (platform, chat_id, thread_id)
+client = loader.harnesses.get(harness)  # an H3Client, or None for "native"
 
 await loader.close()
 ```
+
+Set `default_harness` to a harness you actually configured. When the key is
+absent the loader falls back to `"native"`, which is never a key in
+`loader.harnesses` — `resolve()` may legitimately answer `"native"` (Hermes
+runs that session in-process), so a `None` client means *you* host the loop,
+not that routing failed.
 
 ---
 
@@ -358,7 +369,12 @@ Drives one H3 session through the process / result loop. `client` is the
 identifier, and `context` is the per-session `Context` (history, tools,
 models, memory, …). `max_iterations` (default 50) caps `/v1/result`
 round-trips per `run()` — mirroring the canonical Hermes agent loop. When
-`identity` is omitted a placeholder `("shim", session_id)` identity is used.
+`identity` is omitted the loop constructs a pydantic
+`Identity(platform="shim", chat_id=session_id)` for you. Always pass an
+`Identity` instance or a dict carrying the same fields (`platform`,
+`chat_id`, `thread_id`, `user_name`, `user_id`) — the kwarg is validated as
+a model, so a bare tuple/positional pair is rejected with a pydantic error
+rather than coerced.
 
 A bare `Context()` (no kwargs) is the minimal valid embed: the client
 always puts `config` and `session_state` on the wire (both `{}` unless
@@ -366,7 +382,9 @@ supplied), because strict harnesses — the TypeScript scaffold's zod schema
 among them — type them as REQUIRED objects and answer 400
 INVALID_REQUEST when they are absent. Other defaulted fields (`history`,
 `tools`, `models`, …) stay absent from the payload until set; an absent
-optional is valid, an explicit null is not.
+optional is valid, an explicit null is not. `memory` is a plain `str`
+(default `""`), **not** an object — `Context(memory={})` fails validation;
+structured state belongs in the dict fields `session_state` or `config`.
 
 Optional hooks let the embedding host supply the two things the loop
 itself does not own — the LLM client and the user-facing transport:
@@ -405,6 +423,41 @@ the first pydantic error line. Cancellation stays callback-free.
 
 ```python
 async def register_tool(...)  # see above
+```
+
+### Embedding-host quickstart
+
+The exact constructor shapes an embedding host needs — copy-safe, with no
+placeholder tuples and no missing loader config:
+
+```python
+from h3_shim.loader import H3Loader
+from h3_shim.protocol import Context, Identity
+from h3_shim.shim_loop import H3ShimLoop
+
+# 1. Identity — a pydantic model. An instance or a dict with these fields
+#    is accepted (the wire models coerce dicts); a tuple is not.
+identity = Identity(platform="telegram", chat_id="-1001234567890", thread_id="42")
+# identity = {"platform": "telegram", "chat_id": "-1001234567890", "thread_id": "42"}
+
+# 2. Context — `memory` is a str (default ""); the dict fields are
+#    `config` and `session_state`.
+context = Context(memory="", config={}, session_state={})
+
+# 3. H3Loader config — set `default_harness` to a configured harness, or
+#    resolve() answers "native", which is not a key in `harnesses`.
+loader = H3Loader(
+    {
+        "default_harness": "my-harness",
+        "harnesses": {"my-harness": {"endpoint": "http://localhost:9191"}},
+        "sessions": {},
+    }
+)
+harness = await loader.resolve("telegram", "-1001234567890", "42")  # "my-harness"
+client = loader.harnesses[harness]  # an H3Client
+
+# 4. Drive the session.
+loop = H3ShimLoop(client, "sess-7f3a9c", context, identity=identity)
 ```
 
 ---
