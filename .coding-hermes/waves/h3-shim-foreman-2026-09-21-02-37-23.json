@@ -33,5 +33,10 @@
       "dispatch_script": "/tmp/h3shim387_dispatch_GAP-047.sh"
     }
   ],
-  "deferred": ["DF4-H3-SHIM-2 (overlaps ts+go templates with DF4-1/DF4-4)", "DF4-H3-SHIM-4 (overlaps test_battery.py with DF4-2, go template with DF4-2)"]
+  "deferred": [
+    "DF4-H3-SHIM-2 (overlaps ts+go templates with DF4-1/DF4-4)",
+    "DF4-H3-SHIM-4 (overlaps test_battery.py with DF4-2, go template with DF4-2)"
+  ],
+  "finished_at": "2026-09-22T11:47:43Z",
+  "finished_note": "recovered by tick h3-shim-foreman-2026-09-22-11-39-25: all branches verified merged to main (f897019/bf7e326/d46d24a @ #388), board rows complete, worktrees removed, recovery push flushed backlog to origin"
 }

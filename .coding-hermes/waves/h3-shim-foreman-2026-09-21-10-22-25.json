@@ -33,6 +33,13 @@
       "scope": "test_loop_reroutes_on_failure determinism (event-based, no wall-clock race)"
     }
   ],
-  "e2e_battery": {"ran_this_tick": true, "result": "46/46 x3 + live loop PASS"},
-  "deferred": ["DF4-H3-SHIM-4 (collides with DF4-H3-SHIM-2 on templates/go+ts)"]
+  "e2e_battery": {
+    "ran_this_tick": true,
+    "result": "46/46 x3 + live loop PASS"
+  },
+  "deferred": [
+    "DF4-H3-SHIM-4 (collides with DF4-H3-SHIM-2 on templates/go+ts)"
+  ],
+  "finished_at": "2026-09-22T11:47:43Z",
+  "finished_note": "recovered by tick h3-shim-foreman-2026-09-22-11-39-25: all branches verified merged to main (f897019/bf7e326/d46d24a @ #388), board rows complete, worktrees removed, recovery push flushed backlog to origin"
 }

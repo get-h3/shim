@@ -1,0 +1,51 @@
+{
+  "wave_id": "h3-shim-foreman-2026-09-22-14-12-55",
+  "tick": 389,
+  "scheduler_tick_id": "h3-shim-foreman-2026-09-22-14-12-55",
+  "base_sha": "44ca1a4",
+  "base_ref": "origin/main",
+  "budget": 9,
+  "composed": 3,
+  "model_provider": "glm-5.3-flash@zai-glm-default (prepaid sub lane, probed LANE_OK pre-dispatch)",
+  "gitreins_binary": "/home/kara/.local/bin/gitreins (pipx 0.14.0; ~/gitreins-poc venv broken — bad interpreter into reaped JEVRES-006 worktree)",
+  "tasks": [
+    {
+      "id": "DF5-H3-SHIM-1",
+      "priority": "P1",
+      "title": "default embed path 400s vs ts scaffold (context.config/session_state unset)",
+      "worktree": "/home/kara/worktrees/h3-shim-DF5-H3-SHIM-1",
+      "branch": "wt/DF5-H3-SHIM-1",
+      "brief": "/tmp/h3shim389_brief_DF5-H3-SHIM-1.txt",
+      "dispatch_script": "/tmp/h3shim389_dispatch_DF5-H3-SHIM-1.sh",
+      "worker_log": "/tmp/h3shim389_worker_DF5-H3-SHIM-1.log"
+    },
+    {
+      "id": "DF5-H3-SHIM-2",
+      "priority": "P1",
+      "title": "session leak: END-purge only fires on result_count>=2; abandoned sessions never purge",
+      "worktree": "/home/kara/worktrees/h3-shim-DF5-H3-SHIM-2",
+      "branch": "wt/DF5-H3-SHIM-2",
+      "brief": "/tmp/h3shim389_brief_DF5-H3-SHIM-2.txt",
+      "dispatch_script": "/tmp/h3shim389_dispatch_DF5-H3-SHIM-2.sh",
+      "worker_log": "/tmp/h3shim389_worker_DF5-H3-SHIM-2.log"
+    },
+    {
+      "id": "DF5-H3-SHIM-3",
+      "priority": "P1",
+      "title": "plugin install doc nests fresh copy + stale mirror serves; exit 0 on failure",
+      "worktree": "/home/kara/worktrees/h3-shim-DF5-H3-SHIM-3",
+      "branch": "wt/DF5-H3-SHIM-3",
+      "brief": "/tmp/h3shim389_brief_DF5-H3-SHIM-3.txt",
+      "dispatch_script": "/tmp/h3shim389_dispatch_DF5-H3-SHIM-3.sh",
+      "worker_log": "/tmp/h3shim389_worker_DF5-H3-SHIM-3.log"
+    }
+  ],
+  "deferred": [
+    "DF5-H3-SHIM-4 (collides with DF5-H3-SHIM-2 on tests/test_battery.py category filter)",
+    "DF4-H3-SHIM-4 (collides with DF5-H3-SHIM-2 on templates + battery assertions)",
+    "DF3-H3-SHIM-4 (collides with DF5-H3-SHIM-1 on docs/api.md)",
+    "DF3-H3-SHIM-7 (owner decision row — keep-vs-revert, not worker-dispatchable)",
+    "CLN-1 (P3 hygiene, stale 13d, superseded in value by 4 fresh P1/P2 rows)"
+  ],
+  "created_at": "2026-09-22T14:20:00-05:00"
+}
