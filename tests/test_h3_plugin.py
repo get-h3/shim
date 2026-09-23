@@ -163,6 +163,44 @@ def test_test_subcommand_with_config_and_flags(plugin: object) -> None:
     assert ns.as_json is True
 
 
+# ── DF-H3-26: --expect-fresh in the plugin mirror ──────────────────────────
+# ``h3-test --expect-fresh`` refuses to run against a stale co-tenant server.
+# ``hermes h3 test`` is documented as the same battery (README, AGENTS.md), so
+# the mirror must forward the flag too — the mirror-drift class of GAP-009 /
+# DF-H3-3 / GAP-091: an option the click CLI has and the mirror does not is
+# ``unrecognized arguments`` for the ``hermes h3`` user.
+
+
+def test_expect_fresh_flag_parses(plugin: object) -> None:
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["test", "--endpoint", INSTALL_ENDPOINT, "--expect-fresh"])
+    assert ns.h3_command == "test"
+    assert ns.expect_fresh is True
+
+
+def test_expect_fresh_rebuilds_the_click_argv(plugin: object) -> None:
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["test", "--endpoint", INSTALL_ENDPOINT, "--expect-fresh"])
+    assert plugin._argv_from_namespace(ns) == [  # type: ignore[attr-defined]
+        "test",
+        "--endpoint",
+        INSTALL_ENDPOINT,
+        "--expect-fresh",
+    ]
+
+
+def test_expect_fresh_default_is_omitted_from_argv(plugin: object) -> None:
+    """Unset, the mirror drops the flag: the forwarded argv is unchanged."""
+    parser = _new_parser(plugin)
+    ns = parser.parse_args(["test", "--endpoint", INSTALL_ENDPOINT])
+    assert ns.expect_fresh is False
+    assert plugin._argv_from_namespace(ns) == [  # type: ignore[attr-defined]
+        "test",
+        "--endpoint",
+        INSTALL_ENDPOINT,
+    ]
+
+
 # ── DF-H3-3: install --name is an alias for the positional NAME ────────────
 # The plugin mirror must expose the same two surfaces as the click CLI.
 # Before the fix, ``hermes h3 install --name X --endpoint URL`` died in

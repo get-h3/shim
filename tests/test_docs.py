@@ -22,6 +22,7 @@ import tomllib
 REPO_ROOT = Path(__file__).resolve().parents[1]
 README = REPO_ROOT / "README.md"
 API_DOC = REPO_ROOT / "docs/api.md"
+INTEGRATION_DOC = REPO_ROOT / "docs/integration.md"
 
 
 def test_readme_quickstart_block_exists() -> None:
@@ -122,3 +123,30 @@ def test_api_doc_context_documents_memory_as_string() -> None:
     assert "`memory` is a str" in text, "quickstart must repeat memory-is-str"
     protocol = (REPO_ROOT / "src/h3_shim/protocol.py").read_text(encoding="utf-8")
     assert re.search(r'memory:\s*str\s*=\s*""', protocol)
+
+
+# ── docs/integration.md — target identity + partial turns (DF-H3-26/29) ─────
+# The battery's new failure detail tells the developer where to read; the
+# identity line and the flag are user-facing behaviour.  A doc pointer that
+# resolves to nothing is worse than no pointer, so these tests exist.
+
+
+def test_integration_doc_documents_expect_fresh() -> None:
+    """The battery reference documents the connect identity and the flag."""
+    text = INTEGRATION_DOC.read_text(encoding="utf-8")
+    assert "--expect-fresh" in text
+    assert "Target health: version=" in text
+    assert "(not reported)" in text, "missing-field degradation must be documented"
+
+
+def test_partial_turn_hint_points_at_a_real_section() -> None:
+    """``test_2_4``'s hint names a section that actually exists."""
+    from h3_shim.test_battery import PARTIAL_TURN_HINT
+
+    section = PARTIAL_TURN_HINT.split("docs/integration.md '")[1].rstrip("')")
+    assert section == "Partial turns", PARTIAL_TURN_HINT
+    text = INTEGRATION_DOC.read_text(encoding="utf-8")
+    assert f"### {section}" in text, f"docs/integration.md lost its {section!r} section"
+    body = text[text.index(f"### {section}") :]
+    assert "do not finish" in body[:800]
+    assert "finished=false" in body[:800]

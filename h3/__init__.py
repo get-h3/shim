@@ -78,6 +78,7 @@ except Exception:  # pragma: no cover - host-dependent
 # dest → click flag name for boolean flags
 _FLAG_FLAGS = {
     "as_json": "--json",
+    "expect_fresh": "--expect-fresh",
     "set_default": "--set-default",
     "fallback": "--fallback",
     "force": "--force",
@@ -108,7 +109,7 @@ _POSITIONALS: dict[str, tuple[str, ...]] = {
 
 # value options declared by the mirror per subcommand
 _OPTIONS: dict[str, tuple[str, ...]] = {
-    "test": ("harness", "endpoint", "as_json", "categories"),
+    "test": ("harness", "endpoint", "as_json", "categories", "expect_fresh"),
     "install": ("endpoint", "transport", "timeout_ms", "set_default"),
     "verify": ("harness", "endpoint", "fallback"),
     "scaffold": ("force", "lang", "output_dir"),
@@ -120,7 +121,13 @@ _OPTIONS: dict[str, tuple[str, ...]] = {
 # argparse defaults per subcommand — options left at their default are
 # omitted from the reconstructed argv (click applies the same default).
 _DEFAULTS: dict[str, dict[str, Any]] = {
-    "test": {"harness": None, "endpoint": None, "as_json": False, "categories": None},
+    "test": {
+        "harness": None,
+        "endpoint": None,
+        "as_json": False,
+        "categories": None,
+        "expect_fresh": False,
+    },
     "install": {
         "endpoint": None,
         "transport": "rest",
@@ -189,6 +196,15 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--categories", default=None, help="Comma-separated categories to run."
+    )
+    p.add_argument(
+        "--expect-fresh",
+        dest="expect_fresh",
+        action="store_true",
+        help=(
+            "Refuse to run when the target's /v1/health uptime exceeds 300s "
+            "(stale co-tenant harness); exits 1 before the first test."
+        ),
     )
 
     p = sub.add_parser("list", help="List harnesses known to the config.")

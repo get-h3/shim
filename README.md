@@ -45,6 +45,8 @@ python3 -m venv .venv-h3-test           # shim's own venv, separate from .venv
 source /tmp/.venv-h3-test/bin/activate  # activate BY FULL PATH (not ./.venv)!
 pip install hermes-h3-shim   # provides h3-test (or the git URL for an unreleased commit)
 h3-test --endpoint http://localhost:9191
+# add --expect-fresh when the port may already be owned by a leftover harness:
+# it prints the target's /v1/health identity and stops (exit 1) if uptime > 300s.
 ```
 
 The scaffolded harness is a minimal H3 echo server — see `hermes-h3 scaffold --help`

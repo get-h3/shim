@@ -37,7 +37,7 @@ from h3_shim.cli import (
     save_config,
 )
 from h3_shim.protocol import HealthResponse, HealthStatus
-from h3_shim.test_battery import CATEGORIES, category_token
+from h3_shim.test_battery import CATEGORIES, TargetHealth, category_token
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,26 @@ class FakeTestReport:
     @property
     def all_passing(self) -> bool:
         return self.failed == 0
+
+
+def _stub_health(
+    *,
+    version: str | None = "1.2.3",
+    uptime_seconds: int | None = 12,
+    active_sessions: int | None = 0,
+    capabilities: list[str] | None = None,
+) -> TargetHealth:
+    """Default target identity for a stubbed battery (DF-H3-26).
+
+    A fresh, capable harness: tests that care about a stale or
+    capability-poor target pass their own :class:`TargetHealth`.
+    """
+    return TargetHealth(
+        version=version,
+        uptime_seconds=uptime_seconds,
+        active_sessions=active_sessions,
+        capabilities=["text", "end"] if capabilities is None else capabilities,
+    )
 
 
 def _passing_report() -> FakeTestReport:
@@ -1603,8 +1623,9 @@ class TestLatencyStats:
 
 class TestRunBatteryJSON:
     @staticmethod
-    def _stub_battery(monkeypatch, report):
+    def _stub_battery(monkeypatch, report, health=None):
         fake = MagicMock()
+        fake.connect = AsyncMock(return_value=health or _stub_health())
         fake.run_all = AsyncMock(return_value=report)
         fake.close = AsyncMock()
         monkeypatch.setattr("h3_shim.cli.H3TestBattery", lambda *a, **kw: fake)
@@ -1705,8 +1726,9 @@ def _full_category_report() -> FakeTestReport:
 
 class TestRunBatteryCategories:
     @staticmethod
-    def _stub_battery(monkeypatch, report):
+    def _stub_battery(monkeypatch, report, health=None):
         fake = MagicMock()
+        fake.connect = AsyncMock(return_value=health or _stub_health())
         fake.run_all = AsyncMock(return_value=report)
         fake.close = AsyncMock()
         monkeypatch.setattr("h3_shim.cli.H3TestBattery", lambda *a, **kw: fake)
@@ -1915,8 +1937,12 @@ class TestCategoryTokenResolution:
 class TestTestCommand:
     def test_test_with_endpoint_runs_battery(self, runner, monkeypatch):
         # Stub asyncio.run so we never hit the network.
+        calls: dict[str, object] = {}
 
-        async def fake_run_battery(endpoint, categories, as_json):
+        async def fake_run_battery(
+            endpoint, categories, as_json, *, expect_fresh=False
+        ):
+            calls["expect_fresh"] = expect_fresh
             return 0
 
         monkeypatch.setattr("h3_shim.cli._run_battery", fake_run_battery)
@@ -1925,6 +1951,26 @@ class TestTestCommand:
             ["test", "--endpoint", "http://x:1"],
         )
         assert result.exit_code == 0
+        # The flag is plumbed through, defaulted off (DF-H3-26).
+        assert calls["expect_fresh"] is False
+
+    def test_test_with_expect_fresh_flag_plumbed(self, runner, monkeypatch):
+        """``hermes-h3 test --expect-fresh`` reaches the battery runner."""
+        calls: dict[str, object] = {}
+
+        async def fake_run_battery(
+            endpoint, categories, as_json, *, expect_fresh=False
+        ):
+            calls["expect_fresh"] = expect_fresh
+            return 0
+
+        monkeypatch.setattr("h3_shim.cli._run_battery", fake_run_battery)
+        result = runner.invoke(
+            hermes_h3,
+            ["test", "--endpoint", "http://x:1", "--expect-fresh"],
+        )
+        assert result.exit_code == 0
+        assert calls["expect_fresh"] is True
 
 
 # ── verify command (H3Client stubbed) ──────────────────────────────────────

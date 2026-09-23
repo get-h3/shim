@@ -36,6 +36,88 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+# ── target identity (DF-H3-26) ──────────────────────────────────────────────
+#
+# The battery talks to a *port*, not to a process.  A co-tenant harness left
+# running from an earlier session answers ``/v1/health`` on the documented
+# port :9191 just as readily as the harness under test, so a harness that
+# silently failed to bind (its bind error went to an unwritable log) still
+# produced ``TOTAL 46/46 PASSED`` — a false PASS about a stranger's process.
+# These two thresholds are how the connect step exposes that.
+
+#: Uptime (seconds) past which ``h3-test`` warns that the target is probably a
+#: pre-existing process rather than the harness just started.
+STALE_UPTIME_WARN_S: float = 3600.0
+
+#: ``--expect-fresh`` ceiling: above this uptime the battery refuses to run.
+EXPECT_FRESH_MAX_UPTIME_S: float = 300.0
+
+#: Placeholder printed for a health field the target does not report.  Every
+#: identity field is optional in the H3 protocol, so "absent" must be visible
+#: in the output instead of looking like a real value.
+NOT_REPORTED = "(not reported)"
+
+#: Appended to the ``process_text_finished_false`` failure detail (DF-H3-29).
+#: The test's trigger is a *convention* — content containing "do not finish"
+#: must elicit ``text`` with ``finished=false`` — and ``got True`` alone gave
+#: a docs-following developer nothing to act on.
+PARTIAL_TURN_HINT = (
+    "(battery convention: a message containing 'do not finish' must return "
+    "text with finished=false — see docs/integration.md 'Partial turns')"
+)
+
+
+def _render_number(value: Any) -> str:
+    """Render an optional numeric health field for the identity line."""
+    if isinstance(value, bool) or value is None:
+        return str(value) if value is not None else NOT_REPORTED
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        # ``228122.0`` must read as ``228122`` — an integral float in a
+        # diagnostic line looks like a precision bug.
+        return str(int(value)) if value.is_integer() else repr(value)
+    return NOT_REPORTED
+
+
+def _coerce_health_number(value: Any) -> float | int | None:
+    """Coerce a health numeric field, rejecting anything non-numeric.
+
+    A harness that reports ``"uptime_seconds": "2 days"`` (or a bool, or a
+    list) must not crash the connect step: an unparsable field degrades to
+    "not reported" exactly like a missing one.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        # Keep ints integral: the identity line and the JSON report must not
+        # turn a harness's ``active_sessions: 288`` into ``288.0``.
+        return value
+    if isinstance(value, float):
+        return value
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def _coerce_health_count(value: Any) -> int | None:
+    """Coerce a whole-number health field (e.g. ``active_sessions``).
+
+    ``protocol.HealthResponse`` declares these as ``int | None``; a fractional
+    count (``288.5`` sessions) is a malformed report, not a fact to round, so
+    it degrades to "not reported" like any other unusable field.
+    """
+    number = _coerce_health_number(value)
+    if number is None:
+        return None
+    if isinstance(number, float):
+        return int(number) if number.is_integer() else None
+    return number
+
+
 # ── dataclasses ─────────────────────────────────────────────────────────────
 
 
@@ -64,6 +146,103 @@ class TestReport:
     @property
     def all_passing(self) -> bool:
         return self.failed == 0
+
+
+@dataclass
+class TargetHealth:
+    """Identity of the process answering ``GET /v1/health`` (DF-H3-26).
+
+    The battery is a black-box probe of an *endpoint*, and an endpoint is a
+    port that any process may already own.  This dataclass carries what the
+    health payload says about the server that answered — enough to tell
+    "the harness I just started" from "a 2.6-day-old co-tenant harness
+    squatting the port", which is the difference between a real PASS and a
+    false one.
+
+    Every field is optional in the H3 protocol (``uptime_seconds`` and
+    ``active_sessions`` are ``None``-able in ``protocol.HealthResponse``), so
+    :meth:`identity_line` degrades per missing field instead of printing
+    ``None`` at a user who is trying to work out which server they hit.
+    """
+
+    version: str | None = None
+    uptime_seconds: float | int | None = None
+    active_sessions: int | None = None
+    capabilities: list[str] | None = None
+
+    @property
+    def numeric_uptime(self) -> float | None:
+        """``uptime_seconds`` as a float, or ``None`` when not usable."""
+        value = self.uptime_seconds
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        return float(value)
+
+    def identity_line(self) -> str:
+        """One line naming the server the battery is about to test.
+
+        Always one line, always the same three fields, always on screen
+        before the first test runs.
+        """
+        version = (
+            self.version
+            if isinstance(self.version, str) and self.version.strip()
+            else NOT_REPORTED
+        )
+        return (
+            "Target health: "
+            f"version={version} "
+            f"uptime_seconds={_render_number(self.uptime_seconds)} "
+            f"active_sessions={_render_number(self.active_sessions)}"
+        )
+
+    def warnings(self, uptime_threshold: float = STALE_UPTIME_WARN_S) -> list[str]:
+        """WARN lines this target earns; empty for an unremarkable server.
+
+        Warnings are advisory: ``h3-test`` prints them and runs the battery
+        anyway, so the exit-code contract stays three-valued (0/1/2).
+        """
+        lines: list[str] = []
+        uptime = self.numeric_uptime
+        if uptime is not None and uptime > uptime_threshold:
+            lines.append(
+                f"WARN: target uptime {_render_number(self.uptime_seconds)}s "
+                f"exceeds {_render_number(uptime_threshold)}s — the process "
+                "answering /v1/health was already running long before this "
+                "run; you may be testing a co-tenant harness, not your own"
+            )
+        capabilities = self.capabilities
+        if isinstance(capabilities, list) and "text" not in capabilities:
+            lines.append(
+                'WARN: target health capabilities omit "text" '
+                f"(reported: {sorted(str(c) for c in capabilities)}) — text "
+                "is the minimum expected decision capability, so the "
+                "decision tests cannot pass against this server"
+            )
+        return lines
+
+    def expect_fresh_violation(
+        self, limit: float = EXPECT_FRESH_MAX_UPTIME_S
+    ) -> str | None:
+        """The ``--expect-fresh`` refusal message, or ``None`` when fresh.
+
+        A target that does not report ``uptime_seconds`` cannot be proven
+        stale, so it is not refused: the flag only fires on evidence, and
+        inventing a violation from a missing field would break honest
+        harnesses.  The message is a single line naming the cause because
+        the exit code cannot: ``--expect-fresh`` reuses exit 1 (compliance
+        failure) rather than growing the documented 0/1/2 contract a fourth
+        value.
+        """
+        uptime = self.numeric_uptime
+        if uptime is None or uptime <= limit:
+            return None
+        return (
+            f"expect-fresh violated: target uptime "
+            f"{_render_number(self.uptime_seconds)}s > "
+            f"{_render_number(limit)}s — you are probably testing a stale "
+            "co-tenant process, not your harness"
+        )
 
 
 class NotH3EndpointError(Exception):
@@ -168,6 +347,9 @@ class H3TestBattery:
             base_url=self.endpoint, timeout=self.PER_TEST_TIMEOUT_S
         )
         self.results: list[TestResult] = []
+        #: Identity reported by ``/v1/health`` on the last successful
+        #: :meth:`probe` — ``None`` until the target has been validated.
+        self.health: TargetHealth | None = None
 
     async def probe(self) -> None:
         """Pre-flight check that the target looks like an H3 harness.
@@ -223,6 +405,35 @@ class H3TestBattery:
                 f"missing H3 health keys: {missing}",
                 resp.text,
             )
+
+        # The payload is a valid H3 health response; remember WHO answered so
+        # the CLI can name the process (and warn about a stale one) before it
+        # runs a single test (DF-H3-26).  Every identity field is optional:
+        # an unparsable value degrades to "not reported" rather than raising.
+        capabilities = body.get("capabilities")
+        self.health = TargetHealth(
+            version=body.get("version"),
+            uptime_seconds=_coerce_health_number(body.get("uptime_seconds")),
+            active_sessions=_coerce_health_count(body.get("active_sessions")),
+            capabilities=list(capabilities) if isinstance(capabilities, list) else None,
+        )
+
+    async def connect(self) -> TargetHealth:
+        """Validate the target and return the identity of the answering process.
+
+        ``probe()`` only proves that *something* H3-shaped owns the endpoint;
+        this surfaces what it said about itself.  ``h3-test`` calls it before
+        running the battery so the identity line is on screen even when a
+        co-tenant process owns the port — the false-PASS case in DF-H3-26,
+        where a 2.6-day-old harness answered ``46/46 PASSED`` while the
+        harness under test had never bound the port.
+
+        Raises :class:`NotH3EndpointError` exactly like :meth:`probe`.
+        """
+        await self.probe()
+        if self.health is None:  # pragma: no cover — probe() always sets it
+            raise NotH3EndpointError("health payload carried no identity fields")
+        return self.health
 
     # ── request helpers ─────────────────────────────────────────────────
 
@@ -615,6 +826,13 @@ class H3TestBattery:
 
         Sends a prompt that should elicit a streaming-style text decision
         and asserts the resulting ``text.finished`` is ``False``.
+
+        The trigger is the convention, not the wording: a harness must
+        return ``finished=false`` for any message whose content contains
+        ``do not finish`` (see ``docs/integration.md`` → "Partial turns").
+        The failure detail repeats it, because a developer who follows the
+        docs and still fails this test has no way to guess the rule from
+        ``got True`` (DF-H3-29).
         """
         cat = CATEGORIES["process"]
         done = self._timed("process_text_finished_false", cat)
@@ -640,7 +858,8 @@ class H3TestBattery:
             if text.get("finished") is not False:
                 return done(
                     False,
-                    f"Expected finished=false, got {text.get('finished')!r}",
+                    f"Expected finished=false, got {text.get('finished')!r} "
+                    f"{PARTIAL_TURN_HINT}",
                 )
             return done(True, "text.finished=false")
         except Exception as exc:  # noqa: BLE001
