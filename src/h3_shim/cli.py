@@ -40,6 +40,7 @@ from h3_shim.test_battery import (
     CATEGORIES,
     H3TestBattery,
     NotH3EndpointError,
+    TargetHealth,
     TestReport,
     TestResult,
     category_token,
@@ -366,46 +367,137 @@ def _format_human(report: TestReport, endpoint: str) -> str:
     return "\n".join(lines)
 
 
+def _health_payload(health: TargetHealth) -> dict[str, Any]:
+    """Serialise a target identity for the ``--json`` report (DF-H3-26).
+
+    The identity is part of the report, not just of the console: a CI job
+    that reads the JSON can assert it was testing a freshly-started harness
+    instead of trusting the console scrollback.
+    """
+    return {
+        "version": health.version,
+        "uptime_seconds": health.uptime_seconds,
+        "active_sessions": health.active_sessions,
+        "capabilities": health.capabilities,
+        "identity_line": health.identity_line(),
+    }
+
+
+def _emit_health_identity(health: TargetHealth, *, as_json: bool) -> None:
+    """Print the target identity line, then any ``WARN:`` lines.
+
+    The identity line is part of the human connect banner, so it goes to
+    stdout — except in ``--json`` mode, where stdout carries the report and
+    nothing else (a stray line in front of the payload breaks every
+    ``json.loads`` consumer of ``h3-test --json``).  Warnings are diagnostics
+    and always go to stderr; they never change the exit code.
+    """
+    print(health.identity_line(), file=sys.stderr if as_json else sys.stdout)
+    for warning in health.warnings():
+        print(warning, file=sys.stderr)
+
+
+def _expect_fresh_payload(
+    endpoint: str, health: TargetHealth, violation: str
+) -> dict[str, Any]:
+    """JSON report for a ``--expect-fresh`` refusal.
+
+    Same shape as the not-an-H3-endpoint payload — zero tests run, a reason
+    and ``all_passing: false`` — so a consumer that already handles exit 2
+    reads this one without new branches.
+    """
+    from datetime import datetime, timezone
+
+    return {
+        "warning": violation,
+        "endpoint": endpoint,
+        "expect_fresh_violated": True,
+        "reason": violation,
+        "target_health": _health_payload(health),
+        "results": [],
+        "total": 0,
+        "passed": 0,
+        "failed": 0,
+        "duration_ms": 0.0,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "all_passing": False,
+        "latency": _latency_stats([]),
+    }
+
+
 async def _run_battery(
     endpoint: str,
     categories: str | None,
     as_json: bool,
+    *,
+    expect_fresh: bool = False,
 ) -> int:
-    """Drive the battery and emit results. Returns the process exit code."""
+    """Drive the battery and emit results. Returns the process exit code.
+
+    The run starts by *connecting*: the target's ``/v1/health`` identity is
+    printed before the first test, because the battery cannot tell the
+    harness you just started from a co-tenant process that already owned the
+    port — the DF-H3-26 false PASS, where a stranger's 2.6-day-old harness
+    answered ``46/46 PASSED``.  With *expect_fresh* that identity is also
+    enforced: an uptime over
+    :data:`h3_shim.test_battery.EXPECT_FRESH_MAX_UPTIME_S` stops the run
+    before a single test executes.
+    """
     from datetime import datetime, timezone
 
     battery = H3TestBattery(endpoint)
     try:
-        report = await battery.run_all()
-    except NotH3EndpointError as exc:
-        warning = (
-            f"Warning: {endpoint} does not look like an H3 endpoint ({exc.reason})."
-        )
-        print(warning, file=sys.stderr)
-        if as_json:
-            payload = {
-                "warning": warning,
-                "endpoint": endpoint,
-                "not_h3_endpoint": True,
-                "reason": exc.reason,
-                "results": [],
-                "total": 0,
-                "passed": 0,
-                "failed": 0,
-                "duration_ms": 0.0,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "all_passing": False,
-                "latency": _latency_stats([]),
-            }
-            print(json.dumps(payload, indent=2))
-        else:
-            print(
-                f"\nH3 Compliance Test Battery v{_battery_version()}\n"
-                f"Target: {endpoint}\n"
-                f"Transport: REST\n\n"
-                f"{warning}"
+        try:
+            health = await battery.connect()
+        except NotH3EndpointError as exc:
+            warning = (
+                f"Warning: {endpoint} does not look like an H3 endpoint ({exc.reason})."
             )
-        return 2
+            print(warning, file=sys.stderr)
+            if as_json:
+                payload = {
+                    "warning": warning,
+                    "endpoint": endpoint,
+                    "not_h3_endpoint": True,
+                    "reason": exc.reason,
+                    "results": [],
+                    "total": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "duration_ms": 0.0,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "all_passing": False,
+                    "latency": _latency_stats([]),
+                }
+                print(json.dumps(payload, indent=2))
+            else:
+                print(
+                    f"\nH3 Compliance Test Battery v{_battery_version()}\n"
+                    f"Target: {endpoint}\n"
+                    f"Transport: REST\n\n"
+                    f"{warning}"
+                )
+            return 2
+
+        _emit_health_identity(health, as_json=as_json)
+
+        if expect_fresh:
+            violation = health.expect_fresh_violation()
+            if violation is not None:
+                print(violation, file=sys.stderr)
+                if as_json:
+                    print(
+                        json.dumps(
+                            _expect_fresh_payload(endpoint, health, violation),
+                            indent=2,
+                        )
+                    )
+                # Exit 1, not a new code: the documented 0/1/2 contract is
+                # what CI switches on, and the message above carries the
+                # cause (DF-H3-26).
+                return 1
+
+        report = await battery.run_all()
     finally:
         await battery.close()
 
@@ -448,6 +540,8 @@ async def _run_battery(
         payload = asdict(report)
         payload["all_passing"] = report.all_passing
         payload["latency"] = _latency_stats(report.results)
+        payload["target_health"] = _health_payload(health)
+        payload["target_warnings"] = health.warnings()
         print(json.dumps(payload, indent=2))
     else:
         print(_format_human(report, endpoint))
@@ -465,6 +559,7 @@ async def _run(args: argparse.Namespace) -> int:
         endpoint=args.endpoint,
         categories=args.categories,
         as_json=args.json,
+        expect_fresh=args.expect_fresh,
     )
 
 
@@ -527,6 +622,16 @@ def main() -> None:
             "Comma-separated categories to run — protocol tokens "
             "(health,process,decisions,results,errors,stress) or the display "
             'labels the battery prints (e.g. "Stress & Performance")'
+        ),
+    )
+    parser.add_argument(
+        "--expect-fresh",
+        action="store_true",
+        help=(
+            "Refuse to run when the target's /v1/health uptime exceeds "
+            "300s: a stale co-tenant harness, not the one you just started. "
+            "Stops before the first test and exits 1 (same code as a "
+            "compliance failure — the message on stderr names the cause)."
         ),
     )
     args = parser.parse_args()
@@ -629,6 +734,16 @@ def _config_option(func):
         '(e.g. "Stress & Performance").'
     ),
 )
+@click.option(
+    "--expect-fresh",
+    "expect_fresh",
+    is_flag=True,
+    help=(
+        "Refuse to run when the target's /v1/health uptime exceeds 300s: a "
+        "stale co-tenant harness, not the one you just started. Stops before "
+        "the first test and exits 1."
+    ),
+)
 @click.pass_context
 def test(
     ctx: click.Context,
@@ -637,6 +752,7 @@ def test(
     endpoint: str | None,
     as_json: bool,
     categories: str | None,
+    expect_fresh: bool,
 ) -> None:
     """Run the compliance battery against a harness."""
     if config_path is not None:
@@ -650,7 +766,9 @@ def test(
                 f"harness {harness!r} has no endpoint configured"
             )
     try:
-        exit_code = asyncio.run(_run_battery(endpoint, categories, as_json))
+        exit_code = asyncio.run(
+            _run_battery(endpoint, categories, as_json, expect_fresh=expect_fresh)
+        )
     except KeyboardInterrupt:  # pragma: no cover
         click.echo("\nhermes h3 test: interrupted", err=True)
         sys.exit(130)

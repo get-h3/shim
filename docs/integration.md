@@ -8,7 +8,7 @@ The shim ships two console scripts:
 
 | Script | Purpose |
 |--------|---------|
-| `h3-test` | One-shot H3 compliance test battery against an endpoint (`h3-test --endpoint <url> [--json] [--categories ...]`) |
+| `h3-test` | One-shot H3 compliance test battery against an endpoint (`h3-test --endpoint <url> [--json] [--categories ...] [--expect-fresh]`) |
 | `hermes-h3` | Harness management CLI — 9 subcommands: `install`, `list`, `pre-update-check`, `route`, `scaffold`, `test`, `uninstall`, `use`, `verify` |
 
 Both are defined in `src/h3_shim/cli.py` and registered in `pyproject.toml`
@@ -316,11 +316,69 @@ hermes-h3 test                          # battery against the default harness
 h3-test --endpoint http://localhost:9191            # same battery, one-shot
 h3-test --endpoint http://localhost:9191 --json     # machine-readable report
 h3-test --endpoint http://localhost:9191 --categories health,process
+h3-test --endpoint http://localhost:9191 --expect-fresh   # refuse a stale target
 ```
 
 The battery is 46 tests across 6 categories (health, process, decisions,
 results, errors, stress).  See [Exit codes](#exit-codes) below for the
 meaning of each h3-test exit code.
+
+Before the first test runs, `h3-test` prints one identity line taken from
+the target's `/v1/health` — the process it is actually talking to:
+
+```text
+Target health: version=1.0.0 uptime_seconds=12 active_sessions=0
+```
+
+Every field is optional in the protocol; a field the harness does not report
+prints as `(not reported)`.  Two conditions earn a `WARN:` line on stderr
+(they never change the exit code):
+
+- `uptime_seconds` > 3600 — the server was already running long before this
+  run, so it may be a co-tenant harness, not yours;
+- `capabilities` omits `text` — the minimum expected decision capability.
+
+That matters because the battery probes an *endpoint*, not a process: a
+harness that failed to bind leaves its port to whoever already owned it, and
+a leftover harness answers `/v1/health` just as happily — 46/46 PASSED about
+a stranger's process.  When you need proof that the harness you just started
+is the one answering, use `--expect-fresh`:
+
+```bash
+h3-test --endpoint http://localhost:9191 --expect-fresh
+# expect-fresh violated: target uptime 228122s > 300s — you are probably
+# testing a stale co-tenant process, not your harness
+```
+
+With `--expect-fresh`, an uptime over 300s stops the run before any test
+executes and exits 1 (the message on stderr names the cause; the exit-code
+vocabulary stays 0/1/2).  A target that does not report `uptime_seconds`
+cannot be proven stale, so it is not refused.  `hermes-h3 test` and
+`hermes h3 test` accept the same flag.
+
+### Partial turns (`finished=false`)
+
+The battery test `process_text_finished_false` (test 2.4) sends a message
+whose content contains `do not finish` and expects a `text` decision with
+`finished=false`:
+
+```bash
+# message content sent by the battery
+"Just start a thought, do not finish it yet."
+```
+
+```json
+{"decision": "text", "text": {"content": "Just start a thought…", "finished": false}}
+```
+
+The trigger is the **convention**, not the phrasing of the rest of the
+message: any message whose content contains `do not finish` must come back
+with `finished=false`, which means "this turn is not over — expect another
+request for the same session".  A harness that always returns
+`finished=true` passes the other decision tests and fails this one; the
+failure detail repeats the convention so you do not have to guess it from
+`got True`.  The scaffolded harnesses implement it in
+`src/h3_shim/templates/<lang>/` (`main.go`, `main.py`, `index.ts`).
 
 ### 4.4 The compliance gate (GAP-043) — wired into `make test` and CI
 
