@@ -43,3 +43,4 @@ uv.lock
 
 .coding-hermes/board/*.parquet
 .coding-hermes/board/*.duckdb
+.gitreins/
