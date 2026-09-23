@@ -74,8 +74,14 @@ jobs:
 
       - name: Read protocol version
         id: version
+        # PROTO-CI-002: versions.yaml is a compatibility MATRIX (per-row
+        # protocol cells, no top-level protocol key) — the old
+        # `grep -A1 'protocol:' | tail -1` extracted a matrix cell
+        # ("2.x.x") and minted the bogus tag v2.0.x.0. Derive the
+        # version from protocol-src's newest release tag instead
+        # (family convention: v1.1.0 => shim tag v1.1.0.0).
         run: |
-          PROTO_VER=$(grep -A1 'protocol:' protocol-src/versions.yaml | tail -1 | awk '{print $2}' | tr -d '"')
+          PROTO_VER=$(git -C protocol-src describe --tags --abbrev=0 | sed 's/^v//')
           echo "protocol_version=${PROTO_VER}" >> $GITHUB_OUTPUT
           echo "Protocol version: ${PROTO_VER}"
 
@@ -83,8 +89,13 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag "v${{ steps.version.outputs.protocol_version }}.0"
-          git push origin "v${{ steps.version.outputs.protocol_version }}.0"
+          TAG="v${{ steps.version.outputs.protocol_version }}.0"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists — skipping (idempotent re-run)."
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi
 
       - name: Build package
         run: .venv/bin/pip install build && .venv/bin/python -m build
