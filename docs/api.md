@@ -312,12 +312,22 @@ most-specific first: `platform:chat_id:thread_id`, then `platform:chat_id`,
 then `platform` alone. Falls back to `default_harness` when no route
 matches (never returns `None`).
 
+Runtime pins made with `route_session` (including reroutes away from failed
+harnesses) are checked first — under their composite keys and the bare
+session id — and win over the static `sessions` map. When
+`session_routes_path` is set in the config, pins are persisted to that JSON
+file and reloaded on the next start, so a reroute survives a restart.
+
 ```python
 def route_session(self, session_id: str, harness_name: str) -> None
 def get_session_harness(self, session_id: str) -> str | None
 ```
 
-Manually pin / look up the harness for a session.
+Manually pin / look up the harness for a session. With
+`session_routes_path` configured, pins are persisted atomically on every
+change; if the path is unset, routing stays in-memory; if it is
+unwritable, one warning is logged and routing stays in-memory for the
+run — the loader boots and routes either way.
 
 ```python
 async def start_health_checks(self) -> None

@@ -9,6 +9,8 @@ shortened sleep so cancellation behavior can be verified.
 """
 
 import asyncio
+import os
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -325,6 +327,197 @@ class TestRerouteSessions:
         loader.route_session("a", "alpha")
         loader._reroute_sessions("ghost")
         assert loader.get_session_harness("a") == "alpha"
+
+
+# ── durable reroute: session pins survive a restart (DF-H3-33) ──────────────
+
+
+class TestSessionRoutePersistence:
+    """DF-H3-33: pins are the route of record and can outlive the process."""
+
+    @staticmethod
+    def _patch(monkeypatch) -> None:
+        _patch_h3_client_factory(monkeypatch)
+
+    @staticmethod
+    def _cfg(routes_path, **overrides):
+        cfg = {
+            "default_harness": "native",
+            "session_routes_path": str(routes_path),
+            "harnesses": {
+                "alpha": {"endpoint": "http://a:1"},
+                "beta": {"endpoint": "http://b:1"},
+            },
+        }
+        cfg.update(overrides)
+        return cfg
+
+    @pytest.mark.asyncio
+    async def test_reroute_survives_simulated_restart(self, tmp_path, monkeypatch):
+        """(c) Fresh loader, same store file → rerouted session stays rerouted.
+
+        The static config still names the dead harness, so a pre-fix loader
+        (pins ignored at resolve time) resolves straight back to it — exactly
+        the DF-H3-33 defect this test pins down.
+        """
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+
+        first = H3Loader(self._cfg(store, sessions={"telegram:sess_x": "alpha"}))
+        first.route_session("sess_x", "alpha")
+        first._reroute_sessions("alpha")  # harness died — sessions move to native
+
+        second = H3Loader(self._cfg(store, sessions={"telegram:sess_x": "alpha"}))
+        assert await second.resolve("telegram", "sess_x") == "native", (
+            "reroute target must survive a restart"
+        )
+
+    @pytest.mark.asyncio
+    async def test_pinned_session_survives_simulated_restart(
+        self, tmp_path, monkeypatch
+    ):
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+
+        first = H3Loader(self._cfg(store))
+        first.route_session("telegram:555:7", "beta")
+
+        second = H3Loader(self._cfg(store))
+        assert await second.resolve("telegram", "555", "7") == "beta"
+
+    @pytest.mark.asyncio
+    async def test_resolve_prefers_pins_over_static_config(self, tmp_path, monkeypatch):
+        """(b) A pin (incl. a loaded reroute) beats the static sessions map."""
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+
+        first = H3Loader(
+            self._cfg(
+                store,
+                sessions={"telegram:sess_x": "beta"},  # stale static route
+            )
+        )
+        first.route_session("sess_x", "alpha")
+        first._reroute_sessions("alpha")  # pin now says "native"
+
+        second = H3Loader(self._cfg(store))
+        assert await second.resolve("telegram", "sess_x") == "native"
+
+    @pytest.mark.asyncio
+    async def test_resolve_falls_back_to_static_config_without_pins(
+        self, tmp_path, monkeypatch
+    ):
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+        loader = H3Loader(self._cfg(store, sessions={"telegram:-100": "alpha"}))
+        assert await loader.resolve("telegram", "-100") == "alpha"
+
+    @pytest.mark.asyncio
+    async def test_unwritable_store_still_boots_and_routes(self, tmp_path, monkeypatch):
+        """(d) Unwritable path → warning, in-memory routing, no boot failure."""
+        self._patch(monkeypatch)
+        d = tmp_path / "stays-a-file"
+        d.write_text("not a directory")
+        store = d / "session-routes.json"
+
+        loader = H3Loader(self._cfg(store))
+        assert loader.get_session_harness("s") is None
+
+        loader.route_session("s", "alpha")
+        assert loader.get_session_harness("s") == "alpha"
+        assert await loader.resolve("telegram", "s") == "alpha"
+
+    @pytest.mark.asyncio
+    async def test_unwritable_store_warns_once_not_per_write(
+        self, tmp_path, monkeypatch, caplog
+    ):
+        import logging as _logging
+
+        self._patch(monkeypatch)
+        d = tmp_path / "stays-a-file"
+        d.write_text("not a directory")
+        loader = H3Loader(self._cfg(d / "session-routes.json"))
+
+        with caplog.at_level(_logging.WARNING, logger="h3_shim.loader"):
+            for i in range(5):
+                loader.route_session(f"s{i}", "alpha")
+            loader._reroute_sessions("alpha")
+
+        warnings = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno >= _logging.WARNING and "Cannot persist" in r.getMessage()
+        ]
+        assert len(warnings) == 1, warnings
+
+    @pytest.mark.asyncio
+    async def test_corrupt_store_file_is_not_fatal(self, tmp_path, monkeypatch):
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+        store.write_text("{not json")
+
+        loader = H3Loader(self._cfg(store))
+        assert loader.get_session_harness("s") is None
+
+    @pytest.mark.asyncio
+    async def test_no_path_configured_stays_in_memory(self, tmp_path, monkeypatch):
+        self._patch(monkeypatch)
+        loader = H3Loader({"default_harness": "native"})
+        loader.route_session("s", "alpha")
+        assert loader.get_session_harness("s") == "alpha"
+        # No store configured → nothing appeared on disk.
+        assert not (tmp_path / "session-routes.json").exists()
+
+    @pytest.mark.asyncio
+    async def test_store_loads_json_and_dict_pin_forms(self, tmp_path, monkeypatch):
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+        store.write_text('{"plain": "alpha", "shaped": {"harness": "beta"}, "bad": 5}')
+
+        loader = H3Loader(self._cfg(store))
+        assert await loader.resolve("telegram", "plain") == "alpha"
+        assert await loader.resolve("telegram", "shaped") == "beta"
+        assert await loader.resolve("telegram", "bad") == "native"
+
+    @pytest.mark.asyncio
+    async def test_store_write_is_atomic(self, tmp_path, monkeypatch, mocker):
+        """Persistence uses write-temp-then-replace, never a partial file."""
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+        loader = H3Loader(self._cfg(store))
+
+        observed: dict = {}
+        real_replace = os.replace
+
+        def spy_replace(src, dst, **kw):
+            # At replace time the temp file must exist and differ from the
+            # store path — write-temp-then-replace, never a direct rewrite.
+            observed["tmp_existed"] = Path(src).exists()
+            observed["src_is_store"] = str(src) == str(store)
+            return real_replace(src, dst, **kw)
+
+        mocker.patch("h3_shim.loader.os.replace", side_effect=spy_replace)
+        loader.route_session("s", "alpha")
+
+        assert observed["tmp_existed"], "replace must consume a temp file"
+        assert not observed["src_is_store"]
+        assert store.exists()
+        assert not list(store.parent.glob("*.tmp")), "no temp leftovers"
+
+    @pytest.mark.asyncio
+    async def test_pins_loaded_from_store_are_rewritten_on_reroute(
+        self, tmp_path, monkeypatch
+    ):
+        """A reroute of a LOADED pin is persisted too (not just new pins)."""
+        self._patch(monkeypatch)
+        store = tmp_path / "session-routes.json"
+        store.write_text('{"sess_x": "alpha"}')
+
+        loader = H3Loader(self._cfg(store))
+        loader._reroute_sessions("alpha")
+
+        second = H3Loader(self._cfg(store))
+        assert await second.resolve("telegram", "sess_x") == "native"
 
 
 # ── health check loop / start-stop ──────────────────────────────────────────
@@ -765,3 +958,119 @@ class TestCircuitBreaker:
         # but we know alpha was OPEN so it should be skipped.
         # Verify the circuit is still OPEN
         assert cb_alpha.state == "OPEN"
+
+
+# ── recovery: an OPEN circuit must be able to return to CLOSED (DF-H3-34) ───
+
+
+class TestCircuitRecovery:
+    """DF-H3-34: the health loop probes an OPEN circuit after cooldown.
+
+    Pre-fix behaviour under test: once OPEN the loop skipped the harness
+    forever, so no outcome was ever recorded again and one transient
+    outage left the harness dead for the life of the process.
+    """
+
+    @staticmethod
+    def _cfg(**overrides):
+        cfg = {
+            "default_harness": "native",
+            "circuit_breaker_window": 5,
+            "circuit_breaker_threshold": 0.5,
+            "harnesses": {"alpha": {"endpoint": "http://a:1"}},
+        }
+        cfg.update(overrides)
+        return cfg
+
+    @staticmethod
+    def _open_breaker(cb) -> None:
+        """Drive *cb* OPEN through its public API (window 5, threshold 0.5)."""
+        for _ in range(3):
+            cb.record_outcome(False)
+        for _ in range(2):
+            cb.record_outcome(True)
+
+    @pytest.mark.asyncio
+    async def test_open_circuit_recovers_via_health_loop(self, monkeypatch):
+        """Cooldown expired + health loop success → circuit CLOSED again."""
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(self._cfg(circuit_breaker_cooldown=0.0))
+        cb = loader._circuit_breakers["alpha"]
+        self._open_breaker(cb)
+        assert cb.state == "OPEN"
+
+        ok = HealthResponse(status=HealthStatus.OK, version="1")
+        loader.harnesses["alpha"].health = AsyncMock(return_value=ok)
+
+        await TestHealthLoop._run_checks(loader, monkeypatch, 1)
+
+        assert cb.state == "CLOSED"
+        assert loader._harness_healthy["alpha"] is True
+
+    @pytest.mark.asyncio
+    async def test_failed_probe_reopens_with_fresh_cooldown(self, monkeypatch):
+        """Cooldown expired + health loop failure → back to OPEN, probe re-armed."""
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(self._cfg(circuit_breaker_cooldown=0.0))
+        cb = loader._circuit_breakers["alpha"]
+        self._open_breaker(cb)
+        assert cb.state == "OPEN"
+
+        loader.harnesses["alpha"].health = AsyncMock(
+            side_effect=Exception("still down")
+        )
+
+        await TestHealthLoop._run_checks(loader, monkeypatch, 1)
+
+        assert cb.state == "OPEN"
+
+    @pytest.mark.asyncio
+    async def test_no_probe_before_cooldown_expires(self, monkeypatch):
+        """While the cooldown is running the harness is still left alone."""
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(self._cfg(circuit_breaker_cooldown=30.0))
+        cb = loader._circuit_breakers["alpha"]
+        self._open_breaker(cb)  # _opened_at = now → cooldown nowhere near expired
+        assert cb.state == "OPEN"
+
+        ok = HealthResponse(status=HealthStatus.OK, version="1")
+        loader.harnesses["alpha"].health = AsyncMock(return_value=ok)
+
+        await TestHealthLoop._run_checks(loader, monkeypatch, 1)
+
+        loader.harnesses["alpha"].health.assert_not_awaited()
+        assert cb.state == "OPEN"
+
+    @pytest.mark.asyncio
+    async def test_open_circuit_still_reroutes_every_cycle(self, monkeypatch):
+        """Reroute protection keeps running even while OPEN (cooldown pending)."""
+        _patch_h3_client_factory(monkeypatch)
+        loader = H3Loader(self._cfg(circuit_breaker_cooldown=30.0))
+        cb = loader._circuit_breakers["alpha"]
+        self._open_breaker(cb)
+        loader.route_session("sess_x", "alpha")
+
+        await TestHealthLoop._run_checks(loader, monkeypatch, 1)
+
+        assert loader.get_session_harness("sess_x") == "native"
+        assert cb.state == "OPEN"
+
+    @pytest.mark.asyncio
+    async def test_half_open_probe_outcome_is_always_recorded(self, monkeypatch):
+        """A DEGRADED probe still records an outcome — no HALF_OPEN starvation.
+
+        Feeding the probe result through the same success/degraded branches
+        the normal path uses means every allowed probe ends in an outcome.
+        """
+        degraded = HealthResponse(
+            status=HealthStatus.DEGRADED, version="1", degraded_reason="slow"
+        )
+        _patch_h3_client_factory(monkeypatch, health_return=degraded)
+        loader = H3Loader(self._cfg(circuit_breaker_cooldown=0.0))
+        cb = loader._circuit_breakers["alpha"]
+        self._open_breaker(cb)
+
+        await TestHealthLoop._run_checks(loader, monkeypatch, 1)
+
+        # DEGRADED counts as a failed probe → re-opened with fresh cooldown.
+        assert cb.state == "OPEN"

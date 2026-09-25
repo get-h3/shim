@@ -3,12 +3,22 @@
 Discovers H3 harnesses from config, health-checks them every 30s,
 and routes sessions to the correct harness. Falls back to native
 when harnesses are unreachable or no route matches.
+
+Runtime session pins (:meth:`H3Loader.route_session`, including reroutes
+away from failed harnesses) are the route of record: they win over the
+static ``sessions`` config, and — when ``session_routes_path`` is
+configured — they are persisted to a JSON file so rerouted sessions do
+not silently fall back to a dead harness across a process restart.
 """
 
 import asyncio
+import json
 import logging
+import os
+import tempfile
 import time
 from collections import deque
+from pathlib import Path
 
 from h3_shim.client import H3Client
 from h3_shim.protocol import HealthStatus
@@ -33,6 +43,12 @@ class CircuitBreaker:
     expires the breaker moves to half-open and allows exactly one probe
     request.  A successful probe closes the circuit; a failed probe
     re-opens it immediately.
+
+    The breaker never recovers on its own: a probe must be *attempted*
+    and its outcome fed back via :meth:`record_outcome`.  The loader's
+    health check loop is that driver — it asks :meth:`allow_request`
+    whether a probe is due, performs the health call when the answer is
+    yes, and records the outcome either way.
 
     Parameters
     ----------
@@ -201,6 +217,16 @@ class H3Loader:
         # ------------------------------------------------------------------
         self._session_routes: dict[str, str] = {}  # session_id → harness_name
 
+        # Optional durable store for session pins (DF-H3-33).  When set,
+        # pins are loaded at boot and every route change is written back
+        # atomically.  An unwritable store degrades to in-memory routing
+        # with a single warning — the loader must still boot.
+        self._session_routes_path: Path | None = None
+        path_value = config.get("session_routes_path")
+        if path_value:
+            self._session_routes_path = Path(path_value)
+        self._routes_store_degraded = False
+
         # ------------------------------------------------------------------
         # Background health-check task
         # ------------------------------------------------------------------
@@ -248,6 +274,10 @@ class H3Loader:
                 cooldown_seconds=self._cb_cooldown,
             )
 
+        # Restore persisted session pins (if any) after the harness map
+        # exists — loaded pins become part of the live route of record.
+        self._load_session_routes(self._session_routes_path)
+
     # ── session routing ─────────────────────────────────────────────────
 
     async def resolve(
@@ -265,6 +295,11 @@ class H3Loader:
         3. ``platform``
 
         Falls back to :attr:`default_harness` when no route matches.
+
+        Runtime pins (see :meth:`route_session`) are the route of record:
+        they are consulted first on the same candidate keys and win over
+        the static ``sessions`` config, which remains the bootstrap
+        default.
         """
         routes: dict[str, dict[str, str]] = self._config.get("sessions", {})
 
@@ -275,6 +310,18 @@ class H3Loader:
         candidates.append(f"{platform}:{chat_id}")
         candidates.append(platform)
 
+        # 1. Runtime pins — reroutes away from failed harnesses and
+        #    explicit route_session() calls must win over static config,
+        #    otherwise a restart would send rerouted sessions straight
+        #    back to the dead harness (DF-H3-33).  Pins are keyed by
+        #    *session_id* (the route_session() parameter), so besides the
+        #    composite candidates the bare chat_id is tried — for the
+        #    shim loop and simple embedders the session id IS the chat id.
+        for key in [*candidates, chat_id]:
+            if key in self._session_routes:
+                return self._session_routes[key]
+
+        # 2. Static config — the bootstrap default.
         for key in candidates:
             if key in routes:
                 entry = routes[key]
@@ -287,12 +334,98 @@ class H3Loader:
         return self.default_harness
 
     def route_session(self, session_id: str, harness_name: str) -> None:
-        """Explicitly pin *session_id* to *harness_name*."""
+        """Explicitly pin *session_id* to *harness_name*.
+
+        The pin is the live route of record (it wins over the static
+        ``sessions`` config in :meth:`resolve`) and, when
+        ``session_routes_path`` is configured, it is persisted so it
+        survives a process restart.
+        """
         self._session_routes[session_id] = harness_name
+        self._persist_session_routes()
 
     def get_session_harness(self, session_id: str) -> str | None:
         """Return the harness name for *session_id*, or ``None``."""
         return self._session_routes.get(session_id)
+
+    # ── session-route persistence (DF-H3-33) ────────────────────────────
+
+    def _load_session_routes(self, path: Path | None) -> None:
+        """Load persisted pins from *path* into the live route map.
+
+        A missing file is the normal first-boot case.  A corrupt or
+        non-dict file is warned about and ignored — pins are an
+        optimization, never a boot blocker.
+        """
+        if path is None:
+            return
+        try:
+            with open(path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except FileNotFoundError:
+            return
+        except (OSError, ValueError) as exc:
+            logger.warning(
+                "Session routes file %s unreadable (%s) — "
+                "starting with an empty route map",
+                path,
+                exc,
+            )
+            return
+        if not isinstance(data, dict):
+            logger.warning(
+                "Session routes file %s is not a JSON object — ignoring",
+                path,
+            )
+            return
+        for sid, harness in data.items():
+            if isinstance(harness, dict):
+                harness = harness.get("harness")
+            if isinstance(harness, str) and harness:
+                self._session_routes[sid] = harness
+            else:
+                logger.warning(
+                    "Session routes file %s: invalid entry for %r — ignoring",
+                    path,
+                    sid,
+                )
+
+    def _persist_session_routes(self) -> None:
+        """Write the live route map to the store file, atomically.
+
+        Best-effort: with no path configured this is a no-op, and an
+        unwritable path degrades to in-memory routing with a single
+        warning (the loader must keep booting and routing either way).
+        """
+        if self._session_routes_path is None:
+            return
+        path = self._session_routes_path
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp_name = tempfile.mkstemp(
+                dir=str(path.parent), prefix=path.name, suffix=".tmp"
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(self._session_routes, fh, indent=2, sort_keys=True)
+                    fh.write("\n")
+                os.replace(tmp_name, path)
+            except BaseException:
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+            self._routes_store_degraded = False
+        except OSError as exc:
+            if not self._routes_store_degraded:
+                self._routes_store_degraded = True
+                logger.warning(
+                    "Cannot persist session routes to %s (%s) — "
+                    "routes stay in memory for this run",
+                    path,
+                    exc,
+                )
 
     # ── health checks ───────────────────────────────────────────────────
 
@@ -305,22 +438,29 @@ class H3Loader:
         * The circuit breaker records every outcome.  When the circuit opens
           (error rate exceeds threshold) sessions are rerouted immediately
           without waiting for consecutive failures.
-        * When the circuit is OPEN the health check is skipped for that
-          harness until the cooldown expires (half-open probe).
+        * While the circuit is OPEN the harness is left alone until its
+          cooldown expires; from then on the loop performs the half-open
+          probe itself (via :meth:`CircuitBreaker.allow_request`) and feeds
+          the outcome back, so a recovered harness returns to CLOSED and
+          serves traffic again without operator action (DF-H3-34).
         * The loop runs until cancelled.
         """
         try:
             while True:
                 for name, client in self.harnesses.items():
                     cb = self._circuit_breakers.get(name)
-                    # Skip health check when circuit is OPEN (saves resources)
-                    if cb is not None and cb.state == OPEN:
-                        logger.warning(
-                            "Harness %s: circuit OPEN — skipping health check",
-                            name,
-                        )
-                        self._harness_healthy[name] = False
-                        self._reroute_sessions(name)
+                    if cb is not None and not cb.allow_request():
+                        # CLOSED circuits always pass.  OPEN means the
+                        # cooldown is still running — keep rerouting, do
+                        # not touch the harness yet.  HALF_OPEN with the
+                        # probe slot taken means another cycle is probing.
+                        if cb.state == OPEN:
+                            logger.warning(
+                                "Harness %s: circuit OPEN — in cooldown, no probe yet",
+                                name,
+                            )
+                            self._harness_healthy[name] = False
+                            self._reroute_sessions(name)
                         continue
                     try:
                         health = await client.health()
@@ -329,16 +469,20 @@ class H3Loader:
                         self._harness_healthy[name] = health.status == HealthStatus.OK
                         if self._harness_healthy[name]:
                             logger.debug("Harness %s: healthy", name)
-                            if cb is not None:
-                                cb.record_outcome(True)
                         elif was_healthy:
                             logger.warning(
                                 "Harness %s: degraded — %s",
                                 name,
                                 health.degraded_reason or "unknown",
                             )
-                            if cb is not None:
-                                cb.record_outcome(False)
+                        # DF-H3-34: every attempted health call feeds the
+                        # breaker — probe successes close it, probe
+                        # failures re-open it with a fresh cooldown.  This
+                        # includes DEGRADED responses: the probe was
+                        # allowed, so an outcome must be recorded or the
+                        # breaker would sit in HALF_OPEN forever.
+                        if cb is not None:
+                            cb.record_outcome(self._harness_healthy[name])
                     except Exception:
                         failure_count = self._consecutive_failures.get(name, 0) + 1
                         self._consecutive_failures[name] = failure_count
@@ -375,15 +519,19 @@ class H3Loader:
 
     def _reroute_sessions(self, failed_harness: str) -> None:
         """Move every session pinned to *failed_harness* to native."""
+        rerouted = False
         for sid, hname in list(self._session_routes.items()):
             if hname == failed_harness:
                 self._session_routes[sid] = self.default_harness
+                rerouted = True
                 logger.info(
                     "Rerouted session %s: %s → %s",
                     sid,
                     failed_harness,
                     self.default_harness,
                 )
+        if rerouted:
+            self._persist_session_routes()
 
     # ── lifecycle ───────────────────────────────────────────────────────
 

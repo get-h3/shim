@@ -160,6 +160,10 @@ max_consecutive_failures: 3       # default 3 — failures before reroute
 circuit_breaker_window: 20        # default 20 — sliding window size
 circuit_breaker_threshold: 0.5    # default 0.5 — error rate that opens
 circuit_breaker_cooldown: 30.0    # default 30s — cooldown before half-open
+# Optional — JSON file where runtime session pins (route_session calls and
+# reroutes away from failed harnesses) are persisted and reloaded on the
+# next start.  Absolute path; `~` is NOT expanded.  Unset = in-memory only.
+session_routes_path: /home/me/.hermes/h3/session-routes.json
 ```
 
 Key behaviours implemented in `H3Loader` (`src/h3_shim/loader.py`):
@@ -173,14 +177,43 @@ Key behaviours implemented in `H3Loader` (`src/h3_shim/loader.py`):
   consecutive failures, sessions routed to the failed harness are
   rerouted to `default_harness`.
 - **Circuit breaker** — a sliding-window breaker (window 20, threshold
-  50%) opens on sustained failures and reroutes sessions *immediately*;
-  while OPEN, health checks are skipped; after the cooldown (30s) a
-  half-open probe decides whether to close or re-open.
+  50%) opens on sustained failures; the reroute happens at the next
+  health-check pass, so at the documented defaults it lands within
+  ~90 s of the outage starting (30 s interval × 3 consecutive failed
+  checks).  While OPEN and in cooldown the harness is left alone; once
+  the cooldown (30s) expires the health-check loop probes the harness
+  itself and a successful probe closes the circuit again — see
+  *Recovery contract* below.
 - **Session routing** — `resolve(platform, chat_id, thread_id)` matches
   the `sessions` map most-specific-first:
   `platform:chat_id:thread_id` → `platform:chat_id` → `platform` →
   `default_harness`.  Sessions can also be pinned explicitly in code via
-  `route_session(session_id, harness_name)`.
+  `route_session(session_id, harness_name)`; those runtime pins are the
+  route of record — they are consulted before the static map (under
+  their composite keys and the bare session id) and win over it, and
+  when `session_routes_path` is configured they survive a restart.
+
+#### Recovery contract
+
+What happens when a harness fails and comes back.  All of it is
+automatic — no operator action is required:
+
+1. **Failover.**  While the harness is unhealthy, its sessions run on
+   `default_harness` (typically `native`): after
+   `max_consecutive_failures` consecutive failed health checks, or as
+   soon as the circuit breaker opens, every session pinned to the failed
+   harness is rerouted.
+2. **Recovery.**  After `circuit_breaker_cooldown` (30s) the health-check
+   loop probes the harness itself (half-open).  One successful health
+   check closes the circuit and the harness serves traffic again; a
+   failed probe re-opens the circuit for another cooldown.  Recovery is
+   re-checked every 30 s.
+3. **Persistence.**  Rerouted/pinned sessions stay rerouted only while
+   the process runs — *unless* `session_routes_path` is configured, in
+   which case every pin and reroute is written to that JSON file
+   (atomically) and reloaded on the next start.  Without it, a restart
+   resets routing to the static `sessions` config, which may name the
+   very harness that just failed; configure the path if that matters.
 
 ### 3.3 The session loop (`src/h3_shim/shim_loop.py`)
 
@@ -476,11 +509,14 @@ unreachable.
 read from the config file only.  Routes can *also* be pinned in memory at
 runtime — `H3Loader.route_session(session_id, harness_name)` fills the
 loader's run-scoped route map (read back with
-`get_session_harness(session_id)`; the loader also rewrites it when a harness
-fails), typically by an embedder or the shim loop.  Those runtime pins are
-**never written back** to the config, so `hermes-h3 route` (a separate
-process, reading the file) can legitimately show no sessions while a running
-shim is routing them.  Adding a route to `sessions:` is what makes it visible
+`get_session_harness(session_id)`; the loader also rewrites it when a
+harness fails), typically by an embedder or the shim loop.  Those runtime
+pins are the loader's route of record and win over the `sessions:` map,
+but they are **never written back to the config** — set the loader's
+`session_routes_path` option to persist them to a JSON file (reloaded on
+the next start) instead.  `hermes-h3 route` (a separate process, reading
+the file) can legitimately show no sessions while a running shim is
+routing them.  Adding a route to `sessions:` is what makes it visible
 here and persistent across runs; the in-code pin is the programmatic
 alternative.  Note the fallback order is independent: a session with no
 `resolve()` match uses `default_harness`.
