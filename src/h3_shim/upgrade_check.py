@@ -192,11 +192,51 @@ def _find_compat_entry(
     target_hermes: str,
     matrix: list[dict[str, Any]],
 ) -> dict[str, Any] | None:
-    """Find the compatibility entry for *target_hermes* in the matrix."""
-    for entry in matrix:
-        if entry.get("hermes") == target_hermes:
-            return entry
-    return None
+    """Find the compatibility entry for *target_hermes* in the matrix.
+
+    Matching is by exact version string, or by major.minor when only the
+    patch level differs (Hermes ``0.21.1`` matches a matrix row declared
+    as ``0.21.0`` — DF-H3-36: patch releases must not hard-fail).
+
+    Among the matching rows the check prefers the HIGHEST version whose
+    ``status`` is ``current`` and whose ``min_h3`` the shipped shim
+    satisfies; then any satisfiable match; then the highest match
+    overall. ``planned`` rows are only returned when nothing better
+    exists, and the caller treats an unsatisfied ``min_h3`` on a planned
+    row as WARN, never BLOCK.
+    """
+    target = _parse_version(target_hermes)
+
+    def _matches(entry: dict[str, Any]) -> bool:
+        declared = entry.get("hermes")
+        if not declared:
+            return False
+        if str(declared) == target_hermes:
+            return True
+        a, b = _parse_version(str(declared)), target
+        return (a[0], a[1]) == (b[0], b[1])
+
+    matches = [entry for entry in matrix if _matches(entry)]
+    if not matches:
+        return None
+
+    current_shim = _parse_version(h3_shim_version)
+
+    def _satisfiable(entry: dict[str, Any]) -> bool:
+        return current_shim >= _parse_version(str(entry.get("min_h3", "0.0.0")))
+
+    def _highest(entries: list[dict[str, Any]]) -> dict[str, Any]:
+        return max(entries, key=lambda e: _parse_version(str(e.get("hermes", "0"))))
+
+    satisfiable = [e for e in matches if _satisfiable(e)]
+    for pool in (
+        [e for e in satisfiable if e.get("status") == "current"],
+        satisfiable,
+        matches,
+    ):
+        if pool:
+            return _highest(pool)
+    return None  # pragma: no cover — matches is non-empty by the guard above
 
 
 def _parse_version(v: str) -> tuple[int, int, int]:
@@ -298,26 +338,44 @@ def pre_update_check(
     current = _parse_version(h3_shim_version)
     required = _parse_version(min_h3_str)
     if current < required:
-        return UpgradeCheckResult(
-            severity="BLOCK",
-            message=(
-                f"H3 shim v{h3_shim_version} is too old for Hermes "
-                f"{target_hermes_version} (requires H3 ≥ "
-                f"{compat['h3_shim']}). "
-                f"Run: pip install --upgrade hermes-h3-shim"
-            ),
+        if compat.get("status") == "planned":
+            # DF-H3-36: a planned pairing describes a FUTURE shim line.
+            # The shipped shim cannot satisfy it yet — that is expected,
+            # so it degrades to WARN instead of blocking every user.
+            checks.append(
+                {
+                    "check": "protocol_compat",
+                    "severity": "WARN",
+                    "detail": (
+                        f"Hermes {target_hermes_version} targets a PLANNED "
+                        f"pairing (H3 shim {compat['h3_shim']}, protocol "
+                        f"{compat.get('protocol', '?')}); the shipped shim "
+                        f"v{h3_shim_version} does not meet it yet. Review "
+                        f"before updating."
+                    ),
+                }
+            )
+        else:
+            return UpgradeCheckResult(
+                severity="BLOCK",
+                message=(
+                    f"H3 shim v{h3_shim_version} is too old for Hermes "
+                    f"{target_hermes_version} (requires H3 ≥ "
+                    f"{compat['h3_shim']}). "
+                    f"Run: pip install --upgrade hermes-h3-shim"
+                ),
+            )
+    else:
+        checks.append(
+            {
+                "check": "protocol_compat",
+                "severity": "OK",
+                "detail": (
+                    f"Hermes {target_hermes_version} → H3 shim "
+                    f"{compat['h3_shim']} (protocol {compat['protocol']})"
+                ),
+            }
         )
-
-    checks.append(
-        {
-            "check": "protocol_compat",
-            "severity": "OK",
-            "detail": (
-                f"Hermes {target_hermes_version} → H3 shim "
-                f"{compat['h3_shim']} (protocol {compat['protocol']})"
-            ),
-        }
-    )
 
     # ------------------------------------------------------------------
     # 3. Active harness health (async — run inline)

@@ -167,7 +167,7 @@ def test_bundled_versions_yaml_exists() -> None:
 def test_bundled_versions_yaml_loads_matrix() -> None:
     """The bundled matrix parses to the 4-entry hermes_versions list."""
     matrix = _load_version_matrix(_bundled_versions_yaml_path())
-    assert len(matrix) == 4
+    assert len(matrix) == 5
     assert matrix[0]["hermes"] == "0.17.0"
 
 
@@ -440,3 +440,139 @@ def test_upgrade_check_result_properties() -> None:
     warn = UpgradeCheckResult(severity="WARN", message="heads up")
     assert not warn.ok
     assert not warn.blocked
+
+
+# ---------------------------------------------------------------------------
+# DF-H3-36 — current rows must pair with the SHIPPED shim (0.1.0) so real
+# users get OK; planned rows never BLOCK when a satisfiable current row
+# exists; unknown future versions don't block harder than the matrix intends.
+# ---------------------------------------------------------------------------
+
+
+def test_bundled_matrix_0211_real_shipped_shim_is_ok(tmp_path: Path) -> None:
+    """Hermes 0.21.1 + shipped shim 0.1.0 -> OK against the REAL bundled matrix."""
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(
+        yaml.safe_dump(
+            {
+                "_schema": CURRENT_CONFIG_SCHEMA,
+                "default_harness": None,
+                "harnesses": {},
+                "sessions": {},
+            }
+        )
+    )
+    result = pre_update_check("0.21.1", config_path=cfg)
+    assert result.severity == "OK", result.message
+    assert not result.blocked
+
+
+def test_patch_release_matches_minor_row(tmp_path: Path) -> None:
+    """0.21.1 matches the 0.21.0 matrix row (major.minor patch tolerance)."""
+    row = {
+        "hermes": "0.21.0",
+        "h3_shim": "0.1.0",
+        "min_h3": "0.1.0",
+        "protocol": "1.0",
+        "status": "current",
+    }
+    assert _find_compat_entry("0.21.1", [row]) is row
+
+
+def test_current_row_preferred_over_planned(tmp_path: Path) -> None:
+    """With both a planned and a current row for the same Hermes version,
+    the satisfiable current row wins."""
+    rows = [
+        {
+            "hermes": "0.21.0",
+            "h3_shim": "2.0.0",
+            "min_h3": "2.0.0",
+            "protocol": "2.0",
+            "status": "planned",
+        },
+        {
+            "hermes": "0.21.0",
+            "h3_shim": "0.1.0",
+            "min_h3": "0.1.0",
+            "protocol": "1.0",
+            "status": "current",
+        },
+    ]
+    compat = _find_compat_entry("0.21.0", rows)
+    assert compat is not None
+    assert compat["status"] == "current"
+    assert compat["h3_shim"] == "0.1.0"
+
+
+def test_planned_row_reports_planned_status_without_block(
+    sample_versions_yaml: Path,
+) -> None:
+    """Targeting a planned pairing with the shipped 0.1.0 shim -> WARN, not BLOCK."""
+    with patch(
+        "h3_shim.upgrade_check._load_config",
+        return_value={
+            "_schema": CURRENT_CONFIG_SCHEMA,
+            "harnesses": {},
+            "sessions": {},
+        },
+    ):
+        result = pre_update_check("0.19.0", versions_yaml_path=sample_versions_yaml)
+    assert result.severity == "WARN"
+    assert not result.blocked
+    assert any("PLANNED" in c.get("detail", "") for c in result.checks)
+
+
+def test_planned_only_matrix_warns_never_blocks(tmp_path: Path) -> None:
+    """A planned-only matrix can never BLOCK the shipped shim (planned rows
+    describe a future shim line, not a requirement on the current one)."""
+    rows = [
+        {
+            "hermes": "0.22.0",
+            "h3_shim": "1.1.0",
+            "min_h3": "1.0.0",
+            "protocol": "1.0",
+            "status": "planned",
+        },
+    ]
+    p = tmp_path / "versions.yaml"
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump({"hermes_versions": rows}, fh)
+    result = pre_update_check("0.22.0", versions_yaml_path=p)
+    assert result.severity in ("WARN", "OK")
+    assert not result.blocked
+
+
+def test_unknown_future_version_not_blocked_harder_than_matrix(tmp_path: Path) -> None:
+    """An unknown FUTURE version still BLOCKs (matrix has no data), but the
+    message names the matrix and supported versions — never a shim error."""
+    p = tmp_path / "versions.yaml"
+    with p.open("w", encoding="utf-8") as fh:
+        yaml.safe_dump(
+            {
+                "hermes_versions": [
+                    {
+                        "hermes": "0.21.0",
+                        "h3_shim": "0.1.0",
+                        "min_h3": "0.1.0",
+                        "protocol": "1.0",
+                        "status": "current",
+                    }
+                ]
+            },
+            fh,
+        )
+    result = pre_update_check("0.99.0", versions_yaml_path=p)
+    assert result.severity == "BLOCK"
+    assert "no compatibility data" in result.message.lower()
+    assert "Supported Hermes versions: 0.21.0" in result.message
+    assert "too old" not in result.message.lower()
+
+
+def test_bundled_matrix_contains_021_current_row() -> None:
+    """The bundled matrix carries a 0.21.x current row paired with shim 0.1.0."""
+    matrix = _load_version_matrix(_bundled_versions_yaml_path())
+    rows = [e for e in matrix if str(e.get("hermes", "")).startswith("0.21.")]
+    assert rows, "bundled matrix must list a 0.21.x Hermes row"
+    current = [e for e in rows if e.get("status") == "current"]
+    assert current, "0.21.x row must be current"
+    assert current[0]["h3_shim"] == "0.1.0"
