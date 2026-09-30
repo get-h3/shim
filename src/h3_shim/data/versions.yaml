@@ -3,6 +3,10 @@
 # Single source of truth for Hermes ↔ H3 version compatibility.
 # Auto-generated from S03 spec §7.1.
 # See: h3/specs/03-Installer-Version-Compat.md
+#
+# "current" rows MUST pair with the SHIPPED shim version (h3_shim 0.1.0
+# until the 1.x line ships) or pre-update-check blocks every real user.
+# "planned" rows describe future pairings and never gate an install.
 
 hermes_versions:
   # 0.1.x shim line — the currently shipped package (h3_shim __version__).
@@ -16,6 +20,15 @@ hermes_versions:
     grpc: false
     status: "current"
     notes: "Initial 0.1.x dev line. Pairing for the currently shipped package."
+
+  - hermes: "0.21.0"
+    h3_shim: "0.1.0"
+    protocol: "1.0"
+    min_h3: "0.1.0"
+    max_h3: "0.1.x"
+    grpc: false
+    status: "current"
+    notes: "Current Hermes 0.21.x line. Pairs with the SHIPPED shim 0.1.0 — not the planned 1.x/2.x rows below."
 
   - hermes: "0.18.0"
     h3_shim: "1.0.0"
