@@ -1,5 +1,8 @@
 # Dogfood Integration — 2026-09-20 (h3-shim, HEAD 9e7a3f1)
 
+> **Historical (2026-09-20):** the compliance battery stood at 46 tests
+> on this date; the current count is 48 (`scripts/test-count.txt`).
+
 **Verdict: SHIPPABLE.** Fifth dogfood cycle; first to drive the untouched
 surfaces: go/ts scaffolds end-to-end, the SDK echo release gate, the full
 2026-09-18 CLI wave, and the py shim loop driving a NON-python harness.

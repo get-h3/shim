@@ -7,8 +7,8 @@ real toolchain the way CI does:
 * go — ``go mod tidy && go build .`` must produce the harness binary.
 * ts  — ``npm install && npm run build`` must produce ``dist/index.js``.
 * py  — a fresh venv must ``pip install -r requirements.txt`` cleanly,
-  and the harness must pass the full 46-test battery via ``h3-test``
-  (exit 0 AND ``TOTAL 46/46 PASSED`` asserted — the exit-code contract
+  and the harness must pass the full 48-test battery via ``h3-test``
+  (exit 0 AND ``TOTAL 48/48 PASSED`` asserted — the exit-code contract
   is checked explicitly, never masked). GAP-047 load hygiene: the venv
   is built ONCE per module (module-scoped ``py_scaffold`` fixture) and
   each test runs against its own ``shutil.copytree`` copy, so the heavy
@@ -270,16 +270,16 @@ class TestPyScaffoldBuild:
 
 
 class TestPyScaffoldBattery:
-    """The scaffolded py harness must pass the full 46-test battery.
+    """The scaffolded py harness must pass the full 48-test battery.
 
     This is the in-suite twin of the CI ``scaffold-compliance`` py leg and
     of ``scripts/test_battery.sh``: h3-test must exit 0 AND the output must
-    assert ``TOTAL 46/46 PASSED``. A non-zero exit (1 = compliance failure,
-    2 = unreachable) or a missing 46/46 assertion fails the test — the
+    assert ``TOTAL 48/48 PASSED``. A non-zero exit (1 = compliance failure,
+    2 = unreachable) or a missing 48/48 assertion fails the test — the
     exit-code contract is never masked.
     """
 
-    def test_py_scaffold_passes_46_46_battery(
+    def test_py_scaffold_passes_48_48_battery(
         self, tmp_path: Path, py_scaffold: Path
     ) -> None:
         proj = _copy_scaffold(py_scaffold, tmp_path)
@@ -317,9 +317,9 @@ class TestPyScaffoldBattery:
                 f"(1=compliance failure, 2=unreachable) — battery:\n{battery.stdout}",
                 log_path,
             )
-            assert "TOTAL" in battery.stdout and "46/46" in battery.stdout, (
+            assert "TOTAL" in battery.stdout and "48/48" in battery.stdout, (
                 _with_harness_log(
-                    f"battery output missing 46/46 assertion:\n{battery.stdout}",
+                    f"battery output missing 48/48 assertion:\n{battery.stdout}",
                     log_path,
                 )
             )
@@ -780,9 +780,9 @@ class TestPyScaffoldBatterySessionDrain:
                 f"(1=compliance failure, 2=unreachable) — battery:\n{battery.stdout}",
                 log_path,
             )
-            assert "TOTAL" in battery.stdout and "46/46" in battery.stdout, (
+            assert "TOTAL" in battery.stdout and "48/48" in battery.stdout, (
                 _with_harness_log(
-                    f"battery output missing 46/46 assertion:\n{battery.stdout}",
+                    f"battery output missing 48/48 assertion:\n{battery.stdout}",
                     log_path,
                 )
             )
@@ -790,7 +790,7 @@ class TestPyScaffoldBatterySessionDrain:
             # must drain to 0 within the harness's idle TTL (+ slack).
             leaked = _assert_sessions_drain(proc, port, log_path, budget_s=60.0)
             assert leaked == 0, (
-                f"active_sessions={leaked} after a full 46/46 battery + "
+                f"active_sessions={leaked} after a full 48/48 battery + "
                 f"{60:.0f}s drain budget — ended sessions are leaking "
                 f"(DF5-H3-SHIM-2)\n{_battery_assertion_block(log_path)}"
             )

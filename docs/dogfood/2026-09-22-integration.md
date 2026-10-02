@@ -1,5 +1,8 @@
 # Dogfood Integration — 2026-09-22 (h3-shim, HEAD 0823ee9 = origin/main)
 
+> **Historical (2026-09-22):** the compliance battery stood at 46 tests
+> on this date; the current count is 48 (`scripts/test-count.txt`).
+
 **Verdict: SHIPPABLE (core).** Seventh dogfood cycle; first to drive the
 `hermes h3` PLUGIN end-to-end — which immediately surfaced a stale-copy
 trap (DF5-H3-SHIM-3) — and the first to re-prove two just-closed P1s

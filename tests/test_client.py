@@ -36,6 +36,8 @@ from h3_shim.protocol import (
     Identity,
     Message,
     ProcessRequest,
+    SessionInfo,
+    SessionTerminated,
 )
 from h3_shim.shim_loop import H3ShimLoop
 
@@ -72,6 +74,7 @@ def _make_client(endpoint: str = "http://localhost:9000", **kw) -> H3Client:
     # Each HTTP verb is awaited, so they must be AsyncMocks.
     client._rest.get = AsyncMock()
     client._rest.post = AsyncMock()
+    client._rest.delete = AsyncMock()
     client._rest.aclose = AsyncMock()
     return client
 
@@ -396,6 +399,76 @@ class TestCancel:
         c._rest.post.return_value = _fake_response(500)
         with pytest.raises(httpx.HTTPStatusError):
             await c.cancel("s_007")
+
+
+# ── session get/delete (H3-PM-019) ──────────────────────────────────────────
+
+
+class TestGetSession:
+    async def test_returns_session_info(self):
+        c = _make_client()
+        c._rest.get.return_value = _fake_response(
+            200,
+            {
+                "session_id": "s_001",
+                "started_at": "2026-10-02T00:00:00+00:00",
+                "last_active": "2026-10-02T00:00:00+00:00",
+                "turn_count": 2,
+                "status": "active",
+            },
+        )
+        info = await c.get_session("s_001")
+        assert isinstance(info, SessionInfo)
+        assert info.session_id == "s_001"
+        assert info.status == "active"
+        assert info.turn_count == 2
+
+    async def test_gets_documented_path(self):
+        c = _make_client()
+        c._rest.get.return_value = _fake_response(
+            200,
+            {
+                "session_id": "s_009",
+                "started_at": "2026-10-02T00:00:00+00:00",
+                "last_active": "2026-10-02T00:00:00+00:00",
+            },
+        )
+        await c.get_session("s_009")
+        args, _kwargs = c._rest.get.call_args
+        assert args[0] == "/v1/sessions/s_009"
+
+    async def test_http_error_raises(self):
+        c = _make_client()
+        c._rest.get.return_value = _fake_response(404)
+        with pytest.raises(httpx.HTTPStatusError):
+            await c.get_session("nope")
+
+
+class TestDeleteSession:
+    async def test_returns_session_terminated(self):
+        c = _make_client()
+        c._rest.delete.return_value = _fake_response(
+            200, {"terminated": True, "session_id": "s_001"}
+        )
+        result = await c.delete_session("s_001")
+        assert isinstance(result, SessionTerminated)
+        assert result.terminated is True
+        assert result.session_id == "s_001"
+
+    async def test_deletes_documented_path(self):
+        c = _make_client()
+        c._rest.delete.return_value = _fake_response(
+            200, {"terminated": True, "session_id": "s_042"}
+        )
+        await c.delete_session("s_042")
+        args, _kwargs = c._rest.delete.call_args
+        assert args[0] == "/v1/sessions/s_042"
+
+    async def test_http_error_raises(self):
+        c = _make_client()
+        c._rest.delete.return_value = _fake_response(404)
+        with pytest.raises(httpx.HTTPStatusError):
+            await c.delete_session("nope")
 
 
 # ── close() ─────────────────────────────────────────────────────────────────

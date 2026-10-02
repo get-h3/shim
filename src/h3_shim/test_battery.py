@@ -1,4 +1,4 @@
-"""H3 compliance test battery — 46 tests across 6 categories.
+"""H3 compliance test battery — 48 tests across 6 categories.
 
 This module is the single most important piece of the shim. It defines the
 :cclass:`H3TestBattery`, a black-box HTTP probe that exercises every public
@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 # running from an earlier session answers ``/v1/health`` on the documented
 # port :9191 just as readily as the harness under test, so a harness that
 # silently failed to bind (its bind error went to an unwritable log) still
-# produced ``TOTAL 46/46 PASSED`` — a false PASS about a stranger's process.
+# produced ``TOTAL 46/46 PASSED`` (count-ok-historical) — a false PASS about
+# a stranger's process.
 # These two thresholds are how the connect step exposes that.
 
 #: Uptime (seconds) past which ``h3-test`` warns that the target is probably a
@@ -313,7 +314,7 @@ def category_token(value: str) -> str | None:
 
 
 # Total expected count — kept here so we can sanity-check at runtime.
-EXPECTED_TEST_COUNT = 46
+EXPECTED_TEST_COUNT = 48
 
 
 class H3TestBattery:
@@ -425,8 +426,8 @@ class H3TestBattery:
         this surfaces what it said about itself.  ``h3-test`` calls it before
         running the battery so the identity line is on screen even when a
         co-tenant process owns the port — the false-PASS case in DF-H3-26,
-        where a 2.6-day-old harness answered ``46/46 PASSED`` while the
-        harness under test had never bound the port.
+        where a 2.6-day-old harness answered 46/46 PASSED (count-ok-historical)
+        while the harness under test had never bound the port.
 
         Raises :class:`NotH3EndpointError` exactly like :meth:`probe`.
         """
@@ -1567,7 +1568,7 @@ class H3TestBattery:
             return done(False, f"Exception: {exc}")
 
     # ════════════════════════════════════════════════════════════════════
-    # Category 5 — Error & Edge Cases (13 tests)
+    # Category 5 — Error & Edge Cases (15 tests)
     # ════════════════════════════════════════════════════════════════════
 
     async def category_5_errors(self) -> list[TestResult]:
@@ -1585,6 +1586,8 @@ class H3TestBattery:
             await self.test_5_10_session_not_found(),
             await self.test_5_11_session_status_completed(),
             await self.test_5_12_session_get_after_process(),
+            await self.test_5_13_session_delete_terminates(),
+            await self.test_5_14_session_get_after_delete(),
         ]
 
     async def test_5_1_malformed_json(self) -> TestResult:
@@ -2007,6 +2010,153 @@ class H3TestBattery:
             except ValueError:
                 return done(False, f"started_at not ISO-8601: {started!r}")
             return done(True, f"GET session 200: session_id + started_at={started}")
+        except Exception as exc:  # noqa: BLE001
+            return done(False, f"Exception: {exc}")
+
+    async def test_5_13_session_delete_terminates(self) -> TestResult:
+        """DELETE /v1/sessions/{id} → 200 with {terminated, session_id}.
+
+        H3-PM-019: the battery ran 46 tests with zero DELETE /v1/sessions
+        coverage, so a harness could ship no terminate handling at all and
+        still score a full pass. GET /v1/sessions/{session_id} is the
+        documented retrieval path (§8), and a session that just accepted a
+        process call is the known-id the terminate contract speaks of: the
+        response must be 200, JSON, an object echoing the sent session_id
+        with a boolean ``terminated`` flag
+        (session-terminate-response.json). A harness without the route
+        (405), one that forgets the session (404), or one that answers a
+        non-JSON or shapeless body fails here.
+        """
+        cat = CATEGORIES["errors"]
+        done = self._timed("session_delete_terminates", cat)
+        sid = self._sid("delete")
+        try:
+            body = {
+                "session_id": sid,
+                "message": {"role": "user", "content": "hello before delete"},
+                "identity": {"platform": "test", "chat_id": "test-chat"},
+                "context": self._blank_context(),
+            }
+            resp, err = await self._safe_call(
+                self.client.post("/v1/process", json=body)
+            )
+            if err is not None or resp is None:
+                return done(False, f"Process exception: {err}")
+            if resp.status_code != 200:
+                return done(False, f"Process status {resp.status_code}")
+            dresp, derr = await self._safe_call(
+                self.client.delete(f"/v1/sessions/{sid}")
+            )
+            if derr is not None or dresp is None:
+                return done(False, f"Session DELETE exception: {derr}")
+            if dresp.status_code == 405:
+                return done(
+                    False,
+                    "405 — DELETE /v1/sessions/{id} is a documented protocol "
+                    "path but the harness does not implement it",
+                )
+            if dresp.status_code == 404:
+                return done(False, "404 — session not found right after a process call")
+            if dresp.status_code != 200:
+                return done(False, f"Session DELETE status {dresp.status_code}")
+            try:
+                ddata = dresp.json()
+            except Exception as exc:  # noqa: BLE001
+                return done(False, f"Session DELETE non-JSON body: {exc}")
+            if not isinstance(ddata, dict):
+                return done(
+                    False,
+                    f"Session DELETE body not an object: {type(ddata).__name__}",
+                )
+            if ddata.get("session_id") != sid:
+                return done(
+                    False,
+                    f"session_id {ddata.get('session_id')!r} != sent {sid!r}",
+                )
+            terminated = ddata.get("terminated")
+            if not isinstance(terminated, bool):
+                return done(
+                    False,
+                    f"terminated={terminated!r} — expected a bool "
+                    "(session-terminate-response.json)",
+                )
+            if not terminated:
+                return done(False, "terminated=false — session was not terminated")
+            return done(True, f"DELETE session 200: terminated=true, session_id={sid}")
+        except Exception as exc:  # noqa: BLE001
+            return done(False, f"Exception: {exc}")
+
+    async def test_5_14_session_get_after_delete(self) -> TestResult:
+        """GET /v1/sessions/{id} after DELETE reflects termination.
+
+        H3-PM-019: terminate handling is only real if the harness's own
+        session view agrees with it. After a 200 DELETE, a GET of the same
+        session must either forget it (404) or report a terminated status —
+        the post-state conventions the existing session-tracking tests
+        already accept (``404 — harness keeps no session state``, the
+        scaffold's ``cancelled`` after END). A harness that still answers
+        200 with a live session after terminate fails here. Harnesses
+        without the GET route (405) pass: nothing observable is claimed.
+        """
+        cat = CATEGORIES["errors"]
+        done = self._timed("session_get_after_delete", cat)
+        sid = self._sid("get_after_delete")
+        try:
+            body = {
+                "session_id": sid,
+                "message": {"role": "user", "content": "hello before delete"},
+                "identity": {"platform": "test", "chat_id": "test-chat"},
+                "context": self._blank_context(),
+            }
+            resp, err = await self._safe_call(
+                self.client.post("/v1/process", json=body)
+            )
+            if err is not None or resp is None:
+                return done(False, f"Process exception: {err}")
+            if resp.status_code != 200:
+                return done(False, f"Process status {resp.status_code}")
+            dresp, derr = await self._safe_call(
+                self.client.delete(f"/v1/sessions/{sid}")
+            )
+            if derr is not None or dresp is None:
+                return done(False, f"Session DELETE exception: {derr}")
+            if dresp.status_code != 200:
+                return done(
+                    False,
+                    f"Session DELETE status {dresp.status_code} (expected 200)",
+                )
+            sresp, serr = await self._safe_call(self.client.get(f"/v1/sessions/{sid}"))
+            if serr is not None or sresp is None:
+                return done(False, f"Session GET exception: {serr}")
+            if sresp.status_code == 405:
+                return done(True, "405 (GET route absent — no observable state)")
+            if sresp.status_code == 404:
+                return done(True, "404 (session forgotten after DELETE)")
+            if sresp.status_code != 200:
+                return done(False, f"Session GET status {sresp.status_code}")
+            try:
+                sdata = sresp.json()
+            except Exception as exc:  # noqa: BLE001
+                return done(False, f"Session GET non-JSON body: {exc}")
+            if not isinstance(sdata, dict):
+                return done(
+                    False,
+                    f"Session GET body not an object: {type(sdata).__name__}",
+                )
+            if "status" not in sdata:
+                return done(
+                    False,
+                    "GET after DELETE still returns the full session with no "
+                    "status field — termination is not reflected",
+                )
+            status = sdata.get("status")
+            if status in ("completed", "terminated", "cancelled", "expired"):
+                return done(True, f"status={status!r} after DELETE")
+            return done(
+                False,
+                f"status={status!r} after DELETE — expected the session to be "
+                "gone (404) or terminated, not live",
+            )
         except Exception as exc:  # noqa: BLE001
             return done(False, f"Exception: {exc}")
 

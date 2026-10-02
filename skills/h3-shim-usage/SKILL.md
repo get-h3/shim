@@ -2,7 +2,7 @@
 name: h3-shim-usage
 description: >-
   How to USE the H3 shim (get-h3/shim) for real: install, scaffold a
-  harness, run the 46-test compliance battery, manage harnesses and
+  harness, run the 48-test compliance battery, manage harnesses and
   routing, drive sessions through the shim loop, and use the hermes h3
   plugin. Includes pitfalls from the 2026-08-07 through 2026-09-22
   dogfood runs. Load this before touching the shim, its tests, or any
@@ -19,7 +19,7 @@ the thinking brain of Hermes. This skill teaches how to actually run it.
 
 ## What it does / entry points
 
-- `h3-test` — the 46-test H3 compliance battery (black-box, <1s; exit
+- `h3-test` — the 48-test H3 compliance battery (black-box, <1s; exit
   0 = compliant, 1 = compliance failure, 2 = not an H3 endpoint).
 - `hermes-h3` — harness management CLI: `install`, `list`,
   `pre-update-check`, `route`, `scaffold`, `test`, `uninstall`, `use`,
@@ -44,7 +44,7 @@ pip install git+https://github.com/get-h3/shim   # or: pip install /path/to/shim
 hermes-h3 scaffold --lang py            # generates ./h3-harness-py (self-contained)
 cd h3-harness-py && python3 -m venv .venv && source .venv/bin/activate
 pip install -e . && python main.py      # :9191 (honours PORT)
-h3-test --endpoint http://localhost:9191        # expect TOTAL 46/46 PASSED, exit 0
+h3-test --endpoint http://localhost:9191        # expect TOTAL 48/48 PASSED, exit 0
 hermes-h3 install my-harness --endpoint http://localhost:9191 --set-default
 hermes-h3 verify && hermes-h3 test && hermes-h3 route
 ```
@@ -81,7 +81,7 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
 
 0. **Cross-language first, raw-httpx never** (2026-09-20 lesson): the
    battery deliberately bypasses `H3Client` (test_battery.py:10), so ANY
-   client-serialization bug is invisible to 46/46 PASS. When verifying a
+   client-serialization bug is invisible to 48/48 PASS. When verifying a
    harness, always finish with one real `H3ShimLoop.run()` against it
    (prefer omitting `identity` to exercise the documented default), and
    drive harnesses in a DIFFERENT language than the client — that is how
@@ -155,7 +155,9 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    **string**, not a dict; and give `H3Loader(config)` a
    `default_harness` or un-routed sessions resolve to `"native"` and
    `harnesses["native"]` KeyErrors.
-12. **Battery is now 46 tests** (test_5_12 session GET, commit 5762d6f):
+12. **Battery is now 48 tests** (H3-PM-019 added DELETE /v1/sessions
+   coverage to the test_5_12 session-GET generation; earlier, test_5_12
+   itself, commit 5762d6f):
    `scripts/test-count.txt` is the single source; `make verify-counts`
    (`scripts/check-test-count.sh`) fails the build if any current-state
    surface quotes a retired count (H3-GAP-079).

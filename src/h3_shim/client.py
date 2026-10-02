@@ -23,6 +23,8 @@ from h3_shim.protocol import (
     Message,
     ProcessRequest,
     ResultRequest,
+    SessionInfo,
+    SessionTerminated,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,10 +34,12 @@ class H3Client:
     """Async REST client for an H3 harness.
 
     Endpoints consumed:
-        GET  /v1/health
-        POST /v1/process
-        POST /v1/result
-        POST /v1/cancel
+        GET    /v1/health
+        POST   /v1/process
+        POST   /v1/result
+        POST   /v1/cancel
+        GET    /v1/sessions/{session_id}
+        DELETE /v1/sessions/{session_id}
 
     All response payloads are validated against the Pydantic models in
     ``h3_shim.protocol``; non-2xx responses raise ``httpx.HTTPStatusError``
@@ -192,6 +196,18 @@ class H3Client:
         )
         resp.raise_for_status()
         return CancelResponse(**resp.json())
+
+    async def get_session(self, session_id: str) -> SessionInfo:
+        """GET /v1/sessions/{session_id} — metadata for a known session."""
+        resp = await self._rest.get(f"/v1/sessions/{session_id}")
+        resp.raise_for_status()
+        return SessionInfo(**resp.json())
+
+    async def delete_session(self, session_id: str) -> SessionTerminated:
+        """DELETE /v1/sessions/{session_id} — terminate the session."""
+        resp = await self._rest.delete(f"/v1/sessions/{session_id}")
+        resp.raise_for_status()
+        return SessionTerminated(**resp.json())
 
     async def close(self):
         await self._rest.aclose()

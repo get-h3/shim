@@ -5,7 +5,8 @@ The battery probes an *endpoint*, and an endpoint is a port any process may
 already own.  A co-tenant harness left running from an earlier session
 answered ``/v1/health`` on :9191 while the harness under test had silently
 failed to bind (its bind error went to an unwritable log) — and the battery
-still printed ``46/46 PASSED`` about the stranger's process.  These tests pin
+still printed ``46/46 PASSED`` (count-ok-historical) about the stranger's
+process.  These tests pin
 the three defences: the identity line printed at connect, the advisory
 ``WARN:`` lines, and the ``--expect-fresh`` refusal.
 

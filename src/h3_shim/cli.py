@@ -438,8 +438,8 @@ async def _run_battery(
     printed before the first test, because the battery cannot tell the
     harness you just started from a co-tenant process that already owned the
     port — the DF-H3-26 false PASS, where a stranger's 2.6-day-old harness
-    answered ``46/46 PASSED``.  With *expect_fresh* that identity is also
-    enforced: an uptime over
+    answered ``46/46 PASSED`` (count-ok-historical).  With *expect_fresh*
+    that identity is also enforced: an uptime over
     :data:`h3_shim.test_battery.EXPECT_FRESH_MAX_UPTIME_S` stops the run
     before a single test executes.
     """

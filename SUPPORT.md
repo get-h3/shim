@@ -23,6 +23,6 @@ pip install hermes-h3-shim
 h3-test --endpoint http://localhost:9191
 ```
 
-46 compliance tests. Exit 0 = compliant. (For an unreleased commit:
+48 compliance tests. Exit 0 = compliant. (For an unreleased commit:
 `pip install git+https://github.com/get-h3/shim`; release flow in
 [`docs/publishing.md`](docs/publishing.md).)

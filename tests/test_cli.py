@@ -1691,13 +1691,13 @@ class TestRunBatteryJSON:
 
 
 def _full_category_report() -> FakeTestReport:
-    """Return a report with all 46 tests across all 6 categories."""
+    """Return a report with all 48 tests across all 6 categories."""
     cat_map: dict[str, int] = {
         "Health & Protocol": 7,
         "Process Basic Flows": 8,
         "Decision Types": 6,
         "Result Handling": 7,
-        "Error & Edge Cases": 13,
+        "Error & Edge Cases": 15,
         "Stress & Performance": 5,
     }
     results: list[FakeTestResult] = []
@@ -1716,8 +1716,8 @@ def _full_category_report() -> FakeTestReport:
             seq += 1
     return FakeTestReport(
         results=results,
-        total=46,
-        passed=46,
+        total=48,
+        passed=48,
         failed=0,
         duration_ms=44.0,
         timestamp="2026-01-01T00:00:00Z",
@@ -1754,7 +1754,7 @@ class TestRunBatteryCategories:
 
     @pytest.mark.asyncio
     async def test_multiple_tokens_runs_both_subsets(self, monkeypatch, capsys):
-        """--categories health,errors runs Health (7) + Errors (13) = 20 tests."""
+        """--categories health,errors runs Health (7) + Errors (15) = 22 tests."""
         self._stub_battery(monkeypatch, _full_category_report())
         code = await _run_battery("http://x:1", "health,errors", False)
         assert code == 0
@@ -1762,7 +1762,7 @@ class TestRunBatteryCategories:
         assert "Health & Protocol" in out
         assert "7/7" in out
         assert "Error & Edge Cases" in out
-        assert "13/13" in out
+        assert "15/15" in out
         # None of the other categories
         assert "Process Basic Flows" not in out
         assert "Decision Types" not in out
@@ -1793,8 +1793,8 @@ class TestRunBatteryCategories:
         assert "bogus" in err
 
     @pytest.mark.asyncio
-    async def test_all_tokens_runs_all_forty_six(self, monkeypatch, capsys):
-        """--categories health,process,decisions,results,errors,stress runs all 46."""
+    async def test_all_tokens_runs_all_forty_eight(self, monkeypatch, capsys):
+        """--categories health,process,decisions,results,errors,stress runs all 48."""
         self._stub_battery(monkeypatch, _full_category_report())
         code = await _run_battery(
             "http://x:1",
@@ -1875,11 +1875,11 @@ class TestRunBatteryCategories:
         assert code == 0
         out = capsys.readouterr().out
         assert "Error & Edge Cases" in out
-        assert "13/13" in out
+        assert "15/15" in out
         assert "Stress & Performance" in out
         assert "5/5" in out
-        # 13 + 5 = 18 tests total
-        assert "18/18" in out
+        # 15 + 5 = 20 tests total
+        assert "20/20" in out
         assert "Health & Protocol" not in out
 
     @pytest.mark.asyncio
@@ -1898,13 +1898,13 @@ class TestRunBatteryCategories:
         assert '"Stress & Performance"' in err
 
 
-#: Test counts per category label — mirrors the real battery's 46-test split.
+#: Test counts per category label — mirrors the real battery's 48-test split.
 _LABEL_COUNTS: dict[str, int] = {
     "Health & Protocol": 7,
     "Process Basic Flows": 8,
     "Decision Types": 6,
     "Result Handling": 7,
-    "Error & Edge Cases": 13,
+    "Error & Edge Cases": 15,
     "Stress & Performance": 5,
 }
 

@@ -25,7 +25,7 @@ version-bump flow — are in [`docs/publishing.md`](docs/publishing.md).
 
 This installs two CLI entry points:
 
-- `h3-test` — the 46-test H3 compliance battery (`h3-test --endpoint <url>`)
+- `h3-test` — the 48-test H3 compliance battery (`h3-test --endpoint <url>`)
 - `hermes-h3` — harness management (`install`, `list`, `test`, `verify`, `scaffold`, ...)
 
 ## Quickstart
@@ -163,7 +163,7 @@ unset or blank `$HERMES_H3_CONFIG` falls back to the default path. See
 - `loader.py` — Harness discovery, health check, session routing
 - `shim_loop.py` — Main H3ShimLoop
 - `native.py` — Native Hermes loop wrapper
-- `test_battery.py` — 46 compliance tests (THE GATE)
+- `test_battery.py` — 48 compliance tests (THE GATE)
 - `cli.py` — the `hermes-h3` CLI (9 subcommands: install, list, pre-update-check, route, scaffold, test, uninstall, use, verify); the `h3/` plugin in this repo exposes them as `hermes h3 <cmd>`
 
 ## Development

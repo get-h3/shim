@@ -352,7 +352,7 @@ h3-test --endpoint http://localhost:9191 --categories health,process
 h3-test --endpoint http://localhost:9191 --expect-fresh   # refuse a stale target
 ```
 
-The battery is 46 tests across 6 categories (health, process, decisions,
+The battery is 48 tests across 6 categories (health, process, decisions,
 results, errors, stress).  See [Exit codes](#exit-codes) below for the
 meaning of each h3-test exit code.
 
@@ -373,7 +373,7 @@ prints as `(not reported)`.  Two conditions earn a `WARN:` line on stderr
 
 That matters because the battery probes an *endpoint*, not a process: a
 harness that failed to bind leaves its port to whoever already owned it, and
-a leftover harness answers `/v1/health` just as happily — 46/46 PASSED about
+a leftover harness answers `/v1/health` just as happily — 48/48 PASSED about
 a stranger's process.  When you need proof that the harness you just started
 is the one answering, use `--expect-fresh`:
 
@@ -415,7 +415,7 @@ failure detail repeats the convention so you do not have to guess it from
 
 ### 4.4 The compliance gate (GAP-043) — wired into `make test` and CI
 
-Since GAP-043 the 46-test battery is THE GATE: it runs against a live
+Since GAP-043 the 48-test battery is THE GATE: it runs against a live
 scaffolded harness on every `make test` and every CI push, and a protocol
 regression fails the build (h3-test exit 1) — no silent green.
 
@@ -436,7 +436,7 @@ is required**:
 3. The harness starts on a free port (auto-scanned from 9191) and is
    health-checked at `/v1/health`.
 4. `h3-test --endpoint` runs the battery; the script asserts **exit 0
-   AND `TOTAL 46/46 PASSED`**. Exit 1 (compliance) or 2 (unreachable /
+   AND `TOTAL 48/48 PASSED`**. Exit 1 (compliance) or 2 (unreachable /
    not-H3) both fail the build.
 
 The endpoint defaults to the loader config
