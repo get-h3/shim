@@ -1108,7 +1108,7 @@ def verify(
             f"verify failed for {harness_name!r}: {exc}"
         ) from exc
 
-    payload = result.model_dump()
+    payload = result.model_dump(mode="json")
     click.echo(f"harness: {harness_name}")
     click.echo(f"endpoint: {endpoint}")
     click.echo(f"status:   {payload.get('status', 'unknown')}")
