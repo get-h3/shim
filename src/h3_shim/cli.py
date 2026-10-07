@@ -38,16 +38,6 @@ import click
 import yaml
 
 from h3_shim.loader import CircuitBreaker
-
-#: Circuit-breaker defaults, read from the loader's __init__ signature so
-#: the CLI report can never drift from the actual loader behaviour
-#: (board row DF-H3-38).
-_CB_DEFAULTS = {
-    name: param.default
-    for name, param in inspect.signature(CircuitBreaker.__init__).parameters.items()
-    if name != "self"
-}
-
 from h3_shim.test_battery import (
     CATEGORIES,
     H3TestBattery,
@@ -57,6 +47,15 @@ from h3_shim.test_battery import (
     TestResult,
     category_token,
 )
+
+#: Circuit-breaker defaults, read from the loader's __init__ signature so
+#: the CLI report can never drift from the actual loader behaviour
+#: (board row DF-H3-38).
+_CB_DEFAULTS = {
+    name: param.default
+    for name, param in inspect.signature(CircuitBreaker.__init__).parameters.items()
+    if name != "self"
+}
 
 # ---------------------------------------------------------------------------
 # Config helpers
@@ -1169,12 +1168,8 @@ def _report_fallback(  # noqa: PLR0912
             f"      rate reaches the threshold "
             f"({int(_CB_DEFAULTS['error_threshold'] * 100)}%),"
         )
-        click.echo(
-            "      closing the path as soon as the breaker opens — the"
-        )
-        click.echo(
-            "      consecutive-failure reroute (above) is what waits for"
-        )
+        click.echo("      closing the path as soon as the breaker opens — the")
+        click.echo("      consecutive-failure reroute (above) is what waits for")
         click.echo("      the next health-check pass.")
         click.echo(
             f"    • Cooldown before half-open probe: "
@@ -1194,12 +1189,8 @@ def _report_fallback(  # noqa: PLR0912
         click.echo("      reroute to the native Hermes loop.")
         click.echo("    • Circuit breaker (error rate >= 50%) opens")
         click.echo("      after window_size failures and reroutes")
-        click.echo(
-            "      sessions at the next health-check pass"
-        )
-        click.echo(
-            "      (worst case = health_interval ×"
-        )
+        click.echo("      sessions at the next health-check pass")
+        click.echo("      (worst case = health_interval ×")
         click.echo("      max_consecutive_failures).")
         click.echo("")
         click.echo("  Native harness: available (no endpoint required)")

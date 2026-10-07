@@ -10,6 +10,7 @@ shortened sleep so cancellation behavior can be verified.
 
 import asyncio
 import os
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -918,7 +919,11 @@ class TestCircuitBreaker:
         # Pre-set alpha's circuit breaker to OPEN
         cb_alpha = loader._circuit_breakers["alpha"]
         cb_alpha._state = "OPEN"
-        cb_alpha._opened_at = 999999.0  # far in the future
+        # time.monotonic() is seconds-since-boot on Linux — a literal like
+        # 999999.0 is "far in the future" only on boxes with < 11.5 days
+        # uptime. Anchor to the real clock so the cooldown has NOT expired
+        # on long-lived hosts.
+        cb_alpha._opened_at = time.monotonic()
 
         call_count = 0
 

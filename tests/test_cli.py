@@ -23,12 +23,12 @@ from click.testing import CliRunner
 from pydantic import ValidationError
 
 from h3_shim.cli import (
-    _report_fallback,
     CONFIG_PATH,
     CONFIG_PATH_ENV,
     _empty_config,
     _format_human,
     _latency_stats,
+    _report_fallback,
     _run_battery,
     default_config_path,
     hermes_h3,
@@ -2537,17 +2537,16 @@ class TestFallbackReportDefaults:
         sig = inspect.signature(CircuitBreaker.__init__).parameters
         threshold = sig["error_threshold"].default
         cooldown = sig["cooldown_seconds"].default
-        assert (
-            f"{int(threshold * 100)}%" in out
-        ), "threshold literal must render from CircuitBreaker.error_threshold"
-        assert (
-            f"{int(cooldown)}s default" in out
-        ), "cooldown literal must render from CircuitBreaker.cooldown_seconds"
+        assert f"{int(threshold * 100)}%" in out, (
+            "threshold literal must render from CircuitBreaker.error_threshold"
+        )
+        assert f"{int(cooldown)}s default" in out, (
+            "cooldown literal must render from CircuitBreaker.cooldown_seconds"
+        )
 
     def test_defaults_track_loader_change(self, capsys, monkeypatch):
         """If the loader default changes, the report must follow."""
         from h3_shim import cli as cli_mod
-        from h3_shim.loader import CircuitBreaker
 
         monkeypatch.setattr(
             cli_mod,
