@@ -414,13 +414,15 @@ def pre_update_check(
     cfg = _load_config(config_path)
     cfg_schema = cfg.get("_schema", 0)
     if cfg_schema < CURRENT_CONFIG_SCHEMA:
+        # Older configs are read as-is; no schema migration exists or is
+        # planned (DF-H3-39) — report informatively, never warn.
         checks.append(
             {
                 "check": "config_schema",
-                "severity": "WARN",
+                "severity": "INFO",
                 "detail": (
-                    f"H3 config schema v{cfg_schema} will be "
-                    f"migrated to v{CURRENT_CONFIG_SCHEMA}"
+                    f"Config schema v{cfg_schema} "
+                    f"(current is v{CURRENT_CONFIG_SCHEMA}; no migration needed)"
                 ),
             }
         )

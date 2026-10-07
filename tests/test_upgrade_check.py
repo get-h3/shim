@@ -387,10 +387,10 @@ def test_ok_when_compatible(sample_versions_yaml: Path, sample_config: Path) -> 
 
 
 @patch("h3_shim.upgrade_check.h3_shim_version", "1.2.0")
-def test_warn_on_stale_config_schema(
+def test_info_on_stale_config_schema(
     sample_versions_yaml: Path, sample_config: Path
 ) -> None:
-    """Config schema is 0 (old) → WARN."""
+    """Config schema is 0 (old) → INFO, no phantom migration warning (DF-H3-39)."""
     with patch(
         "h3_shim.upgrade_check._load_config",
         return_value={"_schema": 0, "harnesses": {}, "sessions": {}},
@@ -400,9 +400,12 @@ def test_warn_on_stale_config_schema(
             versions_yaml_path=sample_versions_yaml,
             config_path=sample_config,
         )
-    assert result.severity == "WARN"
     assert not result.blocked
-    assert any("migrated" in c.get("detail", "") for c in result.checks)
+    schema_checks = [c for c in result.checks if c.get("check") == "config_schema"]
+    assert len(schema_checks) == 1
+    assert schema_checks[0]["severity"] == "INFO"
+    assert "migrated" not in schema_checks[0]["detail"]
+    assert "no migration needed" in schema_checks[0]["detail"]
 
 
 @patch("h3_shim.upgrade_check.h3_shim_version", "1.2.0")
