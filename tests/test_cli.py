@@ -2002,7 +2002,7 @@ class TestVerifyCommand:
         assert result.exit_code == 0
         assert "harness: <override>" in result.output
         assert "endpoint: http://x:1" in result.output
-        assert "status:   HealthStatus.OK" in result.output
+        assert "status:   ok" in result.output
         assert "version:  1.2.3" in result.output
         assert "foo" in result.output
 
@@ -2028,7 +2028,7 @@ class TestVerifyCommand:
             ["verify", "--endpoint", "http://x:1", "--fallback"],
         )
         assert result.exit_code == 0
-        assert "status:   HealthStatus.OK" in result.output
+        assert "status:   ok" in result.output
         assert "Fallback path" in result.output
         assert "STANDBY" in result.output
         assert "harness: <override>" in result.output
@@ -2101,7 +2101,7 @@ class TestVerifyCommand:
         assert result.exit_code == 0
         assert "harness: beta" in result.output
         assert "endpoint: http://b:2" in result.output
-        assert "status:   HealthStatus.OK" in result.output
+        assert "status:   ok" in result.output
 
     def test_verify_no_args_falls_back_to_default(self, runner, monkeypatch, cfg_path):
         """`verify` with no NAME/--harness still uses default_harness."""
