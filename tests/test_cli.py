@@ -23,6 +23,7 @@ from click.testing import CliRunner
 from pydantic import ValidationError
 
 from h3_shim.cli import (
+    _report_fallback,
     CONFIG_PATH,
     CONFIG_PATH_ENV,
     _empty_config,
@@ -2508,3 +2509,54 @@ class TestPyTemplateWheelConfig:
         # The positive contract: hatchling with a plain packages selection.
         assert "hatchling" in text
         assert 'packages = ["."]' in text
+
+
+class TestFallbackReportDefaults:
+    """DF-H3-38: _report_fallback must derive breaker defaults from the
+    loader and must not resurrect the 'immediately' drift DF-H3-35 removed
+    from the docs."""
+
+    def test_unreachable_report_has_no_immediately_claim(self, capsys):
+        _report_fallback("brain", "http://127.0.0.1:9191", TimeoutError("x"))
+        out = capsys.readouterr().out
+        assert "immediately" not in out
+        assert "next health-check pass" in out
+
+    def test_healthy_report_has_no_immediately_claim(self, capsys):
+        _report_fallback("brain", "http://127.0.0.1:9191", None)
+        out = capsys.readouterr().out
+        assert "immediately" not in out
+
+    def test_defaults_come_from_loader_circuit_breaker(self, capsys):
+        import inspect
+
+        from h3_shim.loader import CircuitBreaker
+
+        _report_fallback("brain", "http://127.0.0.1:9191", TimeoutError("x"))
+        out = capsys.readouterr().out
+        sig = inspect.signature(CircuitBreaker.__init__).parameters
+        threshold = sig["error_threshold"].default
+        cooldown = sig["cooldown_seconds"].default
+        assert (
+            f"{int(threshold * 100)}%" in out
+        ), "threshold literal must render from CircuitBreaker.error_threshold"
+        assert (
+            f"{int(cooldown)}s default" in out
+        ), "cooldown literal must render from CircuitBreaker.cooldown_seconds"
+
+    def test_defaults_track_loader_change(self, capsys, monkeypatch):
+        """If the loader default changes, the report must follow."""
+        from h3_shim import cli as cli_mod
+        from h3_shim.loader import CircuitBreaker
+
+        monkeypatch.setattr(
+            cli_mod,
+            "_CB_DEFAULTS",
+            {
+                **cli_mod._CB_DEFAULTS,
+                "cooldown_seconds": 45.0,
+            },
+        )
+        _report_fallback("brain", "http://127.0.0.1:9191", TimeoutError("x"))
+        out = capsys.readouterr().out
+        assert "45s default" in out
