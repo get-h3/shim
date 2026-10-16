@@ -4,7 +4,7 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side.
 
 ## Install
 
-The package is published to PyPI as of v0.1.0:
+The package is published to PyPI (current release v0.2.0):
 
 ```bash
 # PEP 668 distros (Ubuntu 24+, Debian 12+) refuse bare pip installs —

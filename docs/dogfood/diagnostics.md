@@ -16,7 +16,7 @@ dumps — read this to understand the system, not to replay a session.
   `templates/{go,py,ts}/` for scaffolding.
 - **Packaging:** hatchling wheel from `packages = ["src/h3_shim"]`, two
   console scripts (`h3-test`, `hermes-h3`). Published to PyPI as
-  `hermes-h3-shim` (v0.1.0 and later) — `pip install hermes-h3-shim`, or from
+  `hermes-h3-shim` (v0.2.0 and later) — `pip install hermes-h3-shim`, or from
   git/source for an unreleased commit; build/upload/verification flow in
   `docs/publishing.md`. The `h3/` directory is an optional Hermes Core plugin that
   registers an `h3` command group delegating to the same CLI.

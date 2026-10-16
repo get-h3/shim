@@ -4,7 +4,7 @@ How the shim gets from this repository to `pip install hermes-h3-shim`.
 Everything here is run by the **release owner** — the person holding the PyPI
 API token. Nothing in this document (or the repo) contains a token value.
 
-The package is `v0.1.0`-ready: `pyproject.toml`, the built artifacts and the
+The package is `v0.2.0`-ready: `pyproject.toml`, the built artifacts and the
 metadata they carry are audited below. The index itself is the only thing that
 cannot be verified from inside the repo, so step 4 is the proof.
 
@@ -31,7 +31,7 @@ cannot be verified from inside the repo, so step 4 is the proof.
 | Field | Value / why it matters |
 |---|---|
 | `name` | `hermes-h3-shim` — reserved; the index name is permanent |
-| `version` | `0.1.0` — **immutable on PyPI once uploaded** (see §5) |
+| `version` | `0.2.0` — **immutable on PyPI once uploaded** (see §5) |
 | `requires-python` | `>=3.10` |
 | `license` / `license-files` | PEP 639: SPDX expression `MIT` plus the three files that carry it (`LICENSE`, `NOTICE`, `NOTICE.md`). No `License ::` classifier — a classifier next to a `License-Expression` is the one combination PEP 639 lets a build tool reject |
 | `[project.urls]` | Homepage / Repository / Issues / Changelog / Documentation |
@@ -57,10 +57,10 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 Sanity-check the metadata before uploading:
 
 ```bash
-tar xzOf dist/hermes_h3_shim-0.1.0.tar.gz hermes_h3_shim-0.1.0/PKG-INFO | head -30
+tar xzOf dist/hermes_h3_shim-0.2.0.tar.gz hermes_h3_shim-0.2.0/PKG-INFO | head -30
 # expect: License-Expression: MIT, five Project-URL lines, Author-email,
 #         and NO "License:" field and NO "License ::" classifier
-tar tzf dist/hermes_h3_shim-0.1.0.tar.gz | grep -E 'coding-hermes|gitreins|\.vfs|dagger\.db'
+tar tzf dist/hermes_h3_shim-0.2.0.tar.gz | grep -E 'coding-hermes|\.vfs|dagger\.db'
 # expect: no output
 ```
 
@@ -70,8 +70,8 @@ tar tzf dist/hermes_h3_shim-0.1.0.tar.gz | grep -E 'coding-hermes|gitreins|\.vfs
 TWINE_USERNAME=__token__ \
 TWINE_PASSWORD="$PYPI_API_TOKEN" \
   .venv/bin/python -m twine upload \
-    dist/hermes_h3_shim-0.1.0-py3-none-any.whl \
-    dist/hermes_h3_shim-0.1.0.tar.gz
+    dist/hermes_h3_shim-0.2.0-py3-none-any.whl \
+    dist/hermes_h3_shim-0.2.0.tar.gz
 ```
 
 - The username is the literal string `__token__`; the password is the token,

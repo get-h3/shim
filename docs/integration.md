@@ -25,7 +25,7 @@ see [Optional: the `hermes h3` plugin](#optional-the-hermes-h3-plugin).
 # always use a venv:
 python3 -m venv .venv
 source .venv/bin/activate
-pip install hermes-h3-shim            # v0.1.0 and later
+pip install hermes-h3-shim            # v0.2.0 and later
 # or, for a commit that is not in a release yet:
 pip install git+https://github.com/get-h3/shim
 ```

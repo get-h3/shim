@@ -36,7 +36,7 @@ the thinking brain of Hermes. This skill teaches how to actually run it.
 ## Quickstart (proven working, 2026-09-06 — 46/46 in ~20s cold)
 
 ```bash
-# Install (published to PyPI as of v0.1.0; PEP 668: use a venv)
+# Install (published to PyPI; current v0.2.0; PEP 668: use a venv)
 python3 -m venv venv && source venv/bin/activate
 pip install hermes-h3-shim                      # or, for an unreleased commit:
 pip install git+https://github.com/get-h3/shim   # or: pip install /path/to/shim
