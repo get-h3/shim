@@ -4,7 +4,7 @@ Python plugin for Hermes Core. Implements the H3 protocol on the Hermes side: cl
 
 ## Package
 
-- PyPI: `hermes-h3-shim` — name reserved, **NOT published** (install from source, see README)
+- PyPI: `hermes-h3-shim` — published (first release v0.1.0; current **v0.2.0**); install from PyPI or source, see README
 - Location in Hermes: standalone pip package — **not** inside Hermes Core
   (`hermes_cli/agent/shims/h3/` does not exist there). Optional `hermes h3`
   plugin in `h3/` (copy to `~/.hermes/plugins/h3/`); see `docs/integration.md`.
