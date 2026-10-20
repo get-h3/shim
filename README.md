@@ -152,7 +152,9 @@ order, highest first: `--config <path>` (accepted before **or** after a
 subcommand) → `$HERMES_H3_CONFIG` → `~/.hermes/h3/config.yaml`. So
 `HERMES_H3_CONFIG=/tmp/mine.yaml hermes-h3 list` reads the override
 instead of your real config, and every command that writes the file
-(`install`, `use`, `scaffold`, `uninstall`) writes it there too. An
+(`install`, `use`, `scaffold`, `uninstall`) writes it there too —
+`uninstall NAME` additionally drops every `sessions:` binding that pointed
+at the removed harness, so a route can never outlive its target. An
 unset or blank `$HERMES_H3_CONFIG` falls back to the default path. See
 `docs/integration.md` for details.
 

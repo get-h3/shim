@@ -115,6 +115,11 @@ hermes-h3 install NAME --endpoint URL [--transport rest]
   minimal `sessions:` YAML example (see §4.4).  `--session <id>
   --set-harness <name>` writes a binding to the config file and `--remove`
   deletes one — no hand-edit needed (see §4.4).
+- `hermes-h3 uninstall NAME` removes the harness **and** every `sessions:`
+  binding that pointed at it (DOGFOOD-12), naming the dropped session ids on
+  stdout.  A route to a harness that no longer exists would otherwise keep
+  resolving to that dead name, and the loader reads a missing client as
+  *native* — a silent fallback instead of an error.
 
 ## 3. Configure Hermes routing
 
@@ -484,6 +489,32 @@ mutually exclusive.  Anything else exits non-zero, prints the reason (unknown
 harness names are listed), and leaves the config file **untouched**.  A
 repeated `--set-harness` for the same session/harness pair is idempotent.
 
+**A binding whose harness is gone is flagged, never hidden.**  When a
+`sessions:` entry names a harness that is not in `harnesses:` — hand-edited
+in, or written by an older release whose `uninstall` left the route behind —
+`hermes-h3 route` marks the row and prints the way out:
+
+```text
+SESSION                                  HARNESS
+------------------------------------------------------------
+s1                                       echo   [!] dangling: harness 'echo' is not installed
+
+warning: 1 session binding(s) name a harness that is not installed;
+         those sessions fall back to native.  Re-install the harness or drop
+         the binding:
+  hermes-h3 route --session s1 --remove
+```
+
+`route --session <id>` carries the same marker plus a re-install/drop hint.
+The exit status stays `0` — `route` is a report, and the marker plus the
+`warning:` block are what make the state visible (it used to print
+`s1 -> echo` with nothing to distinguish it from a live route).  The loader
+resolves a dangling name and then finds no client for it; per its contract a
+`None` client means *native*, so those sessions silently fall back.  `native`
+is never dangling (it is Hermes' own loop, not a `harnesses:` entry), and
+`uninstall` no longer produces the state at all — it drops every binding to
+the removed harness in the same save and names the dropped ids.
+
 **If the table is empty** (`no sessions configured — the routing table is
 empty.`), the command exits 0 and prints the resolved config path, the YAML
 to add, and why an empty table is normal:
@@ -531,6 +562,7 @@ alternative.  Note the fallback order is independent: a session with no
 | `Error: harness 'x' not found in config` | Name mismatch — `hermes-h3 list` shows the registered names. |
 | `verify failed for 'x': ...` | Harness not running or wrong endpoint — check it is up on the port you registered. |
 | `hermes-h3 route` prints `no sessions configured` with a YAML example | No `sessions:` entries in the config and no runtime pin — add one with `hermes-h3 route --session <id> --set-harness <name>` (or under `sessions:` in the config path the message names, default `~/.hermes/h3/config.yaml`), or let a running shim/embedder pin it via `H3Loader.route_session(...)`. See §4.4. |
+| `hermes-h3 route` shows `[!] dangling: harness 'x' is not installed` | A `sessions:` binding names a harness that is not in `harnesses:` — removed, renamed, or hand-edited in (the previous `uninstall` behaviour). The loader still resolves that dead name and finds no client for it, which its contract reads as *native* → the session silently falls back. Re-install it (`hermes-h3 install x --endpoint <url>`) or drop the binding (`hermes-h3 route --session <id> --remove`); current `uninstall` does this cleanup itself. See §4.4. |
 | `Error: --set-harness and --remove need --session <id>` / `Error: --set-harness and --remove are mutually exclusive` | The write flags need a target: pass `--session <id>` with exactly one of `--set-harness <name>` or `--remove`. **Nothing was written** (the config file is validated before any save). See §4.4. |
 | Battery exits non-zero | Check the exit code: **0** = compliant, **1** = real compliance failure (run with `--json` and inspect per-test failures; the SDK echo examples are the compliance reference), **2** = not an H3 endpoint (wrong URL / harness down / connection refused / HTTP error) — NOT a protocol regression. See [Exit codes](#exit-codes). |
 | `hermes h3 list --config X` works but `hermes h3 --config X list` (or vice-versa) errored | Older plugin builds registered `--config` only on the parent parser. Current builds accept `--config` **before OR after** the subcommand in `hermes h3` (matching the standalone `hermes-h3` click CLI) — refresh the install with `rsync -a --delete h3/ ~/.hermes/plugins/h3/` (never copy the repo's `h3` dir INTO `~/.hermes/plugins/h3/`, which nests the fresh copy and keeps serving the stale one). |

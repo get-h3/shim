@@ -318,6 +318,15 @@ session id — and win over the static `sessions` map. When
 `session_routes_path` is set in the config, pins are persisted to that JSON
 file and reloaded on the next start, so a reroute survives a restart.
 
+Keep the static `sessions` map pointed at harnesses that actually exist: a
+binding naming a harness that is gone (removed, renamed, or written in by
+hand) still resolves — `resolve()` answers that name and
+`loader.harnesses.get(name)` is then `None`, which per the contract above
+means *native* — so the session falls back silently instead of failing
+anywhere. The CLI never writes one: `hermes-h3 uninstall NAME` drops its
+`sessions:` bindings, and `hermes-h3 route` marks any that are left
+(DOGFOOD-12).
+
 ```python
 def route_session(self, session_id: str, harness_name: str) -> None
 def get_session_harness(self, session_id: str) -> str | None

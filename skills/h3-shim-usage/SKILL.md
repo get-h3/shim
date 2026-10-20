@@ -195,6 +195,20 @@ result = await loop.run(Message(role="user", content="weather in Berlin?"))
    the battery banner prints "Stress & Performance" but the filter
    wants `stress` (also: decisions/errors/health/process/results).
    Display labels error with exit 2 listing the valid tokens.
+16. **`uninstall` no longer strands session routes; `route` flags any that
+   remain** (DOGFOOD-12): `hermes-h3 uninstall NAME` drops every `sessions:`
+   binding that pointed at NAME in the same save and names the dropped ids
+   on stdout (`also removed 1 session binding(s) that pointed at 'echo':
+   s1`). Previously the file kept `sessions: {s1: {harness: echo}}` with
+   `harnesses: {}`, `route` still printed `s1 -> echo` with exit 0, and
+   `H3Loader.resolve()` answered `"echo"` while `loader.harnesses["echo"]`
+   was absent — a missing client reads as *native*, so the session fell
+   back silently. A hand-written dangling binding is now marked
+   `[!] dangling: harness 'x' is not installed` in the table (and on the
+   `route --session <id>` line) with a `warning:` block naming
+   `hermes-h3 route --session <id> --remove`; exit status stays 0. `native`
+   is never dangling; a dict entry with no `harness` key resolves to
+   `default_harness` and is not dangling either.
 
 ## Doing verification tasks (the gate)
 

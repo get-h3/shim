@@ -143,6 +143,67 @@ def save_config(data: dict[str, Any], path: Path | None = None) -> Path:
     return p
 
 
+def _binding_target(binding: Any) -> str | None:
+    """Return the harness a ``sessions:`` entry explicitly names, else ``None``.
+
+    Mirrors :meth:`h3_shim.loader.H3Loader.resolve`'s static-config arm: a
+    dict entry takes its ``harness`` key — a missing or empty value means
+    "use ``default_harness``" — and a bare string *is* the harness name
+    (the older config shape).  ``None`` means the binding names no harness
+    itself, so it can never be dangling.
+    """
+    if isinstance(binding, dict):
+        target = binding.get("harness")
+        return str(target) if target else None
+    if binding is None:
+        return None
+    return str(binding)
+
+
+def _dangling_bindings(
+    sessions: dict[str, Any], harnesses: dict[str, Any]
+) -> dict[str, str]:
+    """Return ``{session_id: harness_name}`` for routes naming a dead harness.
+
+    A binding is *dangling* when it names a harness that is not in
+    ``harnesses:``.  ``H3Loader.resolve()`` still answers that dead name,
+    and ``loader.harnesses.get(name)`` is ``None`` — which the loader
+    contract reads as *native* — so the session falls back silently
+    instead of failing anywhere (DOGFOOD-12).
+
+    ``native`` is always available (it is Hermes' own loop and never a
+    ``harnesses:`` entry), so a binding to it is never dangling.
+    """
+    installed = {"native"} | set(harnesses or {})
+    dangling: dict[str, str] = {}
+    for sid, binding in (sessions or {}).items():
+        target = _binding_target(binding)
+        if target is not None and target not in installed:
+            dangling[sid] = target
+    return dangling
+
+
+def _dangling_marker(target: str) -> str:
+    """Inline marker for one route row/line whose target is not installed."""
+    return f"   [!] dangling: harness {target!r} is not installed"
+
+
+def _dangling_report(dangling: dict[str, str]) -> str:
+    """The multi-line warning printed after a table that has dangling routes.
+
+    Names every offending session and the exact command that clears it —
+    a marker without a way out is only half a fix.
+    """
+    count = len(dangling)
+    lines = [
+        f"warning: {count} session binding(s) name a harness that is not installed;",
+        "         those sessions fall back to native.  Re-install the harness or drop",
+        "         the binding:",
+    ]
+    lines += [f"  hermes-h3 route --session {sid} --remove" for sid in sorted(dangling)]
+    return "\n".join(lines)
+
+
 def resolve_harness(
     name: str | None,
     config: dict[str, Any],
@@ -1015,18 +1076,46 @@ def install(
 @click.argument("name")
 @click.pass_context
 def uninstall(ctx: click.Context, config_path: Path | None, name: str) -> None:
-    """Delete a harness entry."""
+    """Delete a harness entry — and every ``sessions:`` binding to it.
+
+    Removing the entry alone used to leave the removed name as a session
+    target (DOGFOOD-12): ``H3Loader.resolve()`` kept answering it while
+    ``loader.harnesses.get(name)`` was ``None``, which the loader contract
+    reads as *native* — so those sessions silently fell back to the native
+    loop with nothing anywhere reporting a problem.  Every binding that
+    names *name* is therefore dropped in the same save, and the dropped
+    session ids are printed so the removal is never silent.
+    """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
-    config = load_config(_config_path(ctx))
+    path = _config_path(ctx)
+    config = load_config(path)
     harnesses = config.setdefault("harnesses", {})
     if name not in harnesses:
         raise click.ClickException(f"harness {name!r} not found")
     del harnesses[name]
+    # DOGFOOD-12: drop the routes to the harness we just removed.  Leaving
+    # them would resolve to a dead name whose missing client the loader
+    # reads as *native* — a silent fallback, not an error.  The reserved
+    # name ``native`` is never dangling (the loader always hosts it), so
+    # `uninstall native` leaves bindings to it alone.
+    sessions = config.setdefault("sessions", {})
+    dropped = sorted(
+        sid
+        for sid, binding in sessions.items()
+        if name != "native" and _binding_target(binding) == name
+    )
+    for sid in dropped:
+        del sessions[sid]
     if config.get("default_harness") == name:
         config["default_harness"] = next(iter(harnesses), None) if harnesses else None
-    save_config(config, _config_path(ctx))
+    save_config(config, path)
     click.echo(f"uninstalled harness {name!r}")
+    if dropped:
+        click.echo(
+            f"also removed {len(dropped)} session binding(s) that pointed at "
+            f"{name!r}: {', '.join(dropped)}"
+        )
 
 
 @hermes_h3.command(help="Health-check a harness via the H3 REST client.")
@@ -1379,12 +1468,19 @@ def route(
     With no routes configured, the command exits 0 and prints where the
     routes come from (config ``sessions:`` map, plus runtime pins by the
     plugin/loader/shim loop) and a minimal YAML example to copy.
+
+    A binding whose target is no longer in ``harnesses:`` is marked
+    ``[!] dangling`` in the table (or on the single-session line), with a
+    warning naming the ``--remove`` call that clears it (DOGFOOD-12): the
+    loader would answer that dead name and its missing client reads as
+    *native*, so the state has to be visible here.
     """
     if config_path is not None:
         ctx.obj["config_path"] = config_path
     path = _config_path(ctx)
     config = load_config(path)
     sessions: dict[str, Any] = config.get("sessions", {}) or {}
+    harnesses: dict[str, Any] = config.get("harnesses", {}) or {}
     if set_harness is not None or remove:
         if session is None:
             raise click.ClickException(
@@ -1397,7 +1493,6 @@ def route(
                 "pass one or the other"
             )
         if set_harness is not None:
-            harnesses: dict[str, Any] = config.get("harnesses", {}) or {}
             if set_harness not in harnesses:
                 raise click.ClickException(
                     f"harness {set_harness!r} not found in config; "
@@ -1417,10 +1512,22 @@ def route(
         save_config(config, path)
         click.echo(f"removed session {session} from {path}")
         return
+    # DOGFOOD-12: flag bindings whose target harness is gone.  A dangling
+    # route still "answers" (resolve() returns the dead name, its client is
+    # None == native), so without this marker the state is invisible.
+    dangling = _dangling_bindings(sessions, harnesses)
     if session is not None:
         if session not in sessions:
             raise click.ClickException(f"no session {session!r} in the routing table")
-        click.echo(f"{session} -> {_session_harness(sessions[session])}")
+        line = f"{session} -> {_session_harness(sessions[session])}"
+        if session in dangling:
+            line += _dangling_marker(dangling[session])
+        click.echo(line)
+        if session in dangling:
+            click.echo(
+                f"  fix: `hermes-h3 install {dangling[session]} --endpoint <url>` "
+                f"or `hermes-h3 route --session {session} --remove`"
+            )
         return
     if not sessions:
         click.echo(_empty_route_help(path))
@@ -1428,7 +1535,13 @@ def route(
     click.echo(f"{'SESSION':40s} HARNESS")
     click.echo("-" * 60)
     for sid, binding in sessions.items():
-        click.echo(f"{sid:40s} {_session_harness(binding)}")
+        line = f"{sid:40s} {_session_harness(binding)}"
+        if sid in dangling:
+            line += _dangling_marker(dangling[sid])
+        click.echo(line)
+    if dangling:
+        click.echo("")
+        click.echo(_dangling_report(dangling))
 
 
 @hermes_h3.command(

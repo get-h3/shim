@@ -840,6 +840,178 @@ class TestUninstall:
         # The new default should be one of the remaining harnesses.
         assert data["default_harness"] == "b"
 
+    # ── DOGFOOD-12: a removed harness must not survive as a session target ──
+
+    def test_uninstall_drops_bindings_to_the_removed_harness(self, cfg_path, runner):
+        # The repro: `route --session s1 --set-harness echo` then
+        # `uninstall echo` used to leave `sessions: {s1: {harness: echo}}`
+        # with `harnesses: {}`.  H3Loader.resolve() then kept answering
+        # "echo" while `loader.harnesses.get("echo")` was None — which the
+        # loader contract reads as *native*, a silent fallback.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "a",
+                    "harnesses": {
+                        "a": {"endpoint": "http://a:1"},
+                        "b": {"endpoint": "http://b:1"},
+                    },
+                    "sessions": {
+                        "s1": {"harness": "a"},  # dict form
+                        "s2": "a",  # bare-string form
+                        "s3": {"harness": "b"},  # other harness: untouched
+                    },
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "a"])
+        assert result.exit_code == 0, result.output
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["harnesses"] == {"b": {"endpoint": "http://b:1"}}
+        # No binding names the removed harness any more (DOGFOOD-12 AC 1).
+        assert data["sessions"] == {"s3": {"harness": "b"}}
+
+    def test_uninstall_names_the_bindings_it_dropped(self, cfg_path, runner):
+        # Dropping routes is a side effect the operator must see — silently
+        # deleting configuration is its own bug.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "a",
+                    "harnesses": {
+                        "a": {"endpoint": "http://a:1"},
+                        "b": {"endpoint": "http://b:1"},
+                    },
+                    "sessions": {
+                        "s2": "a",
+                        "s1": {"harness": "a"},
+                        "s3": {"harness": "b"},
+                    },
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "a"])
+        assert result.exit_code == 0, result.output
+        assert "uninstalled harness 'a'" in result.output
+        assert "also removed 2 session binding(s)" in result.output
+        assert "s1" in result.output
+        assert "s2" in result.output
+        assert "s3" not in result.output  # a live binding is not reported
+
+    def test_uninstall_keeps_bindings_to_other_and_native_harnesses(
+        self, cfg_path, runner
+    ):
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": None,
+                    "harnesses": {
+                        "a": {"endpoint": "http://a:1"},
+                        "b": {"endpoint": "http://b:1"},
+                    },
+                    "sessions": {
+                        "s1": {"harness": "native"},
+                        "s2": "native",
+                        "s3": {"harness": "b"},
+                    },
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "a"])
+        assert result.exit_code == 0, result.output
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["sessions"] == {
+            "s1": {"harness": "native"},
+            "s2": "native",
+            "s3": {"harness": "b"},
+        }
+        # Nothing was dangling, so there is nothing to warn about.
+        assert "also removed" not in result.output
+
+    def test_uninstall_native_keeps_bindings_to_native(self, cfg_path, runner):
+        # `native` is Hermes' own loop — the loader always hosts it, so a
+        # binding to it is never dangling and must survive `uninstall native`.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {"native": {"transport": "native"}},
+                    "sessions": {"s1": {"harness": "native"}, "s2": "native"},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "native"])
+        assert result.exit_code == 0, result.output
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["harnesses"] == {}
+        assert data["sessions"] == {"s1": {"harness": "native"}, "s2": "native"}
+        assert "also removed" not in result.output
+
+    def test_dogfood12_uninstall_then_route_shows_no_dangling_target(
+        self, cfg_path, runner
+    ):
+        """The exact repro end-state, through the CLI only.
+
+        install (config written by hand — the endpoint probe needs a live
+        harness) → route → uninstall → route: the table must not name the
+        removed harness, and `route` must not have to flag anything.
+        """
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "echo",
+                    "harnesses": {"echo": {"endpoint": "http://localhost:9191"}},
+                    "sessions": {},
+                }
+            )
+        )
+        bound = runner.invoke(
+            hermes_h3, ["route", "--session", "s1", "--set-harness", "echo"]
+        )
+        assert bound.exit_code == 0, bound.output
+        assert yaml.safe_load(cfg_path.read_text())["sessions"] == {
+            "s1": {"harness": "echo"}
+        }
+
+        removed = runner.invoke(hermes_h3, ["uninstall", "echo"])
+        assert removed.exit_code == 0, removed.output
+
+        data = yaml.safe_load(cfg_path.read_text())
+        assert data["harnesses"] == {}
+        assert data["sessions"] == {}
+
+        listing = runner.invoke(hermes_h3, ["route"])
+        assert listing.exit_code == 0, listing.output
+        assert "dangling" not in listing.output
+        assert "s1" not in listing.output
+        assert "no sessions configured" in listing.output
+
+    def test_dogfood12_resolve_never_answers_the_removed_name(self, cfg_path, runner):
+        """The documented consumer call must not see the dead name.
+
+        `H3Loader.resolve()` is what embedders call; with the old dangling
+        binding it answered the removed harness and the client lookup was
+        None.  After `uninstall` there is nothing left for it to answer.
+        """
+        import asyncio
+
+        from h3_shim.loader import H3Loader
+
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "echo",
+                    "harnesses": {"echo": {"endpoint": "http://localhost:9191"}},
+                    "sessions": {"s1": {"harness": "echo"}},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "echo"])
+        assert result.exit_code == 0, result.output
+        config = load_config(cfg_path)
+        assert config["sessions"] == {}
+        assert asyncio.run(H3Loader(config).resolve("s1", "s1")) != "echo"
+
     def test_uninstall_unknown_raises(self, cfg_path, runner):
         cfg_path.write_text(
             yaml.safe_dump(
@@ -931,11 +1103,14 @@ class TestRoute:
     def test_route_listing_output_unchanged(self, cfg_path, runner):
         # Byte-for-byte contract for a NON-empty table (header + fixed-width
         # session column): only the empty state changed in this task.
+        # ``alpha`` is registered because a row naming an uninstalled harness
+        # is now marked dangling (DOGFOOD-12) — that case has its own tests
+        # below, this one pins the healthy listing byte-for-byte.
         cfg_path.write_text(
             yaml.safe_dump(
                 {
                     "default_harness": "native",
-                    "harnesses": {},
+                    "harnesses": {"alpha": {"endpoint": "http://localhost:9191"}},
                     "sessions": {"telegram:1": {"harness": "alpha"}},
                 }
             )
@@ -989,7 +1164,10 @@ class TestRoute:
             yaml.safe_dump(
                 {
                     "default_harness": "native",
-                    "harnesses": {},
+                    "harnesses": {
+                        "alpha": {"endpoint": "http://localhost:9191"},
+                        "beta": {"endpoint": "http://localhost:9192"},
+                    },
                     "sessions": {
                         "telegram:-100:42": {"harness": "alpha"},
                         "discord:1": {"harness": "beta"},
@@ -1009,7 +1187,7 @@ class TestRoute:
             yaml.safe_dump(
                 {
                     "default_harness": "native",
-                    "harnesses": {},
+                    "harnesses": {"alpha": {"endpoint": "http://localhost:9191"}},
                     "sessions": {"telegram:-100": "alpha"},
                 }
             )
@@ -1022,12 +1200,16 @@ class TestRoute:
 
     def test_route_session_dict_binding(self, cfg_path, runner):
         # ``route --session <id>`` answers the operator's actual question:
-        # which harness does THIS session use?
+        # which harness does THIS session use?  Both targets are registered,
+        # so the line carries no dangling marker (DOGFOOD-12).
         cfg_path.write_text(
             yaml.safe_dump(
                 {
                     "default_harness": "native",
-                    "harnesses": {},
+                    "harnesses": {
+                        "alpha": {"endpoint": "http://localhost:9191"},
+                        "beta": {"endpoint": "http://localhost:9192"},
+                    },
                     "sessions": {
                         "telegram:1": {"harness": "alpha"},
                         "discord:2": {"harness": "beta"},
@@ -1045,7 +1227,7 @@ class TestRoute:
             yaml.safe_dump(
                 {
                     "default_harness": "native",
-                    "harnesses": {},
+                    "harnesses": {"beta": {"endpoint": "http://localhost:9192"}},
                     "sessions": {"discord:2": "beta"},
                 }
             )
@@ -1075,6 +1257,91 @@ class TestRoute:
         result = runner.invoke(hermes_h3, ["route", "--session", "nope"])
         assert result.exit_code != 0
         assert "nope" in result.output
+
+    # ── DOGFOOD-12: a binding to an uninstalled harness must be visible ──
+
+    @staticmethod
+    def _dangling_config() -> dict:
+        """The state DOGFOOD-12 left behind: routes → a harness that is gone."""
+        return {
+            "default_harness": "native",
+            "harnesses": {},  # `echo` was uninstalled
+            "sessions": {
+                "s1": {"harness": "echo"},  # dict form
+                "s2": "echo",  # bare-string form
+            },
+        }
+
+    def test_route_marks_dangling_targets_in_the_table(self, cfg_path, runner):
+        # `route` used to print `s1 -> echo` with exit 0 and no marker, so a
+        # dead route was indistinguishable from a live one.
+        cfg_path.write_text(yaml.safe_dump(self._dangling_config()))
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0, result.output
+        assert "dangling" in result.output
+        assert "echo" in result.output
+        assert "s1" in result.output
+        assert "s2" in result.output  # bare-string bindings are flagged too
+        # The marker names the way out, not just the problem.
+        assert "warning:" in result.output
+        assert "hermes-h3 route --session s1 --remove" in result.output
+        assert "hermes-h3 route --session s2 --remove" in result.output
+
+    def test_route_marks_a_dangling_single_session_lookup(self, cfg_path, runner):
+        cfg_path.write_text(yaml.safe_dump(self._dangling_config()))
+        result = runner.invoke(hermes_h3, ["route", "--session", "s1"])
+        assert result.exit_code == 0, result.output
+        assert "s1 -> echo" in result.output
+        assert "dangling" in result.output
+        assert "hermes-h3 route --session s1 --remove" in result.output
+
+    def test_route_healthy_table_has_no_dangling_marker(self, cfg_path, runner):
+        # The marker must mean something: a routable table stays clean.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "alpha",
+                    "harnesses": {"alpha": {"endpoint": "http://localhost:9191"}},
+                    "sessions": {"s1": {"harness": "alpha"}},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0, result.output
+        assert "dangling" not in result.output
+        assert "warning:" not in result.output
+
+    def test_route_native_target_is_not_dangling(self, cfg_path, runner):
+        # `native` is Hermes' own loop — never an entry in `harnesses:`,
+        # never a dead target.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"s1": {"harness": "native"}, "s2": "native"},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0, result.output
+        assert "dangling" not in result.output
+
+    def test_route_defaulted_binding_is_not_dangling(self, cfg_path, runner):
+        # A dict entry with no `harness` key resolves to default_harness
+        # (loader.resolve's documented fallback) — it names no dead harness.
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "native",
+                    "harnesses": {},
+                    "sessions": {"s1": {}},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["route"])
+        assert result.exit_code == 0, result.output
+        assert "dangling" not in result.output
 
     # ── DF-H3-SHIM-FOREMAN-4: route can WRITE a binding ──────────────────
 
