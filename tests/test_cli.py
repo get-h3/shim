@@ -838,6 +838,15 @@ class TestInstallHealthCheck:
         assert "Traceback" not in result.output
         assert "Traceback" not in (result.exception and repr(result.exception) or "")
 
+        # ch:trace row=DOGFOOD-14 spec=specs/06-Hermes-Core-Integration.md
+        # anchor=none:source-anchor wave=none:serial-fallback
+        # test=tests/test_cli.py::test_install_unwritable_config_fails_without_traceback
+        # doc=none:code-fix prompt=/tmp/DOGFOOD-14-brief.txt
+        # evidence=0fa40ad237e14b909bb678bd89d34ddf6edd7e13
+        # witness=path@origin:src/h3_shim/cli.py+tests/test_cli.py
+        # verdict=none:not-yet-judged commit=0fa40ad237e14b909bb678bd89d34ddf6edd7e13
+        # memory=none:not-written
+
     def test_install_transport_validation_precedes_health_check(
         self, cfg_path, runner, monkeypatch
     ):
