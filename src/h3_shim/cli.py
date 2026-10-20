@@ -146,13 +146,24 @@ def save_config(data: dict[str, Any], path: Path | None = None) -> Path:
     config the CLI produces on the absent side of that contract,
     including configs that arrive with the key already null and any that
     ``load_config`` re-materializes through its skeleton backfill.
+
+    DOGFOOD-14: an unwritable or non-creatable config path (a bad
+    ``--config``, a parent that is a file, a root-only or read-only
+    directory) surfaces as this command's ClickException — one
+    ``Error:`` line naming the configured path and the OS reason, exit
+    code 1 — instead of a raw PermissionError/OSError traceback.  The
+    wrap is EAFP around both the parent creation and the file write, so
+    the mkdir/open race resolves the same way a plain failure does.
     """
     p = path or default_config_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    if data.get("default_harness") is None:
-        data = {k: v for k, v in data.items() if k != "default_harness"}
-    with p.open("w", encoding="utf-8") as fh:
-        yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if data.get("default_harness") is None:
+            data = {k: v for k, v in data.items() if k != "default_harness"}
+        with p.open("w", encoding="utf-8") as fh:
+            yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
+    except OSError as exc:
+        raise click.ClickException(f"cannot write config {p}: {exc}") from exc
     return p
 
 

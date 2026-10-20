@@ -780,6 +780,64 @@ class TestInstallHealthCheck:
         assert result.exit_code == 0
         fake_client.return_value.close.assert_awaited()
 
+    @pytest.mark.parametrize(
+        ("arm", "reason"),
+        [
+            ("non-creatable-parent", "Permission denied"),
+            ("parent-is-a-file", "File exists"),
+        ],
+    )
+    def test_install_unwritable_config_fails_without_traceback(
+        self, tmp_path, runner, monkeypatch, arm, reason
+    ):
+        """DOGFOOD-14: config write failure is a Click error, exit 1.
+
+        Exercises the REAL ``install`` path (probe stub, config load,
+        save) with a config path whose parent directory cannot be
+        created.  Two deterministic arms: the first missing component
+        sits beneath a read-only directory (mkdir → EACCES) or a plain
+        file already occupies the parent slot (mkdir → EEXIST).  The
+        error must name the configured path and the OS reason, and carry
+        no traceback.
+        """
+        _cleanup_chmod = None
+        if arm == "non-creatable-parent":
+            locked = tmp_path / "locked"
+            locked.mkdir()
+            locked.chmod(0o555)
+            _cleanup_chmod = locked
+            bad_path = locked / "nope" / "deep" / "config.yaml"
+        else:
+            (tmp_path / "blocker").write_text("not a directory")
+            bad_path = tmp_path / "blocker" / "config.yaml"
+        _stub_health_client(monkeypatch)
+        try:
+            result = runner.invoke(
+                hermes_h3,
+                [
+                    "install",
+                    "x",
+                    "--endpoint",
+                    "http://localhost:9191",
+                    "--config",
+                    str(bad_path),
+                ],
+            )
+        finally:
+            if _cleanup_chmod is not None:
+                _cleanup_chmod.chmod(0o755)
+        assert result.exit_code == 1
+        assert "cannot write config" in result.output
+        assert str(bad_path) in result.output
+        # The OS reason rides along: a bracketed errno plus its text
+        # ("[Errno 13] Permission denied: '...'").  The bracketed shape
+        # is asserted generically, the arm's own errno text specifically
+        # (wording can differ across platforms).
+        assert "[Errno" in result.output
+        assert reason in result.output
+        assert "Traceback" not in result.output
+        assert "Traceback" not in (result.exception and repr(result.exception) or "")
+
     def test_install_transport_validation_precedes_health_check(
         self, cfg_path, runner, monkeypatch
     ):
@@ -1630,6 +1688,24 @@ class TestConfigHelpers:
         p = save_config({"x": 1}, cfg_path)
         assert p == cfg_path
         assert yaml.safe_load(cfg_path.read_text()) == {"x": 1}
+
+    def test_save_config_unwritable_path_raises_click_error(self, tmp_path):
+        """DOGFOOD-14: save_config itself raises ClickException, not OSError.
+
+        CLI call sites get this for free; a library caller of
+        save_config gets the same user-facing error shape instead of a
+        traceback.  With a plain file where the parent directory should
+        be, ``mkdir`` surfaces EEXIST (File exists) on Linux.
+        """
+        blocker = tmp_path / "blocker"
+        blocker.write_text("not a directory")
+        with pytest.raises(click.ClickException) as exc_info:
+            save_config(_empty_config(), blocker / "config.yaml")
+        message = str(exc_info.value)
+        assert "cannot write config" in message
+        assert str(blocker / "config.yaml") in message
+        assert "[Errno" in message
+        assert "File exists" in message
 
     def test_empty_config_skeleton(self):
         cfg = _empty_config()
