@@ -135,9 +135,22 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
 
 
 def save_config(data: dict[str, Any], path: Path | None = None) -> Path:
-    """Persist config to disk; creates parent dirs. Returns the path."""
+    """Persist config to disk; creates parent dirs. Returns the path.
+
+    DOGFOOD-13: a null ``default_harness`` is never written.  H3Loader
+    reads the key with ``config.get("default_harness", "native")``, so a
+    key that is *absent* means ``"native"`` while a key persisted as
+    ``default_harness: null`` makes ``resolve()`` answer ``None`` —
+    contradicting docs/api.md, which promises ``resolve`` never returns
+    ``None``.  Omitting the key instead of writing the null keeps every
+    config the CLI produces on the absent side of that contract,
+    including configs that arrive with the key already null and any that
+    ``load_config`` re-materializes through its skeleton backfill.
+    """
     p = path or default_config_path()
     p.parent.mkdir(parents=True, exist_ok=True)
+    if data.get("default_harness") is None:
+        data = {k: v for k, v in data.items() if k != "default_harness"}
     with p.open("w", encoding="utf-8") as fh:
         yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
     return p

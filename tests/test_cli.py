@@ -311,9 +311,11 @@ class TestScaffold:
         result = runner.invoke(hermes_h3, ["scaffold"])
         assert result.exit_code == 0
         assert cfg_path.exists()
-        # And the file is a valid empty skeleton.
+        # And the file is a valid empty skeleton.  DOGFOOD-13: a null
+        # default_harness is never persisted — H3Loader reads an absent
+        # key as "native" but a written null as None, so the CLI omits it.
         data = yaml.safe_load(cfg_path.read_text())
-        assert data["default_harness"] is None
+        assert "default_harness" not in data
         assert data["harnesses"] == {}
         assert data["sessions"] == {}
 
@@ -329,9 +331,10 @@ class TestScaffold:
         cfg_path.write_text("default_harness: existing\n")
         result = runner.invoke(hermes_h3, ["scaffold", "--force"])
         assert result.exit_code == 0
-        # File replaced with empty skeleton.
+        # File replaced with empty skeleton (null default_harness never
+        # persisted — DOGFOOD-13).
         data = yaml.safe_load(cfg_path.read_text())
-        assert data["default_harness"] is None
+        assert "default_harness" not in data
 
     def test_scaffold_lang_go_generates_files(self, tmp_path, runner):
         result = runner.invoke(
@@ -422,8 +425,9 @@ class TestScaffold:
         result = runner.invoke(hermes_h3, ["scaffold", "--config", str(custom)])
         assert result.exit_code == 0
         assert custom.exists()
+        # Null default_harness never persisted (DOGFOOD-13).
         data = yaml.safe_load(custom.read_text())
-        assert data["default_harness"] is None
+        assert "default_harness" not in data
         assert data["harnesses"] == {}
         assert data["sessions"] == {}
 
@@ -1012,6 +1016,44 @@ class TestUninstall:
         assert config["sessions"] == {}
         assert asyncio.run(H3Loader(config).resolve("s1", "s1")) != "echo"
 
+    def test_dogfood13_uninstall_last_default_leaves_no_null_key(
+        self, cfg_path, runner
+    ):
+        """Uninstalling the last harness must not persist a null default.
+
+        DOGFOOD-13: `install echo --set-default` then `uninstall echo` used
+        to leave `default_harness: null` in the saved config, and
+        H3Loader.resolve() then answered None for unmatched sessions —
+        contradicting docs/api.md ("never returns None").  The saved file
+        must have the key absent entirely, and the loader must resolve
+        those sessions to "native".
+        """
+        import asyncio
+
+        from h3_shim.loader import H3Loader
+
+        cfg_path.write_text(
+            yaml.safe_dump(
+                {
+                    "default_harness": "echo",
+                    "harnesses": {"echo": {"endpoint": "http://localhost:9191"}},
+                    "sessions": {},
+                }
+            )
+        )
+        result = runner.invoke(hermes_h3, ["uninstall", "echo"])
+        assert result.exit_code == 0, result.output
+
+        # (a) The saved YAML has no default_harness key at all.
+        saved = yaml.safe_load(cfg_path.read_text())
+        assert "default_harness" not in saved
+        assert saved["harnesses"] == {}
+
+        # (b) The documented consumer reads "native" from that file, not
+        # None (resolve is async; follow the repo's asyncio.run convention).
+        loader = H3Loader(yaml.safe_load(cfg_path.read_text()))
+        assert asyncio.run(loader.resolve("telegram", "-100")) == "native"
+
     def test_uninstall_unknown_raises(self, cfg_path, runner):
         cfg_path.write_text(
             yaml.safe_dump(
@@ -1576,9 +1618,13 @@ class TestConfigHelpers:
         path = save_config(_empty_config(), nested)
         assert path == nested
         assert nested.exists()
-        # And the YAML round-trips.
+        # The skeleton round-trips modulo the DOGFOOD-13 contract: a null
+        # default_harness is never written, so the loaded dict has the key
+        # absent (load_config backfills it in memory when re-read).
         data = yaml.safe_load(nested.read_text())
-        assert data == _empty_config()
+        assert "default_harness" not in data
+        assert data["harnesses"] == {}
+        assert data["sessions"] == {}
 
     def test_save_config_returns_path(self, cfg_path):
         p = save_config({"x": 1}, cfg_path)
