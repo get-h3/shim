@@ -20,6 +20,11 @@ sessions but does NOT override ``on_session_terminate`` answers
 must FAIL it (naming the no-op terminate) while a harness that DOES override
 the hook still passes both cells.
 
+The fixed-router arm is also covered: an SDK-shaped harness whose DELETE
+honestly answers ``terminated: false`` (the base hook did nothing, no
+stamp) passes the honesty cell (``test_5_14``), while the pre-fix
+fabrication (``terminated: true`` + stamped ``completed``) still fails it.
+
 The route is removed at the app level (``app.router.routes``), never by
 editing the template file, so every arm starts from a byte-identical tree.
 """
@@ -54,6 +59,27 @@ async def _run_battery_against(app: FastAPI) -> tuple[bool, str]:
         r14 = await battery.test_5_14_session_get_after_delete()
         detail = f"5_13: {r13.detail} | 5_14: {r14.detail}"
         return (r13.passed and r14.passed, detail)
+    finally:
+        await battery.client.aclose()
+
+
+async def _run_battery_14_against(app: FastAPI) -> tuple[bool, str]:
+    """Drive ONLY test_5_14 (the honesty cell) against an in-process app.
+
+    test_5_13 still requires ``terminated: true`` — it is the "do you
+    implement termination?" gate — so a fixed no-override harness (honest
+    ``terminated: false``) legitimately fails that cell: it does not tear
+    sessions down. test_5_14 is the cell DF-H3-53 teaches the honest
+    no-teardown claim, and it is the one the fixed shape must pass.
+    """
+    battery = H3TestBattery("http://h3-in-process")
+    await battery.client.aclose()
+    battery.client = httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://h3-in-process"
+    )
+    try:
+        r14 = await battery.test_5_14_session_get_after_delete()
+        return (r14.passed, f"5_14: {r14.detail}")
     finally:
         await battery.client.aclose()
 
@@ -124,6 +150,61 @@ def _sdk_shaped_app(*, override_terminate: bool) -> FastAPI:
             "last_active": info.get("last_active", ""),
             "turn_count": info.get("turn_count", 0),
             "status": status,
+        }
+
+    return app
+
+
+def _honest_sdk_shaped_app() -> FastAPI:
+    """The FIXED DF-H3-53 SDK router shape: base no-op on_session_terminate.
+
+    DELETE re-asks the harness's session view AFTER the no-op hook; the
+    session is still present, so the router answers ``terminated: false``
+    and stamps nothing — the session keeps its own live status. This is the
+    honest no-teardown claim the battery's test_5_14 must accept.
+    """
+    app = FastAPI()
+    sessions: dict[str, dict] = {}
+
+    @app.post("/v1/process")
+    async def process(request: Request):
+        body = await request.json()
+        sid = body["session_id"]
+        prev = sessions.get(sid, {})
+        sessions[sid] = {
+            "started_at": prev.get("started_at") or "2026-01-01T00:00:00+00:00",
+            "last_active": "2026-01-01T00:00:00+00:00",
+            "turn_count": prev.get("turn_count", 0) + 1,
+        }
+        return {
+            "decision": "text",
+            "decision_id": "noop-process",
+            "text": {
+                "content": f"Echo: {body['message']['content']}",
+                "finished": True,
+            },
+        }
+
+    @app.delete("/v1/sessions/{session_id}")
+    async def delete_session(session_id: str):
+        if session_id not in sessions:
+            raise HTTPException(status_code=404, detail="Session not found")
+        # Fixed router: the base hook is a no-op, so the session survives
+        # and DELETE honestly answers terminated:false — no 'completed'
+        # stamp, the session keeps its own live status.
+        return {"session_id": session_id, "terminated": False}
+
+    @app.get("/v1/sessions/{session_id}")
+    async def get_session(session_id: str):
+        info = sessions.get(session_id)
+        if info is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {
+            "session_id": session_id,
+            "started_at": info.get("started_at", ""),
+            "last_active": info.get("last_active", ""),
+            "turn_count": info.get("turn_count", 0),
+            "status": info.get("status") or "active",
         }
 
     return app
@@ -201,3 +282,20 @@ async def test_battery_passes_a_harness_that_overrides_terminate():
     app = _sdk_shaped_app(override_terminate=True)
     ok, detail = await _run_battery_against(app)
     assert ok, f"a harness that overrides on_session_terminate must pass — {detail}"
+
+
+@pytest.mark.asyncio
+async def test_battery_passes_an_honest_noop_terminate_harness():
+    """DF-H3-53: the FIXED router answers terminated:false (honest no-op).
+
+    A harness that does not override on_session_terminate must not fabricate
+    a teardown: DELETE answers terminated:false and test_5_14 accepts that
+    honest claim without evaluating the GET. (test_5_13 is not run here — it
+    still requires terminated:true, so a no-override harness legitimately
+    fails the "do you implement termination?" gate, without any fabrication
+    accusation.)
+    """
+    app = _honest_sdk_shaped_app()
+    ok, detail = await _run_battery_14_against(app)
+    assert ok, f"an honest terminated:false DELETE must pass test_5_14 — {detail}"
+    assert "terminated:false" in detail, detail
