@@ -1,0 +1,19 @@
+Completed: DF-H3-53 → complete
+Control root: /home/kara/get-h3/shim
+Scan scope:   /home/kara/get-h3/shim
+
+Evaluating...
+gitreins.evaluator: WARNING: Context budget 2723617/3000000 input tokens (largest single prompt 53142) — compacting (compaction #1)
+Judge Result: DF-H3-53
+Stage tier1: PASS
+    ✓ guard: gitreins: WARNING: /home/kara/get-h3/shim/.gitreins/config.yaml: WARN: defaults.provider: unknown ke
+
+Stage tier2: PASS
+  COMPLETE
+  ✓ live repro on a session-tracking harness without on_session_terminate override recorded verbatim (POST /v1/process, DELETE /v1/sessions/<id>, GET /v1/sessions/<id>); base-hook case no longer claims bare terminated:true (distinguishes real teardown or returns terminated:false/501) while overriding harness keeps documented behaviour; post-DELETE status differs from normal END status; uv run pytest tests/test_battery_delete_coverage.py -q exits 0 post-fix and exits 1 naming the no-op-terminate case against the pre-fix router: (a) Verbatim repro committed at docs/dogfood/2026-11-18-dfh353-delete-repro.md (shim commit c950efc): POST /v1/process 200, `DELETE /v1/sessions/repro-1` -> {"session_id":"repro-1","terminated":false}, GET -> status "active". Independently reproduced by me (/tmp/repro_del.py against sdk-python create_router with a BaseHarness exposing get_session_info and NO on_session_terminate override): `DELETE /v1/sessions/repro-1 200 {"session_id":"repro-1","terminated":false}` and `GET /v1/sessions/repro-1 200 {... "status":"active" ...}`. (b) Base hook no longer fabricates: sdk-python src/h3_harness/harness.py:614-644 re-asks get_session_info after the hook (gone -> terminated:true, present -> terminated:false) and the old `_track(..., "completed")` stamp is removed (commit 9e49efd); shim template src/h3_shim/templates/py/main.py:561-580 mirrors it. (c) Override keeps documented behaviour (/tmp/repro_override.py): `DELETE 200 {"session_id":"repro-2","terminated":true}` then `GET 404 {"detail":"Session not found"}`. (d) Post-DELETE status differs from normal END: no 'completed' stamp remains (harness.py:637-644); a no-op DELETE leaves the session live ('active'), a real terminate 404s. (e) `uv run pytest tests/test_battery_delete_coverage.py -q` -> EXIT=0, `7 passed, 37 warnings in 0.33s`. Red-proof: with src/h3_shim/test_battery.py reverted to d1716b4^ (pre-fix battery) the same file -> EXIT=1, `3 failed, 4 passed`, including `AssertionError: the battery must FAIL a no-op-terminate harness (fabricated teardown) — got a PASS (5_13: DELETE session 200: terminated=true ... | 5_14: status='completed' after DELETE)` at tests/test_battery_delete_coverage.py:267; file restored (git diff --stat shows only .vfs/graph/.last_reconcile). Full shim suite also green: `607 passed, 873 warnings in 60.14s`. Nit only: the doc header cites 'post-fix commit 9e49efd / merged 716bb57', which are sdk-python commits, not shim objects (`git cat-file -t 9e49efd` in shim -> 'fatal: Not a valid object name'); the transcript itself is genuine and reproducible. [resolution 0.56; tests/test_battery_delete_coverage.py]
+The DELETE/terminate honesty fix is real and reachable in both the SDK router and the shipped py scaffold, the verbatim repro is committed and independently reproducible, and the new battery cells are red-proofed (exit 1 naming the no-op terminate against the pre-fix battery, exit 0 with 7 passed post-fix).
+
+Overall: PASS ✓
+gitreins.persist: WARNING: Refusing to persist verdict without authoritative working-tree fingerprint: nested-repository
+  ⚠ Failed to persist verdict (non-fatal)
+RC=0
