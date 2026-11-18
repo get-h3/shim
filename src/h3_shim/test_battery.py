@@ -2103,6 +2103,13 @@ class H3TestBattery:
         A harness that still answers 200 with a live session after terminate
         fails here too. Harnesses without the GET route (405) pass: nothing
         observable is claimed.
+
+        DF-H3-53 honest-claim arms: a 200 DELETE whose body answers
+        ``"terminated": false`` is the honest no-teardown claim — the hook
+        did nothing and the harness says so — and passes without evaluating
+        the GET (there is no teardown to cross-check). A 501 DELETE answer
+        also passes: the harness implements nothing, so nothing observable
+        is claimed.
         """
         cat = CATEGORIES["errors"]
         done = self._timed("session_get_after_delete", cat)
@@ -2126,11 +2133,26 @@ class H3TestBattery:
             )
             if derr is not None or dresp is None:
                 return done(False, f"Session DELETE exception: {derr}")
+            if dresp.status_code == 501:
+                return done(
+                    True,
+                    "501 (terminate not implemented — nothing observable claimed)",
+                )
             if dresp.status_code != 200:
                 return done(
                     False,
                     f"Session DELETE status {dresp.status_code} (expected 200)",
                 )
+            # DF-H3-53: a 200 DELETE answering terminated:false is the honest
+            # no-teardown claim — the base hook did nothing and the harness
+            # says so. Accept it WITHOUT evaluating the GET: there is no
+            # fabricated teardown to cross-check.
+            try:
+                ddata = dresp.json()
+            except Exception:  # noqa: BLE001
+                ddata = None
+            if isinstance(ddata, dict) and ddata.get("terminated") is False:
+                return done(True, "terminated:false (honest no-teardown claim)")
             sresp, serr = await self._safe_call(self.client.get(f"/v1/sessions/{sid}"))
             if serr is not None or sresp is None:
                 return done(False, f"Session GET exception: {serr}")
