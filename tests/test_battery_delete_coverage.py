@@ -299,3 +299,44 @@ async def test_battery_passes_an_honest_noop_terminate_harness():
     ok, detail = await _run_battery_14_against(app)
     assert ok, f"an honest terminated:false DELETE must pass test_5_14 — {detail}"
     assert "terminated:false" in detail, detail
+
+
+@pytest.mark.asyncio
+async def test_battery_passes_the_real_py_template_base_hook():
+    """DF-H3-53: the REAL shipped py template passes both cells.
+
+    src/h3_shim/templates/py/main.py is the repo's own scaffold: its base
+    ``on_session_terminate`` pops the session, so the route's post-hook
+    re-ask sees the session gone and answers ``terminated:true`` honestly,
+    and the later GET 404s. This arm drives the battery against the
+    template app itself — not a hand-built shape that exists nowhere in
+    src/ (the earlier coverage arms model the SDK router; this one runs
+    the shipped router).
+    """
+    app = template_main.app
+    ok, detail = await _run_battery_against(app)
+    assert ok, f"the shipped py template must pass both cells — {detail}"
+
+
+@pytest.mark.asyncio
+async def test_battery_5_14_passes_template_with_noop_override():
+    """DF-H3-53: a template-derived harness whose on_session_terminate is
+    overridden as a no-op gets the honest terminated:false from the REAL
+    route (post-hook re-ask) and test_5_14 passes via the honest branch.
+    """
+    original = template_main.harness
+
+    class _NoopHarness(type(original)):
+        def on_session_terminate(self, session_id: str) -> None:
+            return None  # no-op override — the shape DF-H3-53 targets
+
+    template_main.harness = _NoopHarness()
+    try:
+        app = template_main.app
+        ok, detail = await _run_battery_14_against(app)
+    finally:
+        template_main.harness = original
+    assert ok, (
+        f"a no-op override on the real template must answer terminated:false — {detail}"
+    )
+    assert "terminated:false" in detail, detail

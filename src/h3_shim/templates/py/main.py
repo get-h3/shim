@@ -561,7 +561,19 @@ def cancel(req: CancelRequest) -> CancelResponse:
 @app.delete("/v1/sessions/{session_id}", response_model=SessionTerminated)
 def delete_session(session_id: str) -> SessionTerminated:
     harness.on_session_terminate(session_id)
-    return SessionTerminated(terminated=True, session_id=session_id)
+    # DF-H3-53: the route must not fabricate the teardown claim. Re-ask the
+    # harness's own session view after the hook: a session that is gone was
+    # really torn down (terminated=True; the later GET 404s); a session that
+    # is still present means the hook did nothing, so the route answers
+    # terminated=False honestly — test_5_14 accepts that honest no-teardown
+    # claim and fails any harness that stamps a teardown that never
+    # happened. (The SDK router was fixed the same way; live repro:
+    # docs/dogfood/2026-11-18-dfh353-delete-repro.md.)
+    try:
+        harness.get_session(session_id)
+    except HTTPException:
+        return SessionTerminated(terminated=True, session_id=session_id)
+    return SessionTerminated(terminated=False, session_id=session_id)
 
 
 @app.get("/v1/sessions/{session_id}", response_model=SessionResponse)
