@@ -2091,12 +2091,18 @@ class H3TestBattery:
 
         H3-PM-019: terminate handling is only real if the harness's own
         session view agrees with it. After a 200 DELETE, a GET of the same
-        session must either forget it (404) or report a terminated status —
-        the post-state conventions the existing session-tracking tests
-        already accept (``404 — harness keeps no session state``, the
-        scaffold's ``cancelled`` after END). A harness that still answers
-        200 with a live session after terminate fails here. Harnesses
-        without the GET route (405) pass: nothing observable is claimed.
+        session must either forget it (404) or report a terminal status that
+        is NOT the normal-END ``completed`` status — a terminated session
+        must be distinguishable from one that merely ended (DF-H3-53).
+        ``completed`` is what a normally-ended session reports (test_5_11),
+        so a harness that answers 200 with ``status: completed`` after DELETE
+        has stamped the end-status on a session whose terminate hook tore
+        nothing down — the no-op terminate an SDK-shaped harness fabricates
+        when its base ``on_session_terminate`` hook is not overridden (the
+        router answers ``terminated: true`` and stamps ``completed`` itself).
+        A harness that still answers 200 with a live session after terminate
+        fails here too. Harnesses without the GET route (405) pass: nothing
+        observable is claimed.
         """
         cat = CATEGORIES["errors"]
         done = self._timed("session_get_after_delete", cat)
@@ -2150,8 +2156,17 @@ class H3TestBattery:
                     "status field — termination is not reflected",
                 )
             status = sdata.get("status")
-            if status in ("completed", "terminated", "cancelled", "expired"):
+            if status in ("terminated", "cancelled", "expired"):
                 return done(True, f"status={status!r} after DELETE")
+            if status == "completed":
+                return done(
+                    False,
+                    "status='completed' after DELETE — a no-op terminate: "
+                    "the harness stamped the normal-END status on a session "
+                    "whose teardown never happened (on_session_terminate not "
+                    "overridden). A terminated session must be gone (404) or "
+                    "report a distinct terminal status, never 'completed'.",
+                )
             return done(
                 False,
                 f"status={status!r} after DELETE — expected the session to be "
