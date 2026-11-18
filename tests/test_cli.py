@@ -25,6 +25,7 @@ from pydantic import ValidationError
 from h3_shim.cli import (
     CONFIG_PATH,
     CONFIG_PATH_ENV,
+    _battery_version,
     _empty_config,
     _format_human,
     _latency_stats,
@@ -1945,6 +1946,117 @@ class TestFormatHuman:
         text = _format_human(_passing_report(), "http://x:1")
         assert "Latency p50/p95" in text
 
+    def test_passing_report_is_byte_identical_without_failure_section(self):
+        """A green run keeps the pre-DF-H3-54 text exactly (no empty section)."""
+        text = _format_human(_passing_report(), "http://x:1")
+        expected = (
+            "\n"
+            f"H3 Compliance Test Battery v{_battery_version()}\n"
+            "Target: http://x:1\n"
+            "Transport: REST\n"
+            "\n"
+            "  Health & Protocol                   1/1  \u2705 PASSED\n"
+            "  Process Basic Flows                 1/1  \u2705 PASSED\n"
+            "  TOTAL                               2/2  PASSED\n"
+            "  Duration                            0.03s\n"
+            "  Latency p50/p95                     12.00ms / 20.00ms"
+        )
+        assert text == expected
+        assert "Failures:" not in text
+        assert "--json" not in text
+
+    def test_failing_report_names_each_failing_test_and_its_first_detail_line(self):
+        """DF-H3-54: a red run must name the check, not just tally it."""
+        report = FakeTestReport(
+            results=[
+                FakeTestResult(
+                    name="health_ok",
+                    passed=True,
+                    detail="ok",
+                    duration_ms=5.0,
+                    category="Health & Protocol",
+                ),
+                FakeTestResult(
+                    name="process_text_finished_false",
+                    passed=False,
+                    # Multi-line detail: only the first line belongs in the list.
+                    detail=(
+                        "Expected finished=false, got True\n"
+                        "battery convention: a message containing 'do not finish' "
+                        "must return text with finished=false"
+                    ),
+                    duration_ms=100.0,
+                    category="Process Basic Flows",
+                ),
+                FakeTestResult(
+                    name="decision_type_invalid",
+                    passed=False,
+                    detail="Expected a valid decision type, got 'bogus'",
+                    duration_ms=80.0,
+                    category="Decision Types",
+                ),
+            ],
+            total=3,
+            passed=1,
+            failed=2,
+            duration_ms=185.0,
+            timestamp="2026-01-01T00:00:00Z",
+        )
+        text = _format_human(report, "http://x:1")
+        assert "\nFailures:\n" in text
+        assert "  - process_text_finished_false [Process Basic Flows]" in text
+        assert "    Expected finished=false, got True" in text
+        assert "  - decision_type_invalid [Decision Types]" in text
+        assert "    Expected a valid decision type, got 'bogus'" in text
+        # The multi-line tail is dropped, the tally block is still intact.
+        assert "battery convention" not in text
+        assert "  TOTAL                               1/3  FAILED" in text
+        # Exactly one hint line pointing at --json.
+        hint = "  Per-test detail: rerun with --json for the machine-readable report."
+        assert text.count(hint) == 1
+        # Passing checks are not listed.
+        assert "  - health_ok" not in text
+
+    def test_failure_cap_states_how_many_are_not_shown(self):
+        """Beyond the display cap: say how many are hidden and point at --json."""
+        results = [
+            FakeTestResult(
+                name=f"check_{i:02d}",
+                passed=False,
+                detail=f"failure {i}",
+                duration_ms=1.0,
+                category="Error & Edge Cases",
+            )
+            for i in range(13)
+        ]
+        report = FakeTestReport(
+            results=results,
+            total=13,
+            passed=0,
+            failed=13,
+            duration_ms=13.0,
+            timestamp="2026-01-01T00:00:00Z",
+        )
+        text = _format_human(report, "http://x:1")
+        assert text.count("  - check_") == 10
+        assert "  - check_09" in text
+        assert "check_10" not in text
+        assert "  ... and 3 more failures (use --json for the full report)" in text
+
+    def test_red_report_with_no_failing_results_adds_no_empty_section(self):
+        """A red report whose results cannot name a failure stays as it was."""
+        report = FakeTestReport(
+            results=[],
+            total=0,
+            passed=0,
+            failed=1,
+            duration_ms=0.0,
+            timestamp="2026-01-01T00:00:00Z",
+        )
+        text = _format_human(report, "http://x:1")
+        assert "Failures:" not in text
+        assert "--json" not in text
+
 
 # ── latency stats ───────────────────────────────────────────────────────────
 
@@ -2061,6 +2173,49 @@ class TestRunBatteryJSON:
             "latency",
         ):
             assert key in payload
+
+    @pytest.mark.asyncio
+    async def test_red_run_human_output_names_the_failing_test(
+        self, monkeypatch, capsys
+    ):
+        """DF-H3-54 end-to-end: the printed report names the failing check."""
+        self._stub_battery(monkeypatch, _failing_report())
+        code = await _run_battery("http://x:1", None, False)
+        assert code == 1
+        out = capsys.readouterr().out
+        assert "Failures:" in out
+        assert "  - process_basic [Process Basic Flows]" in out
+        assert "    timeout" in out
+        assert "Per-test detail: rerun with --json" in out
+
+    @pytest.mark.asyncio
+    async def test_json_payload_unchanged_for_a_red_run(self, monkeypatch, capsys):
+        """DF-H3-54: ``--json`` keeps the exact pre-change schema and exit code.
+
+        The failure listing is a human-report concern only — a CI consumer
+        parsing ``h3-test --json`` must not see a new key or a reordered
+        ``results`` payload.
+        """
+        report = _failing_report()
+        self._stub_battery(monkeypatch, report)
+        code = await _run_battery("http://x:1", None, True)
+        assert code == 1
+        payload = json.loads(capsys.readouterr().out)
+        assert set(payload) == {
+            "results",
+            "total",
+            "passed",
+            "failed",
+            "duration_ms",
+            "timestamp",
+            "all_passing",
+            "latency",
+            "target_health",
+            "target_warnings",
+        }
+        assert payload["all_passing"] is False
+        assert payload["failed"] == 1
+        assert payload["results"] == [asdict(r) for r in report.results]
 
     @pytest.mark.asyncio
     async def test_json_empty_results_yield_zero_latency(self, monkeypatch, capsys):

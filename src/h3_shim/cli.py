@@ -429,6 +429,61 @@ def _latency_stats(results: list[TestResult]) -> dict[str, float]:
     }
 
 
+#: How many failing checks the human report spells out before it stops and
+#: points at ``--json`` instead (DF-H3-54).  Ten is enough to see the shape of
+#: a red run on one screen; a battery that fails 20 checks is a systemic
+#: problem whose full list belongs in the machine-readable report.
+_HUMAN_FAILURE_DISPLAY_CAP = 10
+
+
+def _human_failure_lines(
+    results: list[TestResult], *, cap: int = _HUMAN_FAILURE_DISPLAY_CAP
+) -> list[str]:
+    """Render the failing checks of a red run (DF-H3-54).
+
+    The category tallies say *that* a run is red, never *what* broke: the
+    actionable string lives in :attr:`TestResult.detail` (e.g. ``Expected
+    finished=false, got True``), which the human report used to drop
+    entirely.  A user then reads a correctly-behaving harness as broken and
+    has no way to learn which of 48 checks failed without already knowing
+    about ``--json``.
+
+    Returns ``[]`` when there is nothing to list, so a green run's text
+    stays byte-identical to the pre-DF-H3-54 report.
+    """
+    by_category: OrderedDict[str, list[TestResult]] = OrderedDict()
+    for r in results:
+        if not r.passed:
+            by_category.setdefault(r.category, []).append(r)
+    if not by_category:
+        return []
+
+    shown = 0
+    omitted = 0
+    lines: list[str] = ["", "Failures:"]
+    for category, category_results in by_category.items():
+        for result in category_results:
+            if shown >= cap:
+                omitted += 1
+                continue
+            lines.append(f"  - {result.name} [{category}]")
+            # First line only: a detail may carry a second paragraph of
+            # context (battery conventions, hints) that would drown the list.
+            first_line = result.detail.splitlines()[0].strip() if result.detail else ""
+            if first_line:
+                lines.append(f"    {first_line}")
+            shown += 1
+
+    if omitted:
+        lines.append(
+            f"  ... and {omitted} more failures (use --json for the full report)"
+        )
+    lines.append(
+        "  Per-test detail: rerun with --json for the machine-readable report."
+    )
+    return lines
+
+
 def _format_human(report: TestReport, endpoint: str) -> str:
     """Group results by category into a human-readable text report."""
     lines: list[str] = [
@@ -460,6 +515,9 @@ def _format_human(report: TestReport, endpoint: str) -> str:
             f"  {'Latency p50/p95':35s} "
             f"{stats['p50_ms']:.2f}ms / {stats['p95_ms']:.2f}ms"
         )
+    if not report.all_passing:
+        # A tally says a check failed; the name + detail says which one.
+        lines.extend(_human_failure_lines(report.results))
     return "\n".join(lines)
 
 
