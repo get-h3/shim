@@ -153,6 +153,16 @@ class EchoHarness implements Harness {
   }
 
   /**
+   * Live sessions — the count `health().active_sessions` reports. The metrics
+   * gauge is SET from this, so it measures the same session set /v1/health
+   * measures instead of a second, drifting recount.
+   */
+  activeSessions(): number {
+    this.sweepIdle();
+    return this.activeCount();
+  }
+
+  /**
    * Per-session record for GET /v1/sessions/:id. Mirrors the H3
    * SessionResponse wire shape and tracks the lifecycle locally so the
    * scaffolded harness can emit `status: "completed"` once the loop has
@@ -192,14 +202,13 @@ class EchoHarness implements Harness {
   }
 
   health(): HealthResponse {
-    this.sweepIdle();
     return {
       status: 'ok',
       version: VERSION,
       transport: 'rest',
       protocol_version: PROTOCOL_VERSION,
       uptime_seconds: Math.floor((Date.now() - this.startedAt) / 1000),
-      active_sessions: this.activeCount(),
+      active_sessions: this.activeSessions(),
       // Capabilities must match what this harness actually emits: declaring
       // fewer capabilities than you emit lies to capability-routing consumers.
       // This harness emits text (onProcess, and the non-ending onResult
@@ -294,8 +303,264 @@ class EchoHarness implements Harness {
   }
 }
 
+// ── Metrics (H3 harness SDK contract, obs-spec §5.4) ─────────────────────────
+// Every scaffolded harness serves the protocol's four harness metric families
+// on GET /metrics, on the same listener as the H3 routes, in Prometheus text
+// exposition format:
+//
+//   h3_harness_requests_total            counter   endpoint, decision, lang
+//   h3_harness_request_duration_seconds  histogram endpoint, lang
+//   h3_harness_errors_total              counter   endpoint, status_class
+//   h3_harness_sessions_active           gauge     lang
+//
+// The registry is hand-rolled (two counters, one gauge, one fixed-bucket
+// histogram) so the generated project stays dependency-light: four families do
+// not justify a Prometheus client library in every scaffolded harness.
+//
+// Labels stay BOUNDED, which is what keeps the series count cheap to scrape:
+// `lang` is fixed by this template, `endpoint` is always a route TEMPLATE
+// ("process", "result", "health", "cancel", "sessions") and never a session id
+// or a raw path, and `decision` is the H3 decision type the turn produced,
+// "none" for an endpoint that answers no decision, or "error" for a 4xx/5xx.
+
+const METRICS_LANG = 'ts';
+
+/** Prometheus default bucket grid: resolves a turn's p50/p95 from 5 ms up. */
+const DURATION_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+
+/** The bounded `endpoint` label set: one entry per H3 route template served. */
+const ENDPOINT_TEMPLATES = ['cancel', 'health', 'process', 'result', 'sessions'];
+
+/**
+ * Route templates that answer without an H3 decision; their request series is
+ * registered at zero under decision="none".
+ */
+const DECISIONLESS_ENDPOINTS = ['cancel', 'health', 'sessions'];
+
+/** The bounded `status_class` label set for errors_total. */
+const STATUS_CLASSES = ['4xx', '5xx'];
+
+/** The bounded `decision` label set: the protocol's decision types. */
+const DECISION_LABELS = new Set(['text', 'end', 'tool_call', 'llm_call', 'wait', 'delegate']);
+
+/** Escape a label value for the text exposition format. */
+function labelValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+/** The errors_total label for an HTTP status, or undefined when it is not an error. */
+function statusClassOf(status: number): string | undefined {
+  if (status >= 500) return '5xx';
+  if (status >= 400) return '4xx';
+  return undefined;
+}
+
+/**
+ * Map a request path onto its route TEMPLATE.
+ *
+ * Path parameters collapse ("/v1/sessions/<id>" -> "sessions") so a session id
+ * can never become a label; paths outside the documented H3 surface return
+ * undefined and are not recorded.
+ */
+function endpointForPath(path: string): string | undefined {
+  if (path === '/v1/process') return 'process';
+  if (path === '/v1/result') return 'result';
+  if (path === '/v1/health') return 'health';
+  if (path === '/v1/cancel') return 'cancel';
+  if (path === '/v1/sessions' || path.startsWith('/v1/sessions/')) return 'sessions';
+  return undefined;
+}
+
+/** Fixed-bucket histogram; counts[i] covers (bucket i-1, bucket i]. */
+class LatencyHistogram {
+  readonly counts: number[] = new Array(DURATION_BUCKETS.length + 1).fill(0);
+  sum = 0;
+  observations = 0;
+
+  observe(seconds: number): void {
+    this.sum += seconds;
+    this.observations += 1;
+    for (let i = 0; i < DURATION_BUCKETS.length; i += 1) {
+      if (seconds <= DURATION_BUCKETS[i]) {
+        this.counts[i] += 1;
+        return;
+      }
+    }
+    this.counts[DURATION_BUCKETS.length] += 1;
+  }
+}
+
+/**
+ * Hand-rolled Prometheus registry backing GET /metrics.
+ *
+ * Single-threaded by construction (Node runs the JS loop on one thread), and
+ * bounded: the label sets are fixed constants, so the series count cannot grow
+ * with traffic.
+ */
+class MetricsRegistry {
+  private readonly requests = new Map<string, number>();
+  private readonly errors = new Map<string, number>();
+  private readonly durations = new Map<string, LatencyHistogram>();
+  private sessionsActive = 0;
+
+  constructor(private readonly lang: string) {
+    // Register the ZERO STATE of every route template this harness serves, so a
+    // scrape arriving before any traffic still shows all four families (and
+    // rate() over a freshly started harness starts at 0 instead of "no data").
+    // Nothing is fabricated: the seeded series are exactly the routes this
+    // harness answers, every value starts at 0, and values only ever move by
+    // observation.
+    for (const endpoint of ENDPOINT_TEMPLATES) {
+      this.durations.set(endpoint, new LatencyHistogram());
+      for (const statusClass of STATUS_CLASSES) {
+        this.errors.set(`${endpoint}\u0000${statusClass}`, 0);
+      }
+    }
+    for (const endpoint of DECISIONLESS_ENDPOINTS) {
+      this.requests.set(`${endpoint}\u0000none`, 0);
+    }
+  }
+
+  /** Record one finished request: request counter, latency histogram, errors. */
+  observeRequest(endpoint: string, decision: string, status: number, seconds: number): void {
+    const requestKey = `${endpoint}\u0000${decision}`;
+    this.requests.set(requestKey, (this.requests.get(requestKey) ?? 0) + 1);
+    this.durations.get(endpoint)?.observe(seconds);
+    const statusClass = statusClassOf(status);
+    if (statusClass !== undefined) {
+      const errorKey = `${endpoint}\u0000${statusClass}`;
+      this.errors.set(errorKey, (this.errors.get(errorKey) ?? 0) + 1);
+    }
+  }
+
+  /**
+   * Publish the harness's own live-session count. The caller passes the SAME
+   * count /v1/health reports (`EchoHarness.activeSessions`), so the gauge
+   * measures the session set the harness keeps — never a recount from thin air.
+   */
+  setSessionsActive(count: number): void {
+    this.sessionsActive = count;
+  }
+
+  /** Render the whole registry in Prometheus text exposition format. */
+  render(): string {
+    const lang = labelValue(this.lang);
+    const lines: string[] = [
+      '# HELP h3_harness_requests_total Requests handled by this harness, by endpoint and decision.',
+      '# TYPE h3_harness_requests_total counter',
+    ];
+    for (const key of [...this.requests.keys()].sort()) {
+      const [endpoint, decision] = key.split('\u0000');
+      lines.push(
+        `h3_harness_requests_total{endpoint="${labelValue(endpoint)}",decision="${labelValue(
+          decision,
+        )}",lang="${lang}"} ${this.requests.get(key) ?? 0}`,
+      );
+    }
+
+    lines.push(
+      '# HELP h3_harness_request_duration_seconds Request latency in seconds, by endpoint.',
+      '# TYPE h3_harness_request_duration_seconds histogram',
+    );
+    for (const endpoint of ENDPOINT_TEMPLATES) {
+      const histogram = this.durations.get(endpoint) ?? new LatencyHistogram();
+      const label = `endpoint="${labelValue(endpoint)}",lang="${lang}"`;
+      let cumulative = 0;
+      DURATION_BUCKETS.forEach((upper, index) => {
+        cumulative += histogram.counts[index];
+        lines.push(
+          `h3_harness_request_duration_seconds_bucket{${label},le="${upper}"} ${cumulative}`,
+        );
+      });
+      cumulative += histogram.counts[DURATION_BUCKETS.length];
+      lines.push(
+        `h3_harness_request_duration_seconds_bucket{${label},le="+Inf"} ${cumulative}`,
+      );
+      lines.push(`h3_harness_request_duration_seconds_sum{${label}} ${histogram.sum}`);
+      lines.push(
+        `h3_harness_request_duration_seconds_count{${label}} ${histogram.observations}`,
+      );
+    }
+
+    lines.push(
+      '# HELP h3_harness_errors_total Requests answered with a 4xx or 5xx, by endpoint.',
+      '# TYPE h3_harness_errors_total counter',
+    );
+    for (const key of [...this.errors.keys()].sort()) {
+      const [endpoint, statusClass] = key.split('\u0000');
+      lines.push(
+        `h3_harness_errors_total{endpoint="${labelValue(endpoint)}",status_class="${labelValue(
+          statusClass,
+        )}"} ${this.errors.get(key) ?? 0}`,
+      );
+    }
+
+    lines.push(
+      '# HELP h3_harness_sessions_active Sessions this harness still owes work, by lang.',
+      '# TYPE h3_harness_sessions_active gauge',
+      `h3_harness_sessions_active{lang="${lang}"} ${this.sessionsActive}`,
+    );
+    return `${lines.join('\n')}\n`;
+  }
+}
+
+const metrics = new MetricsRegistry(METRICS_LANG);
+
+/** HTTP status of a thrown error, when the framework carries one. */
+function statusOfThrown(err: unknown): number {
+  const carried = (err as { status?: unknown; statusCode?: unknown } | null) ?? {};
+  const status =
+    typeof carried.status === 'number' ? carried.status : carried.statusCode;
+  return typeof status === 'number' && status >= 400 ? status : 500;
+}
+
+/**
+ * The H3 decision type a decision response carries, read off the JSON the SDK
+ * wrote. The response is cloned, so the bytes the client receives are untouched;
+ * anything unreadable or outside the bounded label set reads as "none".
+ */
+async function sniffDecision(res: Response): Promise<string> {
+  try {
+    const body = (await res.clone().json()) as { decision?: unknown };
+    const value = body?.decision;
+    return typeof value === 'string' && DECISION_LABELS.has(value) ? value : 'none';
+  } catch {
+    return 'none';
+  }
+}
+
 const harness = new EchoHarness();
 const app = new Hono();
+
+// Instrument every /v1 route and serve /metrics. Registered BEFORE the routes so
+// it wraps them; the H3 response for each route is passed through byte-for-byte
+// (only the status code and a clone of the body are read).
+app.use('/v1/*', async (c, next) => {
+  const endpoint = endpointForPath(c.req.path);
+  if (endpoint === undefined) {
+    await next();
+    return;
+  }
+  const started = performance.now();
+  try {
+    await next();
+  } catch (err) {
+    metrics.observeRequest(endpoint, 'error', statusOfThrown(err), (performance.now() - started) / 1000);
+    throw err;
+  }
+  const status = c.res.status;
+  const decision = status >= 400 ? 'error' : await sniffDecision(c.res);
+  metrics.observeRequest(endpoint, decision, status, (performance.now() - started) / 1000);
+});
+
+app.get('/metrics', (c) => {
+  // The gauge is SET from the harness's own live-session count at scrape time —
+  // the same set /v1/health reports.
+  metrics.setSessionsActive(harness.activeSessions());
+  return c.body(metrics.render(), 200, {
+    'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
+  });
+});
 
 // Shadow GET /v1/sessions/:session_id BEFORE mounting the SDK router so
 // the scaffolded harness emits its own lifecycle status (active →
