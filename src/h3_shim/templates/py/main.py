@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
@@ -41,7 +42,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 # ── Protocol Models ──────────────────────────────────────────────────────────
@@ -308,10 +309,14 @@ class EchoHarness:
                 dropped += 1
         return dropped
 
-    def health(self) -> HealthResponse:
+    def active_sessions(self) -> int:
+        """Live sessions — the count ``health()`` reports as active_sessions."""
         self.sweep_idle_sessions()
         with self._lock:
-            active = sum(1 for st in self._sessions.values() if st.live)
+            return sum(1 for st in self._sessions.values() if st.live)
+
+    def health(self) -> HealthResponse:
+        active = self.active_sessions()
         uptime = int((datetime.utcnow() - self._started_at).total_seconds())
         return HealthResponse(
             status=HealthStatus.OK,
@@ -454,9 +459,291 @@ class EchoHarness:
             )
 
 
+# ── Metrics (H3 harness SDK contract, obs-spec §5.4) ────────────────────────
+# Every scaffolded harness serves the protocol's four harness metric families on
+# GET /metrics, on the same listener as the H3 routes, in Prometheus text
+# exposition format:
+#
+#   h3_harness_requests_total            counter   endpoint, decision, lang
+#   h3_harness_request_duration_seconds  histogram endpoint, lang
+#   h3_harness_errors_total              counter   endpoint, status_class
+#   h3_harness_sessions_active           gauge     lang
+#
+# The registry is hand-rolled (two counters, one gauge, one fixed-bucket
+# histogram) so the generated project stays dependency-light: four families do
+# not justify a Prometheus client library in every scaffolded harness.
+#
+# Labels stay BOUNDED, which is what keeps the series count cheap to scrape:
+# ``lang`` is fixed by this template, ``endpoint`` is always a route TEMPLATE
+# ("process", "result", "health", "cancel", "sessions") and never a session id or
+# a raw path, and ``decision`` is the H3 decision type the turn produced, "none"
+# for an endpoint that answers no decision, or "error" for a 4xx/5xx.
+
+METRICS_LANG = "py"
+
+# The Prometheus default bucket grid: resolves a decision turn's p50/p95 from
+# 5 ms up.
+_DURATION_BUCKETS: tuple[float, ...] = (
+    0.005,
+    0.01,
+    0.025,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    1.0,
+    2.5,
+    5.0,
+    10.0,
+)
+# The bounded ``endpoint`` label set: one entry per H3 route template served.
+_ENDPOINT_TEMPLATES: tuple[str, ...] = (
+    "cancel",
+    "health",
+    "process",
+    "result",
+    "sessions",
+)
+# Route templates that answer without an H3 decision; their request series is
+# registered at zero under decision="none".
+_DECISIONLESS_ENDPOINTS: tuple[str, ...] = ("cancel", "health", "sessions")
+# The bounded ``status_class`` label set for errors_total.
+_STATUS_CLASSES: tuple[str, ...] = ("4xx", "5xx")
+# The bounded ``decision`` label set: the protocol's decision types, so a
+# malformed response body can never widen the label.
+_DECISION_LABELS = frozenset(
+    {"text", "end", "tool_call", "llm_call", "wait", "delegate"}
+)
+
+
+def _label_value(value: str) -> str:
+    """Escape a label value for the text exposition format."""
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def _status_class(status: int) -> str | None:
+    """Map an HTTP status onto the errors_total label, or None when it is not one."""
+    if status >= 500:
+        return "5xx"
+    if status >= 400:
+        return "4xx"
+    return None
+
+
+def _endpoint_for_path(path: str) -> str | None:
+    """Map a request path onto its route TEMPLATE.
+
+    Path parameters collapse ("/v1/sessions/<id>" -> "sessions") so a session id
+    can never become a label; paths outside the documented H3 surface return
+    None and are not recorded.
+    """
+    if path == "/v1/process":
+        return "process"
+    if path == "/v1/result":
+        return "result"
+    if path == "/v1/health":
+        return "health"
+    if path == "/v1/cancel":
+        return "cancel"
+    if path == "/v1/sessions" or path.startswith("/v1/sessions/"):
+        return "sessions"
+    return None
+
+
+class _LatencyHistogram:
+    """Fixed-bucket histogram; ``counts[i]`` covers (bucket i-1, bucket i]."""
+
+    __slots__ = ("counts", "sum", "observations")
+
+    def __init__(self) -> None:
+        self.counts = [0] * (len(_DURATION_BUCKETS) + 1)
+        self.sum = 0.0
+        self.observations = 0
+
+    def observe(self, seconds: float) -> None:
+        self.sum += seconds
+        self.observations += 1
+        for index, upper in enumerate(_DURATION_BUCKETS):
+            if seconds <= upper:
+                self.counts[index] += 1
+                return
+        self.counts[len(_DURATION_BUCKETS)] += 1
+
+
+class MetricsRegistry:
+    """Hand-rolled Prometheus registry backing GET /metrics.
+
+    Thread-safe (uvicorn serves these routes from a worker pool) and bounded: the
+    label sets are fixed constants, so the series count cannot grow with traffic.
+    """
+
+    def __init__(self, lang: str) -> None:
+        self._lang = lang
+        self._lock = threading.Lock()
+        self._requests: dict[tuple[str, str], int] = {}
+        self._errors: dict[tuple[str, str], int] = {}
+        self._durations = {ep: _LatencyHistogram() for ep in _ENDPOINT_TEMPLATES}
+        self._sessions_active = 0
+        # Register the ZERO STATE of every route template this harness serves, so
+        # a scrape arriving before any traffic still shows all four families (and
+        # rate() over a freshly started harness starts at 0 instead of "no
+        # data"). Nothing is fabricated: the seeded series are exactly the routes
+        # this harness answers, every value starts at 0, and values only ever
+        # move by observation.
+        for endpoint in _ENDPOINT_TEMPLATES:
+            for status_class in _STATUS_CLASSES:
+                self._errors[(endpoint, status_class)] = 0
+        for endpoint in _DECISIONLESS_ENDPOINTS:
+            self._requests[(endpoint, "none")] = 0
+
+    def observe_request(
+        self, endpoint: str, decision: str, status: int, seconds: float
+    ) -> None:
+        """Record one finished request: counter, latency histogram, error counter."""
+        with self._lock:
+            request_key = (endpoint, decision)
+            self._requests[request_key] = self._requests.get(request_key, 0) + 1
+            histogram = self._durations.get(endpoint)
+            if histogram is not None:
+                histogram.observe(seconds)
+            status_class = _status_class(status)
+            if status_class is not None:
+                error_key = (endpoint, status_class)
+                self._errors[error_key] = self._errors.get(error_key, 0) + 1
+
+    def set_sessions_active(self, count: int) -> None:
+        """Publish the harness's own live-session count.
+
+        The caller passes the SAME count /v1/health reports
+        (``EchoHarness.active_sessions``), so the gauge measures the session set
+        the harness keeps — it is never a recount from thin air.
+        """
+        with self._lock:
+            self._sessions_active = count
+
+    def render(self) -> str:
+        """Render the whole registry in Prometheus text exposition format."""
+        with self._lock:
+            lang = _label_value(self._lang)
+            lines = [
+                "# HELP h3_harness_requests_total Requests handled by this"
+                " harness, by endpoint and decision.",
+                "# TYPE h3_harness_requests_total counter",
+            ]
+            for (endpoint, decision), value in sorted(self._requests.items()):
+                lines.append(
+                    "h3_harness_requests_total{"
+                    f'endpoint="{_label_value(endpoint)}",'
+                    f'decision="{_label_value(decision)}",'
+                    f'lang="{lang}"}} {value}'
+                )
+
+            lines.append(
+                "# HELP h3_harness_request_duration_seconds Request latency in"
+                " seconds, by endpoint."
+            )
+            lines.append("# TYPE h3_harness_request_duration_seconds histogram")
+            for endpoint in _ENDPOINT_TEMPLATES:
+                histogram = self._durations[endpoint]
+                label = f'endpoint="{_label_value(endpoint)}",lang="{lang}"'
+                cumulative = 0
+                for index, upper in enumerate(_DURATION_BUCKETS):
+                    cumulative += histogram.counts[index]
+                    lines.append(
+                        "h3_harness_request_duration_seconds_bucket{"
+                        f'{label},le="{upper:g}"}} {cumulative}'
+                    )
+                cumulative += histogram.counts[len(_DURATION_BUCKETS)]
+                lines.append(
+                    "h3_harness_request_duration_seconds_bucket{"
+                    f'{label},le="+Inf"}} {cumulative}'
+                )
+                lines.append(
+                    "h3_harness_request_duration_seconds_sum{"
+                    f"{label}}} {histogram.sum:g}"
+                )
+                lines.append(
+                    "h3_harness_request_duration_seconds_count{"
+                    f"{label}}} {histogram.observations}"
+                )
+
+            lines.append(
+                "# HELP h3_harness_errors_total Requests answered with a 4xx or"
+                " 5xx, by endpoint."
+            )
+            lines.append("# TYPE h3_harness_errors_total counter")
+            for (endpoint, status_class), value in sorted(self._errors.items()):
+                lines.append(
+                    "h3_harness_errors_total{"
+                    f'endpoint="{_label_value(endpoint)}",'
+                    f'status_class="{_label_value(status_class)}"}} {value}'
+                )
+
+            lines.append(
+                "# HELP h3_harness_sessions_active Sessions this harness still"
+                " owes work, by lang."
+            )
+            lines.append("# TYPE h3_harness_sessions_active gauge")
+            lines.append(
+                f'h3_harness_sessions_active{{lang="{lang}"}} {self._sessions_active}'
+            )
+            return "\n".join(lines) + "\n"
+
+
+METRICS = MetricsRegistry(METRICS_LANG)
+
+
+def _record_request(
+    endpoint: str,
+    started: float,
+    *,
+    decision: str = "none",
+    status: int = 200,
+) -> None:
+    """Record one finished request against the harness metrics registry."""
+    METRICS.observe_request(
+        endpoint=endpoint,
+        decision=decision,
+        status=status,
+        seconds=time.perf_counter() - started,
+    )
+
+
+def _decision_label(decision: Decision) -> str:
+    """The bounded decision label for a decision this harness produced."""
+    value = decision.decision.value
+    return value if value in _DECISION_LABELS else "none"
+
+
+def _request_started(request: Request) -> float:
+    """The request's stamped start time, for paths that never reach a route body."""
+    started = getattr(request.state, "metrics_started", None)
+    return started if isinstance(started, float) else time.perf_counter()
+
+
+class _MetricsStartStamp:
+    """Pure-ASGI middleware stamping the request start time.
+
+    Pure ASGI (not ``BaseHTTPMiddleware``) on purpose: it never wraps the
+    response, so the H3 wire contract — status, body and headers — is identical
+    with and without it. The stamp gives the 4xx paths that never reach a route
+    body (the validation handler) a real latency observation instead of a
+    made-up zero.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] == "http":
+            scope.setdefault("state", {})["metrics_started"] = time.perf_counter()
+        await self.app(scope, receive, send)
+
+
 # ── FastAPI Wiring ───────────────────────────────────────────────────────────
 
 app = FastAPI(title="h3-harness (py)", version=EchoHarness.VERSION)
+app.add_middleware(_MetricsStartStamp)
 harness = EchoHarness()
 
 
@@ -505,6 +792,16 @@ async def invalid_request_handler(
     which is untouched by this handler and keeps its existing response.
     """
     errors = exc.errors()
+    # A rejected body is a real 4xx on a real H3 route: count it (and its
+    # latency) against the route TEMPLATE the request targeted.
+    endpoint = _endpoint_for_path(request.url.path)
+    if endpoint is not None:
+        _record_request(
+            endpoint,
+            _request_started(request),
+            decision="error",
+            status=400,
+        )
     return JSONResponse(
         status_code=400,
         content={
@@ -519,23 +816,38 @@ async def invalid_request_handler(
 
 @app.get("/v1/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return harness.health()
+    started = time.perf_counter()
+    try:
+        response = harness.health()
+    except Exception:
+        _record_request("health", started, decision="error", status=500)
+        raise
+    _record_request("health", started)
+    return response
 
 
 @app.post("/v1/process", response_model=Decision)
 def process(req: ProcessRequest) -> Decision:
+    started = time.perf_counter()
     try:
-        return harness.on_process(req)
+        decision = harness.on_process(req)
     except Exception as exc:  # pragma: no cover - defensive
+        _record_request("process", started, decision="error", status=500)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    _record_request("process", started, decision=_decision_label(decision))
+    return decision
 
 
 @app.post("/v1/result", response_model=Decision)
 def result(req: ResultRequest) -> Decision:
+    started = time.perf_counter()
     try:
-        return harness.on_result(req)
+        decision = harness.on_result(req)
     except Exception as exc:  # pragma: no cover - defensive
+        _record_request("result", started, decision="error", status=500)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    _record_request("result", started, decision=_decision_label(decision))
+    return decision
 
 
 class SessionTerminated(BaseModel):
@@ -555,11 +867,19 @@ class SessionResponse(BaseModel):
 
 @app.post("/v1/cancel", response_model=CancelResponse)
 def cancel(req: CancelRequest) -> CancelResponse:
-    return harness.on_cancel(req)
+    started = time.perf_counter()
+    try:
+        response = harness.on_cancel(req)
+    except HTTPException as exc:
+        _record_request("cancel", started, decision="error", status=exc.status_code)
+        raise
+    _record_request("cancel", started)
+    return response
 
 
 @app.delete("/v1/sessions/{session_id}", response_model=SessionTerminated)
 def delete_session(session_id: str) -> SessionTerminated:
+    started = time.perf_counter()
     harness.on_session_terminate(session_id)
     # DF-H3-53: the route must not fabricate the teardown claim. Re-ask the
     # harness's own session view after the hook: a session that is gone was
@@ -571,14 +891,35 @@ def delete_session(session_id: str) -> SessionTerminated:
     # docs/dogfood/2026-11-18-dfh353-delete-repro.md.)
     try:
         harness.get_session(session_id)
+        terminated = False
     except HTTPException:
-        return SessionTerminated(terminated=True, session_id=session_id)
-    return SessionTerminated(terminated=False, session_id=session_id)
+        terminated = True
+    _record_request("sessions", started)
+    return SessionTerminated(terminated=terminated, session_id=session_id)
 
 
 @app.get("/v1/sessions/{session_id}", response_model=SessionResponse)
 def get_session(session_id: str) -> SessionResponse:
-    return harness.get_session(session_id)
+    started = time.perf_counter()
+    try:
+        response = harness.get_session(session_id)
+    except HTTPException as exc:
+        _record_request("sessions", started, decision="error", status=exc.status_code)
+        raise
+    _record_request("sessions", started)
+    return response
+
+
+@app.get("/metrics", include_in_schema=False)
+def metrics() -> Response:
+    """Serve the h3_harness_* families in Prometheus text exposition format."""
+    # The gauge is SET from the harness's own live-session count at scrape time —
+    # the same set /v1/health reports.
+    METRICS.set_sessions_active(harness.active_sessions())
+    return Response(
+        content=METRICS.render(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 if __name__ == "__main__":
